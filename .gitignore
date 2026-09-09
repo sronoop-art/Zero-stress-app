@@ -1,0 +1,24 @@
+# Android / Gradle
+.gradle/
+build/
+app/build/
+local.properties
+*.jks
+!app/zerostress.jks
+
+# IDE
+.idea/
+*.iml
+.DS_Store
+
+# Node / Firebase Functions
+functions/node_modules/
+functions/*.log
+.firebase/
+
+# Stray duplicate source folders at repo root (real sources live in app/src/main)
+/java/
+/res/
+
+# google-services.json contains project identifiers; keep it local
+app/google-services.json

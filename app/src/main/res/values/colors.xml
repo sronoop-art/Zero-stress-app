@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Colors -->
+    <color name="primary">#667eea</color>
+    <color name="primary_dark">#764ba2</color>
+    <color name="primary_darker">#5a67d8</color>
+    
+    <!-- Accent Colors -->
+    <color name="accent">#38ef7d</color>
+    <color name="accent_dark">#11998e</color>
+    
+    <!-- Fancy Theme Colors -->
+    <color name="bg_main">#0f0c29</color>
+    <color name="bg_main_gradient_start">#0f0c29</color>
+    <color name="bg_main_gradient_end">#302b63</color>
+    <color name="bg_card">#1a1a2e</color>
+    <color name="bg_card_gradient_start">#1a1a2e</color>
+    <color name="bg_card_gradient_end">#16213e</color>
+    <color name="bg_card_elevated">#16213e</color>
+    <color name="bg_input">#1a1a2e</color>
+    <color name="bg_input_focus">#16213e</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#ffffff</color>
+    <color name="text_secondary">#a0aec0</color>
+    <color name="text_muted">#718096</color>
+    <color name="text_accent">#667eea</color>
+    
+    <!-- Border Colors -->
+    <color name="border">#4a5568</color>
+    <color name="border_light">#718096</color>
+    <color name="border_glow">#667eea</color>
+    
+    <!-- Rank Colors -->
+    <color name="gold">#ffd200</color>
+    <color name="gold_dark">#f7971e</color>
+    <color name="silver">#c0c0c0</color>
+    <color name="bronze">#cd7f32</color>
+    <color name="platinum">#e5e4e2</color>
+    <color name="diamond">#b9f2ff</color>
+    <color name="mythic">#ff6b6b</color>
+    <color name="iron">#718096</color>
+    
+    <!-- Status Colors -->
+    <color name="danger">#fc4a1a</color>
+    <color name="danger_dark">#f7b733</color>
+    <color name="success">#11998e</color>
+    <color name="success_dark">#38ef7d</color>
+    <color name="green">#10b981</color>
+    <color name="cyan">#38bdf8</color>
+    <color name="grey">#8B949E</color>
+    <color name="warning">#f7971e</color>
+    <color name="warning_dark">#ffd200</color>
+    <color name="info">#00d2ff</color>
+    <color name="info_dark">#3a7bd5</color>
+    
+    <!-- Basic Colors -->
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    
+    <!-- Chat Colors -->
+    <color name="chat_sent">#667eea</color>
+    <color name="chat_sent_gradient_start">#667eea</color>
+    <color name="chat_sent_gradient_end">#764ba2</color>
+    <color name="chat_received">#1a1a2e</color>
+    <color name="chat_received_gradient_start">#1a1a2e</color>
+    <color name="chat_received_gradient_end">#16213e</color>
+    
+    <!-- Voice Colors -->
+    <color name="voice_active">#11998e</color>
+    <color name="voice_active_glow">#38ef7d</color>
+    <color name="voice_idle">#4a5568</color>
+    
+    <!-- Fancy Glow Colors (40% opacity) -->
+    <color name="glow_purple">#66667eea</color>
+    <color name="glow_cyan">#6600d2ff</color>
+    <color name="glow_gold">#66ffd200</color>
+    <color name="glow_green">#6638ef7d</color>
+    <color name="glow_red">#66fc4a1a</color>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Framework theme used by the Activities. All UI is drawn by Jetpack
+        Compose, so this only needs to provide a dark window, no action bar
+        and the Zero Stress brand colors behind the Compose content.
+    -->
+    <style name="Theme.ZeroStress" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/bg_main</item>
+        <item name="android:statusBarColor">@color/bg_main</item>
+        <item name="android:navigationBarColor">@color/bg_main</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
