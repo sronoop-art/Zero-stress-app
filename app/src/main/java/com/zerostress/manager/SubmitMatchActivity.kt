@@ -118,6 +118,7 @@ private fun SubmitMatchScreen() {
                     val currentScore = doc.getLong("score") ?: 0
                     var currentXp = (doc.getLong("xp") ?: 0).toInt()
                     var currentLevel = (doc.getLong("level") ?: 1).toInt()
+                    val startLevel = currentLevel
                     val currentCoins = (doc.getLong("coins") ?: 0).toInt()
 
                     val newKills = currentKills + k
@@ -128,6 +129,7 @@ private fun SubmitMatchScreen() {
 
                     val xpGained = k * 5 + (dmg / 50).toInt() + if (isWin) 100 else 20
                     var newXp = currentXp + xpGained
+                    var newLevel = startLevel
                     while (newXp >= newLevel * 500) {
                         newXp -= newLevel * 500
                         newLevel++

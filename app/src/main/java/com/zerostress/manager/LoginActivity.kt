@@ -108,7 +108,7 @@ private fun LoginScreen() {
         val email = "$phoneT@zerostress.local"
         auth.signInWithEmailAndPassword(email, passwordT)
             .addOnSuccessListener { result ->
-                val uid = result.user.uid
+                val uid = result.user?.uid ?: return@addOnSuccessListener
                 db.collection("players").document(uid).get()
                     .addOnSuccessListener { doc ->
                         loading = false

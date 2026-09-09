@@ -34,7 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
@@ -273,7 +273,7 @@ private fun ChatScreen() {
                             Modifier
                                 .widthIn(max = 320.dp)
                                 .background(
-                                    if (isSent) Brush.linearGradient(listOf(com.zerostress.manager.ui.theme.ZsChatSentStart, com.zerostress.manager.ui.theme.ZsChatSentEnd))
+                                    if (isSent) SolidColor(com.zerostress.manager.ui.theme.ZsChatSentEnd)
                                     else ZsCard,
                                     RoundedCornerShape(
                                         topStart = 14.dp, topEnd = 14.dp,

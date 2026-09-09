@@ -16,7 +16,7 @@ all backed by **Firebase** (Auth + Firestore + Messaging + App Check).
 | UI | 100% Jetpack Compose (was XML layouts + RecyclerViews) |
 | Build files | Kotlin DSL — `settings.gradle.kts`, `build.gradle.kts`, `app/build.gradle.kts` |
 | Gradle | Wrapper pinned to **8.4** (works with AndroidIDE's bundled Gradle) |
-| AGP / Kotlin | AGP 8.2.2, Kotlin 2.0.20 + Compose compiler plugin |
+| AGP / Kotlin | AGP 8.2.2, Kotlin 1.9.24 + Compose compiler 1.5.14 (AndroidIDE-compatible) |
 | Backend | Firebase Auth, Firestore, Messaging (FCM), App Check (debug provider) |
 | Cloud | `functions/` — Firebase Cloud Functions that push FCM notifications |
 

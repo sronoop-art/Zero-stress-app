@@ -1,7 +1,6 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
 }
 
@@ -54,16 +53,20 @@ android {
         compose = true
     }
 
+    // Compose compiler matched to Kotlin 1.9.24 (classic composeOptions setup —
+    // the kotlin.plugin.compose helper only exists for Kotlin 2.x)
+    composeOptions {
+        kotlinCompilerExtensionVersion = "1.5.14"
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
-}
 
-kotlin {
-    compilerOptions {
-        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    kotlinOptions {
+        jvmTarget = "17"
     }
 }
 
@@ -88,8 +91,11 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
 
-    // Firebase BOM
-    implementation(platform("com.google.firebase:firebase-bom:32.7.1"))
+    // Firebase BOM — 33.1.2 is the newest line whose artifacts are compiled with
+    // Kotlin 1.8/1.9 metadata (readable by the Kotlin 1.9.24 compiler AndroidIDE uses).
+    // Do NOT jump to BOM 34.x: those artifacts (firebase-auth 24.x, play-services
+    // measurement 23.x) carry Kotlin 2.2+ metadata and fail on-device.
+    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")

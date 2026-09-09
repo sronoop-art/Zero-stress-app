@@ -77,7 +77,7 @@ private fun RegisterScreen() {
 
         auth.createUserWithEmailAndPassword(email, passwordT)
             .addOnSuccessListener { result ->
-                val uid = result.user.uid
+                val uid = result.user?.uid ?: return@addOnSuccessListener
                 val playerData = mapOf(
                     "uid" to uid,
                     "name" to nameT,

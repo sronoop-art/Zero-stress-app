@@ -148,7 +148,8 @@ private fun ProfileScreen() {
         }
         if (uid == null) return
 
-        db.collection("players").document(uid).update("name" to newName, "phone" to newPhone)
+        db.collection("players").document(uid)
+            .update(mapOf("name" to newName, "phone" to newPhone))
             .addOnSuccessListener {
                 Toast.makeText(context, "Profile updated!", Toast.LENGTH_SHORT).show()
                 isEditing = false

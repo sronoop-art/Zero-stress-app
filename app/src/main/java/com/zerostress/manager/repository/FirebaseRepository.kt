@@ -15,7 +15,8 @@ import com.zerostress.manager.models.MatchSchedule
 import com.zerostress.manager.models.Player
 import com.zerostress.manager.models.VoiceChannel
 
-fun interface OnResultCallback<T> {
+/** Simple two-method callback used across [FirebaseRepository]. */
+interface OnResultCallback<T> {
     fun onSuccess(result: T)
     fun onFailure(e: Exception?)
 }
