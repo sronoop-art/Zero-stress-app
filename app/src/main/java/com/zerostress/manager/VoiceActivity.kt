@@ -62,6 +62,15 @@ import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 import com.zerostress.manager.ui.theme.ZsWarning
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import com.zerostress.manager.VoiceCallPeer
+import com.zerostress.manager.VoiceCallSignaling
+import org.webrtc.SessionDescription
+import org.webrtc.IceCandidate
+import org.webrtc.PeerConnection
+import java.util.concurrent.atomic.AtomicBoolean
+import android.os.Handler
+import android.os.Looper
 
 class VoiceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -117,20 +126,26 @@ private fun VoiceScreen() {
     var isHandRaised by remember { mutableStateOf(false) }
     var micGranted by remember { mutableStateOf(false) }
 
-    val micLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        micGranted = granted
-        if (granted) {
-            if (currentChannelId != null) {
-                isInCall = true
+    var activeCall by remember { mutableStateOf(false) }
+    var callView by remember { mutableStateOf<VoiceCallPeer.CallView?>(null) }
+    var remoteUid by remember { mutableStateOf<String?>(null) }
+    var callStateText by remember { mutableStateOf("Not in call") }
+    var pendingRemoteUid by remember { mutableStateOf<String?>(null) }
+    val callJob = remember { AtomicBoolean(false) }
+
+    val        micLauncher = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { granted ->
+            micGranted = granted
+            if (granted) {            if (currentChannelId != null) {
+                                    findAndStartCall(userId!!, currentChannelId!!)
+                                } else {
+                                    showChannelPicker = true
+                                }
             } else {
-                showChannelPicker = true
+                Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
             }
-        } else {
-            Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
         }
-    }
 
     LaunchedEffect(Unit) {
         if (userId == null) {
@@ -158,6 +173,7 @@ private fun VoiceScreen() {
                 delay(1000)
             }
         }
+        callStateText = if (activeCall) "In call" else "Not in call"
     }
 
     DisposableEffect(currentChannelId) {
@@ -228,6 +244,8 @@ private fun VoiceScreen() {
             .addOnSuccessListener {
                 isInCall = true
                 Toast.makeText(context, "Joined $channelName", Toast.LENGTH_SHORT).show()
+                // Start the live voice call with the first other participant found
+                findAndStartCall(uid, channelId)
             }
             .addOnFailureListener { e ->
                 Toast.makeText(context, "Failed to join: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -235,22 +253,27 @@ private fun VoiceScreen() {
     }
 
     fun leaveCall() {
-        val channelId = currentChannelId
-        val uid = userId
-        if (channelId != null && uid != null) {
-            db.collection("voice_channels")
-                .document(channelId)
-                .collection("participants")
-                .document(uid)
-                .delete()
+        if (activeCall) {
+            val view = callView
+            if (view != null) {
+                try {
+                    VoiceCallPeer.close(view)
+                } catch (_: Throwable) {}
+            }
+            VoiceCallPeer.stopLocalMedia()
+            activeCall = false
+            callView = null
+            remoteUid = null
+            pendingRemoteUid = null
+            callStateText = "Not in call"
         }
+        currentChannelId = null
+        currentChannelName = "No channel"
         isInCall = false
         isMuted = false
         isDeafened = false
         isSpeaking = false
         isHandRaised = false
-        currentChannelId = null
-        currentChannelName = "No channel"
         elapsedSeconds = 0
         participants = emptyList()
         callChat = emptyList()
@@ -316,8 +339,77 @@ private fun VoiceScreen() {
     }
 
     DisposableEffect(Unit) {
-        onDispose { leaveCall() }
+        onDispose {
+            leaveCall()
+        }
     }
+
+    fun findAndStartCall(uid: String, channelId: String) {
+        if (!callJob.compareAndSet(false, true)) return
+        scope.launch {
+            try {
+                VoiceCallPeer.startLocalMedia(context)
+            } catch (_: Throwable) {}
+            val others = try {
+                db.collection("voice_channels")
+                    .document(channelId)
+                    .collection("participants")
+                    .whereNotEqualTo("userId", uid)
+                    .get()
+                    .await()
+                    .documents
+            } catch (_: Throwable) {
+                emptyList()
+            }
+            val target = others.firstOrNull()
+            if (target != null) {
+                remoteUid = target.id
+                pendingRemoteUid = remoteUid
+                startCallWithRemote(uid, channelId, target.id)
+            } else {
+                callStateText = "No other participants"
+                callJob.set(false)
+            }
+        }
+    }
+
+    suspend fun startCallWithRemote(localUid: String, channelId: String, remoteUid: String) {
+        this.remoteUid = remoteUid
+        pendingRemoteUid = null
+        val view = VoiceCallPeer.createCall(context, db, channelId, localUid, remoteUid)
+            ?: run {
+                callStateText = "Call setup failed"
+                return@startCallWithRemote
+            }
+        callView = view
+
+        VoiceCallPeer.startCall(view)
+        voiceCallSignaling = VoiceCallSignaling(channelId, localUid, remoteUid, db).apply {
+            startListening()
+        }
+        activeCall = true
+        callStateText = "Starting call…"
+
+        try {
+            val answer = voiceCallSignaling?.waitForAnswer()
+            if (answer != null) {
+                VoiceCallPeer.setRemoteAnswer(view, answer)
+                callStateText = "In call"
+            } else {
+                callStateText = "Waiting for remote answer…"
+            }
+        } catch (e: Exception) {
+            Log.w(VoiceActivityTag, "answer wait failed", e)
+            callStateText = "Call failed"
+        }
+    }
+
+    private fun startVoiceCall() {
+        findAndStartCall(userId!!, currentChannelId!!)
+    }
+
+    var voiceCallSignaling: VoiceCallSignaling? = null
+    val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
@@ -367,7 +459,7 @@ private fun VoiceScreen() {
                                 leaveCall()
                             } else if (micGranted) {
                                 if (currentChannelId != null) {
-                                    isInCall = true
+                                    findAndStartCall(userId!!, currentChannelId!!)
                                 } else {
                                     showChannelPicker = true
                                 }
@@ -715,32 +807,73 @@ private fun VoiceScreen() {
             }
         )
     }
-}
-
-private fun showProfile(context: android.content.Context, db: FirebaseFirestore, userId: String?) {
-    if (userId == null) {
-        Toast.makeText(context, "Not signed in", Toast.LENGTH_SHORT).show()
-        return
-    }
-    db.collection("players").document(userId).get()
-        .addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                Toast.makeText(
-                    context,
-                    "Name: ${doc.getString("name")}\nLevel: ${doc.getLong("level") ?: 1}\nRank: ${doc.getString("rank") ?: "Unknown"}",
-                    Toast.LENGTH_LONG
-                ).show()
-            } else {
-                Toast.makeText(context, "Profile not found", Toast.LENGTH_SHORT).show()
+}    private fun showProfile(
+        context: android.content.Context,
+        db: FirebaseFirestore,
+        userId: String?
+    ) {
+        if (userId == null) {
+            Toast.makeText(context, "Not signed in", Toast.LENGTH_SHORT).show()
+            return
+        }
+        db.collection("players").document(userId).get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    Toast.makeText(
+                        context,
+                        "Name: ${doc.getString("name")}\nLevel: ${doc.getLong("level") ?: 1}\nRank: ${doc.getString("rank") ?: "Unknown"}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    Toast.makeText(context, "Profile not found", Toast.LENGTH_SHORT).show()
+                }
             }
-        }
-        .addOnFailureListener {
-            Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
-        }
-}
+            .addOnFailureListener {
+                Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
+            }
+    }
 
-@Composable
-private fun formatTime(timestamp: Long): String {
+    private fun setStatusCycle(
+        context: android.content.Context,
+        db: FirebaseFirestore,
+        userId: String?,
+        currentChannelId: String?
+    ) {
+        val statuses = listOf(
+            "ONLINE" to "🟢 Online",
+            "IDLE" to "🟡 Idle",
+            "DO_NOT_DISTURB" to "🔴 Do not disturb"
+        )
+        if (currentChannelId == null || userId == null) {
+            Toast.makeText(context, "Not in a call", Toast.LENGTH_SHORT).show()
+            return
+        }
+        var currentCode: String? = null
+        try {
+            currentCode = db.collection("voice_channels")
+                .document(currentChannelId)
+                .collection("participants")
+                .document(userId)
+                .get()
+                .await()
+                .getString("userStatus")
+        } catch (_: Throwable) {}
+        val currentIndex = currentCode?.let { code -> statuses.indexOfFirst { it.first == code } } ?: 0
+        val next = (currentIndex + 1) % statuses.size
+        val (code, label) = statuses[next]
+        try {
+            db.collection("players").document(userId).update("status", code)
+            db.collection("voice_channels")
+                .document(currentChannelId)
+                .collection("participants")
+                .document(userId)
+                .update("userStatus", code)
+        } catch (_: Throwable) {}
+        Toast.makeText(context, "Status set to $label", Toast.LENGTH_SHORT).show()
+    }
+
+    @Composable
+    private fun formatTime(timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     return when {
         diff < 60_000 -> "now"
