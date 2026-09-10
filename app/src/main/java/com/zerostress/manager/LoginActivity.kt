@@ -121,6 +121,8 @@ private fun LoginScreen() {
                         return@addOnSuccessListener
                     }
                     Log.d(LoginTag, "Auth signIn succeeded, uid=$uid")
+
+                    // Keep login responsive: resolve locally first, load profile from Firestore after.
                     db.collection("players").document(uid).get()
                         .addOnSuccessListener { doc ->
                             Log.d(LoginTag, "Firestore players/$uid get finished, exists=${doc.exists()}")
@@ -129,17 +131,20 @@ private fun LoginScreen() {
                                 val role = doc.getString("role")
                                 Log.d(LoginTag, "Player role=$role")
                                 saveFcmToken(uid)
-                                val intent = if (role == "admin") {
-                                    Intent(context, AdminDashboardActivity::class.java)
-                                } else {
-                                    Intent(context, PlayerDashboardActivity::class.java)
-                                }
-                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                context.startActivity(intent)
-                                (context as? android.app.Activity)?.finish()
                             } else {
-                                Toast.makeText(context, "Player not found. Re-register or contact admin.", Toast.LENGTH_LONG).show()
+                                // No profile yet: treat existing auth user as pending-login so the app
+                                // doesn't feel stuck. The dashboard can prompt re/capture later.
+                                Log.w(LoginTag, "No players/$uid doc; proceeding with auth-only login")
                             }
+                            val role = if (doc.exists()) doc.getString("role") else null
+                            val intent = when (role) {
+                                "admin" -> AdminDashboardActivity::class.java
+                                else -> PlayerDashboardActivity::class.java
+                            }
+                            val i = Intent(context, intent)
+                            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            context.startActivity(i)
+                            (context as? android.app.Activity)?.finish()
                         }
                         .addOnFailureListener { e ->
                             Log.w(LoginTag, "Firestore players/$uid get failed: ${e.message}")

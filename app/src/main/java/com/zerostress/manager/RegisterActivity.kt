@@ -93,6 +93,18 @@ private fun RegisterScreen() {
                         return@addOnSuccessListener
                     }
                     Log.d(RegisterTag, "Auth createUser succeeded, uid=$uid")
+
+                    // Return to login immediately so the app feels fast.
+                    // The player profile is written to Firestore in the background.
+                    loading = false
+                    Toast.makeText(
+                        context,
+                        "Account created. Saving profile in background, then go to login.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    context.startActivity(Intent(context, LoginActivity::class.java))
+                    (context as? android.app.Activity)?.finish()
+
                     val playerData = mapOf(
                         "uid" to uid,
                         "name" to nameT,
@@ -115,20 +127,10 @@ private fun RegisterScreen() {
                         .document(uid)
                         .set(playerData)
                         .addOnSuccessListener {
-                            Log.d(RegisterTag, "Firestore players/$uid set succeeded")
-                            loading = false
-                            Toast.makeText(
-                                context,
-                                "Registered! Wait for admin approval.",
-                                Toast.LENGTH_LONG
-                            ).show()
-                            context.startActivity(Intent(context, LoginActivity::class.java))
-                            (context as? android.app.Activity)?.finish()
+                            Log.d(RegisterTag, "Firestore players/$uid set succeeded in background")
                         }
                         .addOnFailureListener { e ->
-                            Log.w(RegisterTag, "Firestore players/$uid set failed: ${e.message}")
-                            loading = false
-                            Toast.makeText(context, "Profile save failed: ${e.message}", Toast.LENGTH_LONG).show()
+                            Log.w(RegisterTag, "Firestore players/$uid set failed in background: ${e.message}")
                         }
                 }
                 .addOnFailureListener { e ->
