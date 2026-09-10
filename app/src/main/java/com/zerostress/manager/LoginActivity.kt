@@ -45,6 +45,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import com.zerostress.manager.fcm.FCMConfig
+import android.util.Log
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSField
@@ -108,15 +109,24 @@ private fun LoginScreen() {
 
         loading = true
         val email = "$phoneT@zerostress.local"
+        Log.d(LoginTag, "Login attempt: email=$email")
         try {
             auth.signInWithEmailAndPassword(email, passwordT)
                 .addOnSuccessListener { result ->
-                    val uid = result.user?.uid ?: return@addOnSuccessListener
+                    val uid = result.user?.uid ?: run {
+                        Log.w(LoginTag, "signIn succeeded but result.user was null")
+                        loading = false
+                        Toast.makeText(context, "Login succeeded but user ID missing. Try again.", Toast.LENGTH_LONG).show()
+                        return@addOnSuccessListener
+                    }
+                    Log.d(LoginTag, "Auth signIn succeeded, uid=$uid")
                     db.collection("players").document(uid).get()
                         .addOnSuccessListener { doc ->
+                            Log.d(LoginTag, "Firestore players/$uid get finished, exists=${doc.exists()}")
                             loading = false
                             if (doc.exists()) {
                                 val role = doc.getString("role")
+                                Log.d(LoginTag, "Player role=$role")
                                 saveFcmToken(uid)
                                 val intent = if (role == "admin") {
                                     Intent(context, AdminDashboardActivity::class.java)
@@ -127,19 +137,35 @@ private fun LoginScreen() {
                                 context.startActivity(intent)
                                 (context as? android.app.Activity)?.finish()
                             } else {
-                                Toast.makeText(context, "Player not found", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Player not found. Re-register or contact admin.", Toast.LENGTH_LONG).show()
                             }
                         }
                         .addOnFailureListener { e ->
+                            Log.w(LoginTag, "Firestore players/$uid get failed: ${e.message}")
                             loading = false
                             Toast.makeText(context, "Profile load failed: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                 }
                 .addOnFailureListener { e ->
+                    Log.w(LoginTag, "Auth signIn failed: ${e.message}")
                     loading = false
-                    Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    val msg = when {
+                        e.message?.contains("user-not-found", ignoreCase = true) == true ->
+                            "No account with that phone number"
+                        e.message?.contains("wrong-password", ignoreCase = true) == true ->
+                            "Wrong password"
+                        e.message?.contains("invalid-credential", ignoreCase = true) == true ->
+                            "No account with that phone number"
+                        e.message?.contains("disabled", ignoreCase = true) == true ->
+                            "Email/Password sign-in may be disabled in Firebase console"
+                        e.message?.contains("network", ignoreCase = true) == true ->
+                            "No internet connection"
+                        else -> e.message
+                    }
+                    Toast.makeText(context, "Login failed: $msg", Toast.LENGTH_LONG).show()
                 }
         } catch (e: Exception) {
+            Log.e(LoginTag, "Login threw synchronously: ${e.message}")
             loading = false
             Toast.makeText(context, "Login error: ${e.message}", Toast.LENGTH_LONG).show()
         }
@@ -294,6 +320,8 @@ private fun LoginScreen() {
         )
     }
 }
+
+private const val LoginTag = "ZSM.Login"
 
 private fun saveFcmToken(uid: String) {
     FirebaseMessaging.getInstance().token

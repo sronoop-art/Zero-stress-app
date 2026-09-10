@@ -2,6 +2,7 @@ package com.zerostress.manager
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -44,6 +45,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 
+private const val RegisterTag = "ZSM.Register"
+
 class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -78,10 +81,18 @@ private fun RegisterScreen() {
         val email = "$phoneT@zerostress.local"
         loading = true
 
+        Log.d(RegisterTag, "Register attempt: email=$email name=$nameT")
+
         try {
             auth.createUserWithEmailAndPassword(email, passwordT)
                 .addOnSuccessListener { result ->
-                    val uid = result.user?.uid ?: return@addOnSuccessListener
+                    val uid = result.user?.uid ?: run {
+                        Log.w(RegisterTag, "createUser succeeded but result.user was null")
+                        loading = false
+                        Toast.makeText(context, "Registration succeeded but user ID missing. Try again.", Toast.LENGTH_LONG).show()
+                        return@addOnSuccessListener
+                    }
+                    Log.d(RegisterTag, "Auth createUser succeeded, uid=$uid")
                     val playerData = mapOf(
                         "uid" to uid,
                         "name" to nameT,
@@ -104,6 +115,7 @@ private fun RegisterScreen() {
                         .document(uid)
                         .set(playerData)
                         .addOnSuccessListener {
+                            Log.d(RegisterTag, "Firestore players/$uid set succeeded")
                             loading = false
                             Toast.makeText(
                                 context,
@@ -114,15 +126,43 @@ private fun RegisterScreen() {
                             (context as? android.app.Activity)?.finish()
                         }
                         .addOnFailureListener { e ->
+                            Log.w(RegisterTag, "Firestore players/$uid set failed: ${e.message}")
                             loading = false
                             Toast.makeText(context, "Profile save failed: ${e.message}", Toast.LENGTH_LONG).show()
                         }
                 }
                 .addOnFailureListener { e ->
+                    Log.w(RegisterTag, "Auth createUser failed: ${e.message}")
                     loading = false
-                    Toast.makeText(context, "Registration failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    val msg = when {
+                        e.message?.contains("invalid-email", ignoreCase = true) == true ->
+                            "That phone number is not valid for registration"
+                        e.message?.contains("user-not-found", ignoreCase = true) == true ->
+                            "Account not found"
+                        e.message?.contains("wrong-password", ignoreCase = true) == true ->
+                            "Wrong password"
+                        e.message?.contains("email-already-in-use", ignoreCase = true) == true ||
+                            e.message?.contains("duplicate", ignoreCase = true) == true ->
+                            "This phone is already registered"
+                        e.message?.contains("disabled", ignoreCase = true) == true ->
+                            "Email/Password sign-in may be disabled in Firebase console"
+                        e.message?.contains("network", ignoreCase = true) == true ->
+                            "No internet connection"
+                        else -> e.message
+                    }
+                    Toast.makeText(context, "Registration failed: $msg", Toast.LENGTH_LONG).show()
+
+                    // Extra hint for the two most common new-console failures.
+                    if (e.message?.contains("disabled", ignoreCase = true) == true) {
+                        Log.w(RegisterTag, "AUTH_DISABLE_HINT: Email/Password provider may be disabled in Firebase Console > Authentication > Sign-in method")
+                    }
+                    if (e.message?.contains("app-check", ignoreCase = true) == true ||
+                        e.message?.contains("APP_CHECK", ignoreCase = true) == true) {
+                        Log.w(RegisterTag, "APP_CHECK_HINT: Firestore/Auth rejected by App Check. Register the debug token from Logcat (ZeroStressApp) in Firebase Console > App Check")
+                    }
                 }
         } catch (e: Exception) {
+            Log.e(RegisterTag, "Register threw synchronously: ${e.message}")
             loading = false
             Toast.makeText(context, "Registration error: ${e.message}", Toast.LENGTH_LONG).show()
         }
@@ -131,10 +171,11 @@ private fun RegisterScreen() {
         kotlinx.coroutines.GlobalScope.launch {
             delay(30_000)
             if (loading) {
+                Log.w(RegisterTag, "Registration timed out after 30s; auth callbacks never fired")
                 loading = false
                 Toast.makeText(
                     context,
-                    "Took too long. Check your internet and try again.",
+                    "Took too long. Check internet + Firebase console (Auth enabled?).",
                     Toast.LENGTH_LONG
                 ).show()
             }

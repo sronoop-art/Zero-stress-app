@@ -27,6 +27,7 @@ class ZeroStressApp : Application() {
             appCheck.getToken(false)
                 .addOnSuccessListener { result ->
                     Log.w(TAG, "APP CHECK DEBUG TOKEN: ${result.token}")
+                    Log.w(TAG, "Copy this token into Firebase Console > App Check > Debug provider tokens, or Auth/Firestore calls may be rejected")
                 }
                 .addOnFailureListener { e ->
                     Log.e(TAG, "App Check token failed: ${e.message}", e)
