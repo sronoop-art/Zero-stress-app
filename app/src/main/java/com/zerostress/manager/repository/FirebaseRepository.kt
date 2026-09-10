@@ -349,11 +349,11 @@ object FirebaseRepository {
             .addOnSuccessListener { doc ->
                 val ch = doc.toObject(VoiceChannel::class.java)
                 if (ch == null) { callback.onFailure(Exception("Channel not found")); return@addOnSuccessListener }
-                if (ch.getParticipants().size >= ch.maxParticipants) {
+                if (ch.participants.size >= ch.maxParticipants) {
                     callback.onFailure(Exception("Channel full"))
                     return@addOnSuccessListener
                 }
-                val participants = ch.getParticipants().toMutableList()
+                val participants = ch.participants.toMutableList()
                 if (!participants.contains(userId)) participants.add(userId)
                 val updates = mapOf(
                     "participants" to participants,
@@ -371,7 +371,7 @@ object FirebaseRepository {
             .addOnSuccessListener { doc ->
                 val ch = doc.toObject(VoiceChannel::class.java)
                 if (ch == null) { callback.onFailure(Exception("Channel not found")); return@addOnSuccessListener }
-                val participants = ch.getParticipants().toMutableList()
+                val participants = ch.participants.toMutableList()
                 participants.remove(userId)
                 val updates = mapOf(
                     "participants" to participants,

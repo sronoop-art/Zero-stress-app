@@ -28,6 +28,4 @@ class VoiceChannel {
         this.maxParticipants = 10
         this.createdAt = System.currentTimeMillis()
     }
-
-    fun getParticipants(): List<String> = participants.ifEmpty { mutableListOf() }
 }
