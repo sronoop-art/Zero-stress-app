@@ -10,7 +10,6 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,19 +40,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.ZSTopBar
-import com.zerostress.manager.ui.formatTime
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCard
@@ -78,17 +74,17 @@ class VoiceActivity : ComponentActivity() {
     }
 }
 
-private data class VoiceUserInfo(
+private data class VoiceParticipant(
     val userId: String,
     val userName: String,
     val isMuted: Boolean,
     val isDeafened: Boolean,
-    val isScreenSharing: Boolean,
+    val isSpeaking: Boolean,
     val isHandRaised: Boolean,
-    val isSpeaking: Boolean
+    val status: String
 )
 
-private data class VoiceChatMsg(
+private data class VoiceChatLine(
     val senderName: String,
     val text: String,
     val timestamp: Long
@@ -98,38 +94,44 @@ private data class VoiceChatMsg(
 private fun VoiceScreen() {
     val context = LocalContext.current
     val db = remember { FirebaseFirestore.getInstance() }
-    val userId = FirebaseAuth.getInstance().uid
+    val auth = remember { FirebaseAuth.getInstance() }
+    val userId = auth.uid
 
     var userName by remember { mutableStateOf("Unknown") }
-    var userStatus by remember { mutableStateOf("ONLINE") }
-    var isInVoice by remember { mutableStateOf(false) }
-    var isMuted by remember { mutableStateOf(false) }
-    var isDeafened by remember { mutableStateOf(false) }
-    var isScreenSharing by remember { mutableStateOf(false) }
-    var isHandRaised by remember { mutableStateOf(false) }
-    var isPushToTalk by remember { mutableStateOf(false) }
-    var isSpeaking by remember { mutableStateOf(false) }
     var isAdmin by remember { mutableStateOf(false) }
+    var isInCall by remember { mutableStateOf(false) }
     var currentChannelId by remember { mutableStateOf<String?>(null) }
-    var currentChannelName by remember { mutableStateOf("Select Channel") }
+    var currentChannelName by remember { mutableStateOf("No channel") }
     var elapsedSeconds by remember { mutableStateOf(0L) }
-    var users by remember { mutableStateOf<List<VoiceUserInfo>>(emptyList()) }
-    var chatMessages by remember { mutableStateOf<List<VoiceChatMsg>>(emptyList()) }
+    var participants by remember { mutableStateOf<List<VoiceParticipant>>(emptyList()) }
+    var callChat by remember { mutableStateOf<List<VoiceChatLine>>(emptyList()) }
     var chatText by remember { mutableStateOf("") }
     var showChat by remember { mutableStateOf(false) }
     var showChannelPicker by remember { mutableStateOf(false) }
-    var showCreateChannelDialog by remember { mutableStateOf(false) }
+    var showCreateDialog by remember { mutableStateOf(false) }
     var showPermissionsDialog by remember { mutableStateOf(false) }
     var showMoreOptions by remember { mutableStateOf(false) }
+    var isMuted by remember { mutableStateOf(false) }
+    var isDeafened by remember { mutableStateOf(false) }
+    var isSpeaking by remember { mutableStateOf(false) }
+    var isHandRaised by remember { mutableStateOf(false) }
+    var micGranted by remember { mutableStateOf(false) }
 
     val micLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) showChannelPicker = true
-        else Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
+        micGranted = granted
+        if (granted) {
+            if (currentChannelId != null) {
+                isInCall = true
+            } else {
+                showChannelPicker = true
+            }
+        } else {
+            Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    // Load user role
     LaunchedEffect(Unit) {
         if (userId == null) {
             Toast.makeText(context, "Please login first", Toast.LENGTH_SHORT).show()
@@ -143,297 +145,313 @@ private fun VoiceScreen() {
                     isAdmin = doc.getString("role") == "admin"
                 }
             }
+            .addOnFailureListener {
+                Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
+            }
     }
 
-    // Timer while in voice
-    LaunchedEffect(isInVoice) {
-        if (isInVoice) {
+    LaunchedEffect(isInCall) {
+        if (isInCall) {
             val start = System.currentTimeMillis()
-            while (isInVoice) {
+            while (isInCall) {
                 elapsedSeconds = (System.currentTimeMillis() - start) / 1000
                 delay(1000)
             }
         }
     }
 
-    // Live participants listener when connected
     DisposableEffect(currentChannelId) {
         val channelId = currentChannelId
-        val listener = if (channelId != null) {
-            db.collection("voice_channels").document(channelId)
+        if (channelId != null) {
+            val participantListener = db.collection("voice_channels")
+                .document(channelId)
                 .collection("participants")
                 .addSnapshotListener { snap, e ->
                     if (e != null || snap == null) return@addSnapshotListener
-                    users = snap.documents.map { doc ->
-                        VoiceUserInfo(
+                    participants = snap.documents.map { doc ->
+                        VoiceParticipant(
                             userId = doc.id,
                             userName = doc.getString("userName") ?: "Unknown",
                             isMuted = doc.getBoolean("muted") == true,
                             isDeafened = doc.getBoolean("deafened") == true,
-                            isScreenSharing = doc.getBoolean("screenSharing") == true,
+                            isSpeaking = doc.getBoolean("speaking") == true,
                             isHandRaised = doc.getBoolean("handRaised") == true,
-                            isSpeaking = doc.getBoolean("speaking") == true
+                            status = doc.getString("userStatus") ?: "ONLINE"
                         )
                     }
                 }
-        } else null
-        onDispose { listener?.remove() }
-    }
-
-    // Live chat listener when connected
-    DisposableEffect(currentChannelId) {
-        val channelId = currentChannelId
-        val listener = if (channelId != null) {
-            db.collection("voice_channels").document(channelId)
-                .collection("chat")
-                .orderBy("timestamp")
+            val chatListener = db.collection("voice_channels")
+                .document(currentChannelId)
+                .collection("call_chat")
+                .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.ASCENDING)
                 .addSnapshotListener { snap, e ->
                     if (e != null || snap == null) return@addSnapshotListener
-                    chatMessages = snap.documents.map { doc ->
-                        VoiceChatMsg(
+                    callChat = snap.documents.map { doc ->
+                        VoiceChatLine(
                             senderName = doc.getString("senderName") ?: "Unknown",
                             text = doc.getString("text") ?: "",
                             timestamp = doc.getLong("timestamp") ?: 0L
                         )
                     }
                 }
-        } else null
-        onDispose { listener?.remove() }
-    }
-
-    fun updateField(field: String, value: Boolean) {
-        val channelId = currentChannelId ?: return
-        db.collection("voice_channels").document(channelId)
-            .collection("participants").document(userId ?: "")
-            .update(field, value)
+            DisposableEffect(Unit) {
+                onDispose {
+                    participantListener.remove()
+                    chatListener.remove()
+                }
+            }
+        }
+        onDispose { }
     }
 
     fun joinChannel(channelId: String, channelName: String) {
+        val uid = userId ?: return
         currentChannelId = channelId
         currentChannelName = channelName
-        val participant = mapOf(
-            "userId" to userId,
-            "userName" to userName,
-            "joinedAt" to System.currentTimeMillis(),
-            "muted" to false,
-            "deafened" to false,
-            "screenSharing" to false,
-            "handRaised" to false,
-            "speaking" to false,
-            "isAdmin" to isAdmin,
-            "userStatus" to userStatus
-        )
-        db.collection("voice_channels").document(channelId)
-            .collection("participants").document(userId ?: "")
-            .set(participant)
+        db.collection("voice_channels")
+            .document(channelId)
+            .collection("participants")
+            .document(uid)
+            .set(
+                mapOf(
+                    "userId" to uid,
+                    "userName" to userName,
+                    "joinedAt" to System.currentTimeMillis(),
+                    "muted" to false,
+                    "deafened" to false,
+                    "speaking" to false,
+                    "handRaised" to false,
+                    "isAdmin" to isAdmin,
+                    "userStatus" to "ONLINE"
+                )
+            )
             .addOnSuccessListener {
-                isInVoice = true
+                isInCall = true
                 Toast.makeText(context, "Joined $channelName", Toast.LENGTH_SHORT).show()
+            }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "Failed to join: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
-    fun leaveVoice() {
+    fun leaveCall() {
         val channelId = currentChannelId
-        if (channelId != null && userId != null) {
-            db.collection("voice_channels").document(channelId)
-                .collection("participants").document(userId).delete()
+        val uid = userId
+        if (channelId != null && uid != null) {
+            db.collection("voice_channels")
+                .document(channelId)
+                .collection("participants")
+                .document(uid)
+                .delete()
         }
-        isInVoice = false
+        isInCall = false
         isMuted = false
         isDeafened = false
-        isScreenSharing = false
+        isSpeaking = false
         isHandRaised = false
         currentChannelId = null
-        currentChannelName = "Select Channel"
+        currentChannelName = "No channel"
         elapsedSeconds = 0
-        users = emptyList()
-        chatMessages = emptyList()
+        participants = emptyList()
+        callChat = emptyList()
     }
 
-    fun sendChat() {
+    fun sendCallChat() {
         val text = chatText.trim()
-        if (text.isEmpty() || currentChannelId == null || userId == null) return
-        db.collection("voice_channels").document(currentChannelId!!)
-            .collection("chat").add(
+        val channelId = currentChannelId ?: return
+        val uid = userId ?: return
+        if (text.isEmpty()) return
+        db.collection("voice_channels")
+            .document(channelId)
+            .collection("call_chat")
+            .add(
                 mapOf(
-                    "senderId" to userId,
+                    "senderId" to uid,
                     "senderName" to userName,
                     "text" to text,
                     "timestamp" to System.currentTimeMillis()
                 )
             )
             .addOnSuccessListener { chatText = "" }
+            .addOnFailureListener { e ->
+                Toast.makeText(context, "Failed to send: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    fun cycleStatus() {
+        val statuses = listOf(
+            "ONLINE" to "🟢 Online",
+            "IDLE" to "🟡 Idle",
+            "DO_NOT_DISTURB" to "🔴 Do not disturb"
+        )
+        val channelId = currentChannelId
+        val uid = userId
+        if (channelId == null || uid == null) {
+            Toast.makeText(context, "Not in a call", Toast.LENGTH_SHORT).show()
+            return
+        }
+        var currentCode: String? = null
+        val listen = db.collection("voice_channels")
+            .document(channelId)
+            .collection("participants")
+            .document(uid)
+            .addListener { doc -> currentCode = doc.getString("userStatus") }
+        val currentIndex = currentCode?.let { code -> statuses.indexOfFirst { it.first == code } } ?: 0
+        val next = (currentIndex + 1) % statuses.size
+        val (code, label) = statuses[next]
+        listen.remove()
+        db.collection("players").document(uid).update("status", code)
+            .addOnFailureListener {
+                Toast.makeText(context, "Failed to update status", Toast.LENGTH_SHORT).show()
+            }
+        db.collection("voice_channels")
+            .document(channelId)
+            .collection("participants")
+            .document(uid)
+            .update("userStatus", code)
+            .addOnFailureListener {
+                Toast.makeText(context, "Failed to update call status", Toast.LENGTH_SHORT).show()
+            }
+        Toast.makeText(context, "Status set to $label", Toast.LENGTH_SHORT).show()
     }
 
     DisposableEffect(Unit) {
-        onDispose {
-            OnOnlineStatusHelper.updateOnlineStatus(false)
-            leaveVoice()
-        }
+        onDispose { leaveCall() }
     }
 
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
             ZSTopBar(
-                title = "Voice Chat",
+                title = "Voice Call",
                 onBack = { (context as? android.app.Activity)?.finish() },
                 right = {
                     if (isAdmin) {
-                        TextButton(onClick = { showCreateChannelDialog = true }) {
+                        TextButton(onClick = { showCreateDialog = true }) {
                             Text("➕", color = ZsGold, fontSize = 20.sp)
                         }
                         TextButton(onClick = { showPermissionsDialog = true }) {
-                            Text("🛡️", color = ZsCyan)
+                            Text("👥", color = ZsCyan)
                         }
                     }
                 }
             )
 
-            // Status header
-            ZSCard(highlight = if (isInVoice) ZsGreen else ZsTextMuted) {
+            ZSCard(
+                highlight = if (isInCall) ZsGreen else ZsTextMuted
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) {
                         Text(
-                            if (isInVoice) "🟢 Connected" else "🔴 Not connected",
-                            color = if (isInVoice) ZsGreen else ZsTextMuted,
+                            if (isInCall) "🟢 In call" else "🔴 Not in call",
+                            color = if (isInCall) ZsGreen else ZsTextMuted,
                             fontWeight = FontWeight.Bold,
                             fontSize = 16.sp
                         )
                         Spacer(Modifier.height(3.dp))
                         Text(
-                            "Channel: $currentChannelName",
+                            "Call: $currentChannelName",
                             color = ZsTextSecondary,
                             fontSize = 13.sp
                         )
                         Spacer(Modifier.height(3.dp))
                         Text(
-                            "Time: ${formatDuration(elapsedSeconds)} • ${users.size} users",
+                            "Duration: ${formatDuration(elapsedSeconds)} · ${participants.size} participants",
                             color = ZsTextMuted,
                             fontSize = 12.sp
                         )
                     }
                     ZSButton(
-                        text = if (isInVoice) "🔴 Leave" else "🎙️ Join Voice",
+                        text = if (isInCall) "Leave call" else "Join call",
                         onClick = {
-                            if (isInVoice) {
-                                leaveVoice()
-                            } else {
-                                // Check voice permission for non-admins
-                                if (isAdmin || userId == null) {
-                                    micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            if (isInCall) {
+                                leaveCall()
+                            } else if (micGranted) {
+                                if (currentChannelId != null) {
+                                    isInCall = true
                                 } else {
-                                    db.collection("players").document(userId).get()
-                                        .addOnSuccessListener { doc ->
-                                            val allowed = doc.getBoolean("voiceAllowed")
-                                            if (allowed == false) {
-                                                Toast.makeText(
-                                                    context,
-                                                    "🚫 Voice chat permission denied.\nAsk the admin to enable it.",
-                                                    Toast.LENGTH_LONG
-                                                ).show()
-                                            } else {
-                                                micLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                            }
-                                        }
-                                        .addOnFailureListener {
-                                            micLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                                        }
+                                    showChannelPicker = true
                                 }
+                            } else {
+                                micLauncher.launch(Manifest.permission.RECORD_AUDIO)
                             }
                         },
-                        container = if (isInVoice) ZsDanger else ZsAccent,
+                        container = if (isInCall) ZsDanger else ZsAccent,
                         modifier = Modifier.width(150.dp)
                     )
                 }
             }
 
-            // Controls (visible when connected)
-            if (isInVoice) {
+            if (isInCall) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    ControlChip("🔇", isMuted, "Mute") { 
-                        isMuted = !isMuted
-                        updateField("muted", isMuted)
-                    }
-                    ControlChip("🔕", isDeafened, "Deafen") {
-                        isDeafened = !isDeafened
-                        if (isDeafened && !isMuted) {
-                            isMuted = true
-                            updateField("muted", true)
-                        }
-                        updateField("deafened", isDeafened)
-                    }
-                    ControlChip("📺", isScreenSharing, "Screen") {
-                        isScreenSharing = !isScreenSharing
-                        updateField("screenSharing", isScreenSharing)
-                    }
-                    ControlChip(
-                        if (isPushToTalk) "🗣️" else "🎤",
-                        isPushToTalk,
-                        "Push to Talk",
-                        holdable = true,
-                        onHoldStart = {
-                            isPushToTalk = true
-                            isSpeaking = true
-                            updateField("speaking", true)
-                        },
-                        onHoldEnd = {
-                            isPushToTalk = false
-                            isSpeaking = false
-                            updateField("speaking", false)
-                        }
-                    )
-                    ControlChip("✋", isHandRaised, "Hand") {
-                        isHandRaised = !isHandRaised
-                        updateField("handRaised", isHandRaised)
-                    }
+                    VoiceChip("🔇", "Mute", isMuted, { isMuted = !isMuted })
+                    VoiceChip("🔕", "Deafen", isDeafened, { isDeafened = !isDeafened })
+                    VoiceChip("🗣️", "Talking", isSpeaking, { isSpeaking = !isSpeaking })
+                    VoiceChip("✋", "Hand", isHandRaised, { isHandRaised = !isHandRaised })
                 }
             }
 
-            // User list
             Column(Modifier.weight(1f).fillMaxWidth()) {
                 Row(
                     Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        "Participants (${users.size})",
+                        "Participants (${participants.size})",
                         Modifier.weight(1f),
                         color = ZsTextSecondary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold
                     )
                     TextButton(onClick = { showChat = !showChat }) {
-                        Text(if (showChat) "💬 Hide chat" else "💬 Chat", color = ZsCyan)
+                        Text(if (showChat) "Hide chat" else "Chat", color = ZsCyan)
                     }
                     TextButton(onClick = { showMoreOptions = true }) {
                         Text("⋯", color = ZsTextSecondary, fontSize = 20.sp, fontWeight = FontWeight.Black)
                     }
                 }
 
-                if (users.isEmpty()) {
-                    EmptyState("No one is connected yet")
+                if (participants.isEmpty()) {
+                    Box(
+                        Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                        Alignment.Center
+                    ) {
+                        Text("No one is in this call yet", color = ZsTextMuted, fontSize = 15.sp)
+                    }
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 16.dp, vertical = 4.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(users, key = { it.userId }) { user ->
-                            ZSCard(onClick = {
-                                // Admin moderation on tap
-                                if (isAdmin && user.userId != userId) {
-                                    db.collection("voice_channels").document(currentChannelId ?: "")
-                                        .collection("participants").document(user.userId).update("muted", true)
-                                    Toast.makeText(context, "${user.userName} muted", Toast.LENGTH_SHORT).show()
+                        items(participants, key = { it.userId }) { participant ->
+                            ZSCard(
+                                onClick = {
+                                    if (isAdmin && participant.userId != userId) {
+                                        val channelId = currentChannelId ?: return@ZSCard
+                                        db.collection("voice_channels")
+                                            .document(channelId)
+                                            .collection("participants")
+                                            .document(participant.userId)
+                                            .update("muted", true)
+                                            .addOnSuccessListener {
+                                                Toast.makeText(context, "${participant.userName} muted", Toast.LENGTH_SHORT).show()
+                                            }
+                                            .addOnFailureListener {
+                                                Toast.makeText(context, "Failed to mute", Toast.LENGTH_SHORT).show()
+                                            }
+                                    }
                                 }
-                            }) {
+                            ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Column(Modifier.weight(1f)) {
                                         Text(
-                                            "${if (user.isSpeaking) "🗣️ " else ""}${user.userName}",
+                                            buildString {
+                                                if (participant.isSpeaking) append("🗣️ ")
+                                                append(participant.userName)
+                                            },
                                             color = ZsTextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 15.sp
@@ -441,17 +459,17 @@ private fun VoiceScreen() {
                                         Spacer(Modifier.height(2.dp))
                                         Text(
                                             buildString {
-                                                if (user.isMuted) append("🔇 ")
-                                                if (user.isDeafened) append("🔕 ")
-                                                if (user.isScreenSharing) append("📺 ")
-                                                if (user.isHandRaised) append("✋ ")
-                                                if (isEmpty()) append("🟢")
+                                                if (participant.isMuted) append("🔇 ")
+                                                if (participant.isDeafened) append("🔕 ")
+                                                if (participant.isHandRaised) append("✋ ")
+                                                if (participant.status != "ONLINE") append("${participant.status.lowercase().replaceFirstChar { it.uppercase() }} ")
+                                                if (!participant.isMuted && !participant.isHandRaised && participant.status == "ONLINE") append("🟢")
                                             },
                                             color = ZsTextMuted,
                                             fontSize = 12.sp
                                         )
                                     }
-                                    if (user.userId == userId) {
+                                    if (participant.userId == userId) {
                                         Text("(you)", color = ZsCyan, fontSize = 12.sp)
                                     }
                                 }
@@ -461,8 +479,7 @@ private fun VoiceScreen() {
                 }
             }
 
-            // Channel chat
-            if (showChat && isInVoice) {
+            if (showChat && isInCall) {
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -475,23 +492,23 @@ private fun VoiceScreen() {
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(10.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        items(chatMessages) { msg ->
+                        items(callChat) { line ->
                             Column {
                                 Row {
                                     Text(
-                                        msg.senderName,
+                                        line.senderName,
                                         color = ZsCyan,
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(Modifier.width(8.dp))
                                     Text(
-                                        formatTime(msg.timestamp),
+                                        formatTime(line.timestamp),
                                         color = ZsTextMuted,
                                         fontSize = 10.sp
                                     )
                                 }
-                                Text(msg.text, color = ZsTextPrimary, fontSize = 14.sp)
+                                Text(line.text, color = ZsTextPrimary, fontSize = 14.sp)
                             }
                         }
                     }
@@ -507,7 +524,7 @@ private fun VoiceScreen() {
                             modifier = Modifier.weight(1f)
                         )
                         Spacer(Modifier.width(8.dp))
-                        TextButton(onClick = { sendChat() }) {
+                        TextButton(onClick = { sendCallChat() }) {
                             Text("➤", color = ZsAccent, fontSize = 20.sp, fontWeight = FontWeight.Black)
                         }
                     }
@@ -516,16 +533,21 @@ private fun VoiceScreen() {
         }
     }
 
-    // Channel picker
     if (showChannelPicker) {
         var channels by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
         LaunchedEffect(Unit) {
-            db.collection("voice_channels").get()
+            if (userId == null) return@LaunchedEffect
+            db.collection("voice_channels")
+                .whereEqualTo("active", true)
+                .get()
                 .addOnSuccessListener { query -> channels = query.documents }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Failed to load channels", Toast.LENGTH_SHORT).show()
+                }
         }
         AlertDialog(
             onDismissRequest = { showChannelPicker = false },
-            title = { Text("🎙️ Select Voice Channel") },
+            title = { Text("Select voice channel") },
             text = {
                 Column {
                     if (channels.isEmpty()) {
@@ -553,12 +575,11 @@ private fun VoiceScreen() {
         )
     }
 
-    // Create channel (admin)
-    if (showCreateChannelDialog) {
+    if (showCreateDialog) {
         var channelName by remember { mutableStateOf("") }
         AlertDialog(
-            onDismissRequest = { showCreateChannelDialog = false },
-            title = { Text("➕ Create Voice Channel") },
+            onDismissRequest = { showCreateDialog = false },
+            title = { Text("Create voice channel") },
             text = {
                 ZSField(
                     value = channelName,
@@ -570,19 +591,20 @@ private fun VoiceScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     val name = channelName.trim()
-                    showCreateChannelDialog = false
+                    showCreateDialog = false
                     if (name.isEmpty()) {
                         Toast.makeText(context, "Channel name required", Toast.LENGTH_SHORT).show()
                     } else {
+                        val uid = userId ?: return@TextButton
                         db.collection("voice_channels").document(name).set(
                             mapOf(
                                 "name" to name,
                                 "active" to true,
                                 "createdAt" to System.currentTimeMillis(),
-                                "createdBy" to userId
+                                "createdBy" to uid
                             )
                         ).addOnSuccessListener {
-                            Toast.makeText(context, "✅ Channel \"$name\" created!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Channel \"$name\" created", Toast.LENGTH_SHORT).show()
                         }.addOnFailureListener { e ->
                             Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_SHORT).show()
                         }
@@ -590,47 +612,56 @@ private fun VoiceScreen() {
                 }) { Text("Create", color = ZsAccent) }
             },
             dismissButton = {
-                TextButton(onClick = { showCreateChannelDialog = false }) { Text("Cancel") }
+                TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") }
             }
         )
     }
 
-    // Manage permissions (admin)
     if (showPermissionsDialog) {
         var players by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
-        var loading by remember { mutableStateOf(true) }
+        var loaded by remember { mutableStateOf(false) }
         LaunchedEffect(Unit) {
-            db.collection("players").whereEqualTo("status", "approved").get()
+            db.collection("players")
+                .whereEqualTo("status", "approved")
+                .get()
                 .addOnSuccessListener {
-                    players = it.documents.filter { p -> p.id != userId }
-                    loading = false
+                    players = it.documents.filter { it.id != userId }
+                    loaded = true
+                }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Failed to load players", Toast.LENGTH_SHORT).show()
+                    loaded = true
                 }
         }
         AlertDialog(
             onDismissRequest = { showPermissionsDialog = false },
-            title = { Text("👥 Manage Voice Permissions") },
+            title = { Text("Manage voice access") },
             text = {
                 Column {
-                    Text(
-                        "Tick = can join voice chat",
-                        color = ZsTextMuted,
-                        fontSize = 12.sp
-                    )
-                    if (loading) {
+                    Text("Only players you enable can join voice channels.", color = ZsTextMuted, fontSize = 12.sp)
+                    if (!loaded) {
                         Text("Loading...", color = ZsTextMuted, modifier = Modifier.padding(8.dp))
+                    } else if (players.isEmpty()) {
+                        Text("No approved players found.", color = ZsTextMuted)
                     } else {
                         players.forEach { player ->
-                            var allowed by remember(player.id) { mutableStateOf(player.getBoolean("voiceAllowed") != false) }
+                            var enabled by remember(player.id) {
+                                mutableStateOf(player.getBoolean("voiceAllowed") != false)
+                            }
                             TextButton(
                                 onClick = {
-                                    allowed = !allowed
-                                    db.collection("players").document(player.id)
-                                        .update("voiceAllowed", allowed)
+                                    enabled = !enabled
+                                    db.collection("players")
+                                        .document(player.id)
+                                        .update("voiceAllowed", enabled)
+                                        .addOnFailureListener {
+                                            Toast.makeText(context, "Failed to update", Toast.LENGTH_SHORT).show()
+                                        }
                                 },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    "${if (allowed) "✅" else "❌"} ${player.getString("name") ?: "Unknown"}",
+                                    "${if (enabled) "✅" else "❌"} ${player.getString("name") ?: "Unknown"}",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -641,7 +672,7 @@ private fun VoiceScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     showPermissionsDialog = false
-                    Toast.makeText(context, "✅ Voice permissions saved", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Voice access saved", Toast.LENGTH_SHORT).show()
                 }) { Text("Done", color = ZsAccent) }
             },
             dismissButton = {
@@ -650,58 +681,25 @@ private fun VoiceScreen() {
         )
     }
 
-    // More options
     if (showMoreOptions) {
         AlertDialog(
             onDismissRequest = { showMoreOptions = false },
-            title = { Text("More Options") },
+            title = { Text("More options") },
             text = {
                 Column {
-                    listOf("Set Status", "User Profile", "Channel Info", "Report User").forEach { option ->
+                    listOf("Set status", "My profile", "Call info", "Report").forEach { option ->
                         TextButton(
                             onClick = {
                                 showMoreOptions = false
                                 when (option) {
-                                    "Set Status" -> {
-                                        val statuses = listOf("ONLINE", "IDLE", "DO_NOT_DISTURB")
-                                        val emojis = listOf("🟢 Online", "🟡 Idle", "🔴 Do Not Disturb")
-                                        val idx = statuses.indexOf(userStatus).coerceAtLeast(0)
-                                        val next = (idx + 1) % statuses.size
-                                        userStatus = statuses[next]
-                                        Toast.makeText(
-                                            context,
-                                            "Status set to ${emojis[next]}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                        val channelId = currentChannelId
-                                        if (channelId != null && userId != null) {
-                                            db.collection("voice_channels").document(channelId)
-                                                .collection("participants").document(userId)
-                                                .update("userStatus", userStatus)
-                                        }
-                                    }
-                                    "User Profile" -> {
-                                        db.collection("players").document(userId ?: "").get()
-                                            .addOnSuccessListener { doc ->
-                                                if (doc.exists()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "Name: ${doc.getString("name")}\nLevel: ${doc.getLong("level")}\nRank: ${doc.getString("rank")}",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                }
-                                            }
-                                    }
-                                    "Channel Info" -> {
-                                        Toast.makeText(
-                                            context,
-                                            "Channel: $currentChannelName\nUsers: ${users.size}\nDuration: ${formatDuration(elapsedSeconds)}",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                    }
-                                    "Report User" -> {
-                                        Toast.makeText(context, "User reported", Toast.LENGTH_SHORT).show()
-                                    }
+                                    "Set status" -> cycleStatus()
+                                    "My profile" -> showProfile(context, db, userId)
+                                    "Call info" -> Toast.makeText(
+                                        context,
+                                        "Call: $currentChannelName\nDuration: ${formatDuration(elapsedSeconds)}\nParticipants: ${participants.size}",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    "Report" -> Toast.makeText(context, "Use the report flow in settings", Toast.LENGTH_SHORT).show()
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
@@ -719,47 +717,35 @@ private fun VoiceScreen() {
     }
 }
 
-@Composable
-private fun ControlChip(
-    emoji: String,
-    active: Boolean,
-    label: String,
-    modifier: Modifier = Modifier,
-    holdable: Boolean = false,
-    onHoldStart: () -> Unit = {},
-    onHoldEnd: () -> Unit = {},
-    onClick: () -> Unit = {}
-) {
-    val bg = when {
-        active -> ZsAccent
-        label == "Push to Talk" -> ZsCard
-        else -> ZsCard
+private fun showProfile(context: android.content.Context, db: FirebaseFirestore, userId: String?) {
+    if (userId == null) {
+        Toast.makeText(context, "Not signed in", Toast.LENGTH_SHORT).show()
+        return
     }
-    val contentColor = if (active) Color(0xFF06251D) else ZsTextPrimary
+    db.collection("players").document(userId).get()
+        .addOnSuccessListener { doc ->
+            if (doc.exists()) {
+                Toast.makeText(
+                    context,
+                    "Name: ${doc.getString("name")}\nLevel: ${doc.getLong("level") ?: 1}\nRank: ${doc.getString("rank") ?: "Unknown"}",
+                    Toast.LENGTH_LONG
+                ).show()
+            } else {
+                Toast.makeText(context, "Profile not found", Toast.LENGTH_SHORT).show()
+            }
+        }
+        .addOnFailureListener {
+            Toast.makeText(context, "Failed to load profile", Toast.LENGTH_SHORT).show()
+        }
+}
 
-    Column(
-        modifier = modifier
-            .background(bg, RoundedCornerShape(12.dp))
-            .then(
-                if (holdable) {
-                    Modifier.pointerInput(Unit) {
-                        detectTapGestures(
-                            onPress = {
-                                onHoldStart()
-                                tryAwaitRelease()
-                                onHoldEnd()
-                            }
-                        )
-                    }
-                } else {
-                    Modifier.clickable(onClick = onClick)
-                }
-            )
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(emoji, fontSize = 18.sp)
-        Text(label, color = contentColor, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+@Composable
+private fun formatTime(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    return when {
+        diff < 60_000 -> "now"
+        diff < 3_600_000 -> "${diff / 60_000}m ago"
+        else -> "${diff / 3_600_000}h ago"
     }
 }
 
@@ -767,5 +753,32 @@ private fun formatDuration(totalSeconds: Long): String {
     val hours = totalSeconds / 3600
     val minutes = (totalSeconds % 3600) / 60
     val seconds = totalSeconds % 60
-    return String.format(java.util.Locale.getDefault(), "%02d:%02d:%02d", hours, minutes, seconds)
+    return java.util.String.format(
+        java.util.Locale.getDefault(),
+        "%02d:%02d:%02d",
+        hours,
+        minutes,
+        seconds
+    )
+}
+
+@Composable
+private fun VoiceChip(
+    emoji: String,
+    label: String,
+    active: Boolean,
+    onClick: () -> Unit
+) {
+    val container = if (active) ZsCyan else ZsCard
+    val content = if (active) Color.Companion(0xFF06251D) else ZsTextPrimary
+    Column(
+        modifier = Modifier
+            .background(container, RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(emoji, fontSize = 18.sp)
+        Text(label, color = content, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
+    }
 }

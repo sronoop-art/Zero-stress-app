@@ -335,52 +335,20 @@ object FirebaseRepository {
             .addOnFailureListener { e -> callback.onFailure(e) }
     }
 
-    // --- Voice Channels ---
-    fun getVoiceChannels(callback: OnResultCallback<List<VoiceChannel>>) {
-        voiceChannelsRef.addSnapshotListener { snap, e ->
-            if (e != null || snap == null) { callback.onFailure(e); return@addSnapshotListener }
-            val list = snap.documents.mapNotNull { it.toObject(VoiceChannel::class.java) }
-            callback.onSuccess(list)
-        }
-    }
-
-    fun joinVoiceChannel(channelId: String, userId: String, callback: OnResultCallback<Void?>) {
-        voiceChannelsRef.document(channelId).get()
-            .addOnSuccessListener { doc ->
-                val ch = doc.toObject(VoiceChannel::class.java)
-                if (ch == null) { callback.onFailure(Exception("Channel not found")); return@addOnSuccessListener }
-                if (ch.participants.size >= ch.maxParticipants) {
-                    callback.onFailure(Exception("Channel full"))
-                    return@addOnSuccessListener
-                }
-                val participants = ch.participants.toMutableList()
-                if (!participants.contains(userId)) participants.add(userId)
-                val updates = mapOf(
-                    "participants" to participants,
-                    "active" to true
-                )
-                voiceChannelsRef.document(channelId).update(updates)
-                    .addOnSuccessListener { callback.onSuccess(null) }
-                    .addOnFailureListener { e -> callback.onFailure(e) }
+    // --- Voice Channels (participation tokens only) ---
+    /**
+     * Legacy helper kept for compatibility with any remaining callers.
+     * The call experience now stores presence under
+     * voice_channels/{channelId}/participants/{uid} and call chat under
+     * voice_channels/{channelId}/call_chat, so this repository no longer
+     * tracks a combined participant list on the channel document.
+     */
+    fun getVoiceChannelIds(callback: OnResultCallback<List<String>>) {
+        voiceChannelsRef.whereEqualTo("active", true)
+            .addSnapshotListener { snap, e ->
+                if (e != null || snap == null) { callback.onFailure(e); return@addSnapshotListener }
+                val ids = snap.documents.mapNotNull { it.id }
+                callback.onSuccess(ids)
             }
-            .addOnFailureListener { e -> callback.onFailure(e) }
-    }
-
-    fun leaveVoiceChannel(channelId: String, userId: String, callback: OnResultCallback<Void?>) {
-        voiceChannelsRef.document(channelId).get()
-            .addOnSuccessListener { doc ->
-                val ch = doc.toObject(VoiceChannel::class.java)
-                if (ch == null) { callback.onFailure(Exception("Channel not found")); return@addOnSuccessListener }
-                val participants = ch.participants.toMutableList()
-                participants.remove(userId)
-                val updates = mapOf(
-                    "participants" to participants,
-                    "active" to participants.isNotEmpty()
-                )
-                voiceChannelsRef.document(channelId).update(updates)
-                    .addOnSuccessListener { callback.onSuccess(null) }
-                    .addOnFailureListener { e -> callback.onFailure(e) }
-            }
-            .addOnFailureListener { e -> callback.onFailure(e) }
     }
 }

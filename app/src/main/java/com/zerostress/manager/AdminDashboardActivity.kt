@@ -181,7 +181,7 @@ private fun AdminDashboardScreen() {
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         ZSMenuTile("💬", "Chat", { context.startActivity(Intent(context, ChatActivity::class.java)) }, Modifier.weight(1f), ZsAccent)
-                        ZSMenuTile("🎙️", "Voice", { context.startActivity(Intent(context, VoiceActivity::class.java)) }, Modifier.weight(1f), ZsCyan)
+                        ZSMenuTile("📞", "Voice Call", { context.startActivity(Intent(context, VoiceActivity::class.java)) }, Modifier.weight(1f), ZsCyan)
                         ZSMenuTile("🗓️", "Seasons", { context.startActivity(Intent(context, ManageSeasonsActivity::class.java)) }, Modifier.weight(1f), ZsPrimary)
                     }
                     Spacer(Modifier.height(10.dp))
@@ -191,7 +191,7 @@ private fun AdminDashboardScreen() {
                     ) {
                         ZSMenuTile("👥", "All Stats", { context.startActivity(Intent(context, ViewAllPlayersStatsActivity::class.java)) }, Modifier.weight(1f), ZsCyan)
                         ZSMenuTile("🔔", "Notify", { context.startActivity(Intent(context, SendNotificationActivity::class.java)) }, Modifier.weight(1f), ZsGold)
-                        ZSMenuTile("🎤", "Voice Ch.", { context.startActivity(Intent(context, ManageVoiceChannelsActivity::class.java)) }, Modifier.weight(1f), ZsAccent)
+                        ZSMenuTile("🎛️", "Voice Channels", { context.startActivity(Intent(context, ManageVoiceChannelsActivity::class.java)) }, Modifier.weight(1f), ZsAccent)
                     }
                 }
 
