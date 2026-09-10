@@ -34,7 +34,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
@@ -264,6 +263,7 @@ private fun ChatScreen() {
                     val sender = doc.getString("senderName") ?: "Unknown"
                     val text = doc.getString("text") ?: ""
                     val ts = doc.getLong("timestamp") ?: 0L
+                    val bubbleColor = if (isSent) com.zerostress.manager.ui.theme.ZsChatSentEnd else ZsCard
 
                     Row(
                         Modifier.fillMaxWidth(),
@@ -273,9 +273,8 @@ private fun ChatScreen() {
                             Modifier
                                 .widthIn(max = 320.dp)
                                 .background(
-                                    if (isSent) SolidColor(com.zerostress.manager.ui.theme.ZsChatSentEnd)
-                                    else ZsCard,
-                                    RoundedCornerShape(
+                                    color = bubbleColor,
+                                    shape = RoundedCornerShape(
                                         topStart = 14.dp, topEnd = 14.dp,
                                         bottomStart = if (isSent) 14.dp else 4.dp,
                                         bottomEnd = if (isSent) 4.dp else 14.dp
