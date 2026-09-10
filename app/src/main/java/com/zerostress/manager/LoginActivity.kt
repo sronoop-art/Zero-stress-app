@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
@@ -106,32 +108,54 @@ private fun LoginScreen() {
 
         loading = true
         val email = "$phoneT@zerostress.local"
-        auth.signInWithEmailAndPassword(email, passwordT)
-            .addOnSuccessListener { result ->
-                val uid = result.user?.uid ?: return@addOnSuccessListener
-                db.collection("players").document(uid).get()
-                    .addOnSuccessListener { doc ->
-                        loading = false
-                        if (doc.exists()) {
-                            val role = doc.getString("role")
-                            saveFcmToken(uid)
-                            val intent = if (role == "admin") {
-                                Intent(context, AdminDashboardActivity::class.java)
+        try {
+            auth.signInWithEmailAndPassword(email, passwordT)
+                .addOnSuccessListener { result ->
+                    val uid = result.user?.uid ?: return@addOnSuccessListener
+                    db.collection("players").document(uid).get()
+                        .addOnSuccessListener { doc ->
+                            loading = false
+                            if (doc.exists()) {
+                                val role = doc.getString("role")
+                                saveFcmToken(uid)
+                                val intent = if (role == "admin") {
+                                    Intent(context, AdminDashboardActivity::class.java)
+                                } else {
+                                    Intent(context, PlayerDashboardActivity::class.java)
+                                }
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                                context.startActivity(intent)
+                                (context as? android.app.Activity)?.finish()
                             } else {
-                                Intent(context, PlayerDashboardActivity::class.java)
+                                Toast.makeText(context, "Player not found", Toast.LENGTH_SHORT).show()
                             }
-                            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            context.startActivity(intent)
-                            (context as? android.app.Activity)?.finish()
-                        } else {
-                            Toast.makeText(context, "Player not found", Toast.LENGTH_SHORT).show()
                         }
-                    }
-            }
-            .addOnFailureListener { e ->
+                        .addOnFailureListener { e ->
+                            loading = false
+                            Toast.makeText(context, "Profile load failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                }
+                .addOnFailureListener { e ->
+                    loading = false
+                    Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+        } catch (e: Exception) {
+            loading = false
+            Toast.makeText(context, "Login error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+
+        // Safety timeout: if auth + Firestore never finish, unblock the UI.
+        kotlinx.coroutines.GlobalScope.launch {
+            delay(30_000)
+            if (loading) {
                 loading = false
-                Toast.makeText(context, "Login failed: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    "Took too long. Check your internet and try again.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+        }
     }
 
     ZSBackground {

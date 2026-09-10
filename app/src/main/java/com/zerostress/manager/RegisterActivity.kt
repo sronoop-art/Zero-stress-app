@@ -40,6 +40,9 @@ import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 class RegisterActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -75,49 +78,67 @@ private fun RegisterScreen() {
         val email = "$phoneT@zerostress.local"
         loading = true
 
-        auth.createUserWithEmailAndPassword(email, passwordT)
-            .addOnSuccessListener { result ->
-                val uid = result.user?.uid ?: return@addOnSuccessListener
-                val playerData = mapOf(
-                    "uid" to uid,
-                    "name" to nameT,
-                    "phone" to phoneT,
-                    "role" to "player",
-                    "status" to "pending",
-                    "score" to 0,
-                    "kills" to 0,
-                    "deaths" to 0,
-                    "assists" to 0,
-                    "damage" to 0L,
-                    "wins" to 0,
-                    "matches" to 0,
-                    "xp" to 0,
-                    "level" to 1,
-                    "coins" to 0,
-                    "rank" to "Iron"
-                )
-                FirebaseFirestore.getInstance().collection("players")
-                    .document(uid)
-                    .set(playerData)
-                    .addOnSuccessListener {
-                        loading = false
-                        Toast.makeText(
-                            context,
-                            "Registered! Wait for admin approval.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        context.startActivity(Intent(context, LoginActivity::class.java))
-                        (context as? android.app.Activity)?.finish()
-                    }
-                    .addOnFailureListener { e ->
-                        loading = false
-                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
-            }
-            .addOnFailureListener { e ->
+        try {
+            auth.createUserWithEmailAndPassword(email, passwordT)
+                .addOnSuccessListener { result ->
+                    val uid = result.user?.uid ?: return@addOnSuccessListener
+                    val playerData = mapOf(
+                        "uid" to uid,
+                        "name" to nameT,
+                        "phone" to phoneT,
+                        "role" to "player",
+                        "status" to "pending",
+                        "score" to 0,
+                        "kills" to 0,
+                        "deaths" to 0,
+                        "assists" to 0,
+                        "damage" to 0L,
+                        "wins" to 0,
+                        "matches" to 0,
+                        "xp" to 0,
+                        "level" to 1,
+                        "coins" to 0,
+                        "rank" to "Iron"
+                    )
+                    FirebaseFirestore.getInstance().collection("players")
+                        .document(uid)
+                        .set(playerData)
+                        .addOnSuccessListener {
+                            loading = false
+                            Toast.makeText(
+                                context,
+                                "Registered! Wait for admin approval.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                            context.startActivity(Intent(context, LoginActivity::class.java))
+                            (context as? android.app.Activity)?.finish()
+                        }
+                        .addOnFailureListener { e ->
+                            loading = false
+                            Toast.makeText(context, "Profile save failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                }
+                .addOnFailureListener { e ->
+                    loading = false
+                    Toast.makeText(context, "Registration failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+        } catch (e: Exception) {
+            loading = false
+            Toast.makeText(context, "Registration error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+
+        // Safety timeout: if auth + Firestore never finish, unblock the UI.
+        kotlinx.coroutines.GlobalScope.launch {
+            delay(30_000)
+            if (loading) {
                 loading = false
-                Toast.makeText(context, "Registration failed: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                    context,
+                    "Took too long. Check your internet and try again.",
+                    Toast.LENGTH_LONG
+                ).show()
             }
+        }
     }
 
     ZSBackground {
