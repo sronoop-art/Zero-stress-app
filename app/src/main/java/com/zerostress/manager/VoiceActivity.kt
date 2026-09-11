@@ -2,6 +2,7 @@ package com.zerostress.manager
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -208,6 +209,30 @@ private fun VoiceScreen() {
         micGranted = granted
         if (!granted) {
             Toast.makeText(context, "Microphone permission required for voice", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Notification permission (Android 13+). Required so the "in call" status-bar
+    // notification is visible while the app is backgrounded. On Android 12 and
+    // below the notification always shows, so no request is needed there.
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (!granted) {
+            // Not fatal — the call still runs; only the status-bar card is hidden.
+            Toast.makeText(
+                context,
+                "Allow notifications to see the call icon when backgrounded",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }
 
