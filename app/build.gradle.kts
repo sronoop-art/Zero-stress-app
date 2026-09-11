@@ -16,6 +16,15 @@ val agoraAppId: String =
 val agoraAppCertificate: String =
     (project.findProperty("AGORA_APP_CERTIFICATE") as String? ?: System.getenv("AGORA_APP_CERTIFICATE") ?: "")
 
+if (agoraAppId.isBlank()) {
+    logger.warn("⚠️  AGORA_APP_ID is missing — voice join will fail immediately. Add it to gradle.properties.")
+}
+if (agoraAppId.isNotBlank() && agoraAppCertificate.isBlank()) {
+    logger.warn("⚠️  AGORA_APP_CERTIFICATE is missing — if the Agora console has the App Certificate")
+    logger.warn("    enabled, voice joins will fail with Agora error 110 (invalid token). Add the")
+    logger.warn("    certificate locally to gradle.properties (never commit it).")
+}
+
 android {
     namespace = "com.zerostress.manager"
     compileSdk = 34

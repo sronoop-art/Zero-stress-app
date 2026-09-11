@@ -334,7 +334,9 @@ object AgoraVoiceManager {
                     autoSubscribeAudio = true
                     publishMicrophoneTrack = true
                 }
-                engine?.joinChannel(lastToken, channel, lastUid, options)
+                // Build a fresh token so a rejoin near the 24h expiry can't fail with 110.
+                val freshToken = buildToken(channel, lastUid) ?: lastToken
+                engine?.joinChannel(freshToken, channel, lastUid, options)
             } catch (e: Exception) {
                 Log.e(TAG, "rejoin failed", e)
             }
