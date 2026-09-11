@@ -21,14 +21,15 @@ Agora's servers handling NAT traversal — no STUN/TURN config needed.
 - Firestore paths unchanged: `voice_channels/{id}/participants/{uid}` and
   `.../call_chat/{msg}` — the old `calls/{callId}` signaling docs are no longer used
 
-## One thing you must do before the call works
+## Agora credentials
 
-The Agora App ID must be baked into the build. Add these two lines to
+The Agora **App ID** is already committed in the repo's `gradle.properties`, so a
+fresh clone builds voice-ready with zero setup. To override it, set this in
 `gradle.properties` (project root, or `~/.gradle/gradle.properties`):
 
 ```properties
 AGORA_APP_ID=f8159b2c6adc4a468f269897bec01748
-AGORA_APP_CERTIFICATE=9032a220dfc24f308b2e0d8a194804b5
+# AGORA_APP_CERTIFICATE=<your-certificate>  ← add locally ONLY if you enable token mode
 ```
 
 - `AGORA_APP_ID` is required — without it the join fails with
@@ -77,7 +78,7 @@ match /voice_channels/{channelId} {
 
 ## Build & verify (AndroidIDE)
 
-1. Add the two `gradle.properties` lines above.
+1. No configuration needed — the App ID ships in `gradle.properties`.
 2. Build → **Build APK** in AndroidIDE.
 3. Install on two devices, sign in with two different players (one can be the
    admin), and join the same channel.
