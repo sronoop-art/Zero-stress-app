@@ -61,16 +61,13 @@ import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 import com.zerostress.manager.ui.theme.ZsWarning
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.zerostress.manager.VoiceCallPeer
 import com.zerostress.manager.VoiceCallSignaling
-import org.webrtc.SessionDescription
-import org.webrtc.IceCandidate
-import org.webrtc.PeerConnection
-import java.util.concurrent.atomic.AtomicBoolean
-import android.os.Handler
-import android.os.Looper
 
 class VoiceActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -133,15 +130,16 @@ private fun VoiceScreen() {
     var pendingRemoteUid by remember { mutableStateOf<String?>(null) }
     val callJob = remember { AtomicBoolean(false) }
 
-    val        micLauncher = rememberLauncherForActivityResult(
+    val micLauncher = rememberLauncherForActivityResult(
             ActivityResultContracts.RequestPermission()
         ) { granted ->
             micGranted = granted
-            if (granted) {            if (currentChannelId != null) {
-                                    findAndStartCall(userId!!, currentChannelId!!)
-                                } else {
-                                    showChannelPicker = true
-                                }
+            if (granted) {
+                if (currentChannelId != null) {
+                    findAndStartCall(userId!!, currentChannelId!!)
+                } else {
+                    showChannelPicker = true
+                }
             } else {
                 Toast.makeText(context, "Microphone permission required", Toast.LENGTH_SHORT).show()
             }
@@ -383,24 +381,55 @@ private fun VoiceScreen() {
             }
         callView = view
 
-        VoiceCallPeer.startCall(view)
+        VoiceCallPeer.createOffer(view)
         voiceCallSignaling = VoiceCallSignaling(channelId, localUid, remoteUid, db).apply {
             startListening()
         }
         activeCall = true
         callStateText = "Starting call…"
 
-        try {
-            val answer = voiceCallSignaling?.waitForAnswer()
-            if (answer != null) {
-                VoiceCallPeer.setRemoteAnswer(view, answer)
-                callStateText = "In call"
-            } else {
-                callStateText = "Waiting for remote answer…"
+        scope.launch {
+            try {
+                while (activeCall) {
+                    val answer = try {
+                        voiceCallSignaling?.waitForAnswer()
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    if (answer != null) {
+                        VoiceCallPeer.setRemoteAnswer(callView!!, answer)
+                        callStateText = "In call"
+                        break
+                    }
+                    delay(200)
+                }
+            } catch (e: Throwable) {
+                Log.w(VoiceActivityTag, "answer wait failed", e)
+                callStateText = "Call failed"
+            } finally {
+                if (!activeCall) {
+                    callJob.set(false)
+                }
             }
-        } catch (e: Exception) {
-            Log.w(VoiceActivityTag, "answer wait failed", e)
-            callStateText = "Call failed"
+        }
+
+        scope.launch {
+            try {
+                while (activeCall) {
+                    val ice = try {
+                        voiceCallSignaling?.waitForRemoteIce()
+                    } catch (_: Throwable) {
+                        null
+                    }
+                    if (ice != null) {
+                        VoiceCallPeer.addRemoteIceCandidate(callView!!, ice)
+                    } else {
+                        delay(100)
+                    }
+                }
+            } catch (e: Throwable) {
+                Log.w(VoiceActivityTag, "remote ice loop failed", e)
+            }
         }
     }
 
@@ -408,7 +437,7 @@ private fun VoiceScreen() {
         findAndStartCall(userId!!, currentChannelId!!)
     }
 
-    var voiceCallSignaling: VoiceCallSignaling? = null
+    var voiceCallSignaling: VoiceCallSignaling? by remember { mutableStateOf(null) }
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     ZSBackground {
@@ -833,9 +862,10 @@ private fun VoiceScreen() {
             }
     }
 
+    @Suppress("UNUSED_PARAMETER")
     private fun setStatusCycle(
         context: android.content.Context,
-        db: FirebaseFirestore,
+        _db: FirebaseFirestore,
         userId: String?,
         currentChannelId: String?
     ) {
@@ -850,7 +880,7 @@ private fun VoiceScreen() {
         }
         var currentCode: String? = null
         try {
-            currentCode = db.collection("voice_channels")
+            currentCode = _db.collection("voice_channels")
                 .document(currentChannelId)
                 .collection("participants")
                 .document(userId)
@@ -862,8 +892,8 @@ private fun VoiceScreen() {
         val next = (currentIndex + 1) % statuses.size
         val (code, label) = statuses[next]
         try {
-            db.collection("players").document(userId).update("status", code)
-            db.collection("voice_channels")
+            _db.collection("players").document(userId).update("status", code)
+            _db.collection("voice_channels")
                 .document(currentChannelId)
                 .collection("participants")
                 .document(userId)

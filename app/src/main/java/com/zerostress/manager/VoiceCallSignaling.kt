@@ -142,12 +142,6 @@ class VoiceCallSignaling(
         )
     }
 
-    fun onRemoteIceCandidateReceived(candidate: IceCandidate) {
-        scope.launch {
-            remoteIceChannel.send(candidate)
-        }
-    }
-
     companion object {
         private const val Tag = "VoiceCallSignaling"
 

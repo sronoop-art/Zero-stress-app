@@ -1,7 +1,6 @@
 package com.zerostress.manager
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -33,23 +32,10 @@ object VoiceCallPeer {
 
     private var localAudioSource: AudioSource? = null
     private var localAudioTrack: AudioTrack? = null
-    private var videoCapturer: VideoCapturer? = null
-    private var localVideoTrack: VideoTrack? = null
-    private var videoSource: VideoSource? = null
 
     fun startLocalMedia(context: Context) {
         ensureFactory()
         val f = factory ?: return
-
-        try {
-            videoCapturer = VideoCapturerAndroid.create(null, null)
-            if (videoCapturer != null) {
-                videoSource = f.createVideoSource(videoCapturer)
-                localVideoTrack = f.createVideoTrack("local_video", videoSource)
-            }
-        } catch (t: Throwable) {
-            Log.w(Tag, "video start failed", t)
-        }
 
         try {
             val constraints = MediaConstraints().apply {
@@ -67,16 +53,10 @@ object VoiceCallPeer {
 
     fun stopLocalMedia() {
         try {
-            localVideoTrack?.dispose()
-            localVideoTrack = null
-            videoSource?.dispose()
-            videoSource = null
             localAudioTrack?.dispose()
             localAudioTrack = null
             localAudioSource?.dispose()
             localAudioSource = null
-            videoCapturer?.dispose()
-            videoCapturer = null
         } catch (t: Throwable) {
             Log.w(Tag, "local media stop failed", t)
         }
@@ -125,6 +105,24 @@ object VoiceCallPeer {
 
         pc.createDataChannel("voice", DataChannel.Init().apply { ordered = true })
 
+        pc.createOffer(object : SdpObserver {
+            override fun onCreateSuccess(sdp: SessionDescription?) {
+                if (sdp != null) {
+                    pc.setLocalDescription(object : SdpObserver {
+                        override fun onCreateSuccess(sdp: SessionDescription?) {}
+                        override fun onSetSuccess() {
+                            signaling.sendLocalOffer(sdp)
+                        }
+                        override fun onCreateFailure(error: String?) {}
+                        override fun onSetFailure(error: String?) {}
+                    }, sdp)
+                }
+            }
+            override fun onSetSuccess() {}
+            override fun onCreateFailure(error: String?) {}
+            override fun onSetFailure(error: String?) {}
+        })
+
         pc.observer = object : PeerConnection.Observer {
             override fun onSignalingChange(state: PeerConnection.SignalingState?) {
                 Log.d(Tag, "signaling=${state}")
@@ -154,8 +152,6 @@ object VoiceCallPeer {
             override fun onRenegotiationNeeded() {}
             override fun onAddIntermediateStream(streams: Array<out MediaStream>?) {}
         }
-
-        pc.createDataChannel("voice", DataChannel.Init().apply { ordered = true })
 
         if (localAudioTrack != null) {
             try { pc.addTrack(localAudioTrack!!, listOf("audio")) } catch (_: Throwable) {}
@@ -206,18 +202,6 @@ object VoiceCallPeer {
         } catch (t: Throwable) {
             Log.w(Tag, "add remote ice failed", t)
         }
-    }
-
-    fun setRemoteDescription(view: CallView, sdp: SessionDescription, answerListener: (SessionDescription) -> Unit) {
-        val pc = view.pc ?: return
-        pc.setRemoteDescription(object : SdpObserver {
-            override fun onCreateSuccess(sdp: SessionDescription?) {}
-            override fun onSetSuccess() {
-                answerListener(sdp)
-            }
-            override fun onCreateFailure(error: String?) {}
-            override fun onSetFailure(error: String?) {}
-        }, sdp)
     }
 
     fun close(view: CallView) {
