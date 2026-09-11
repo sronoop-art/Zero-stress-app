@@ -129,11 +129,9 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Agora RTC 4.x — real-time voice for the Discord-style channels.
-    // Ships with native .so libs for arm64-v8a + armeabi-v7a; no extra repo needed
-    // (mavenCentral hosts io.agora.rtc artifacts).
-    implementation("io.agora.rtc:agora-rtc-sdk:4.1.0") {
-        exclude(group = "com.google.android.gms")
-    }
+    // NOTE: the Maven Central artifact is "full-sdk" (io.agora.rtc:full-sdk),
+    // NOT "agora-rtc-sdk" — that one only exists on Agora's own maven repo.
+    implementation("io.agora.rtc:full-sdk:4.1.0")
 
     // SwipeRefreshLayout (kept for pull-to-refresh where needed)
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
