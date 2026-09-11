@@ -9,7 +9,7 @@ Agora's servers handling NAT traversal — no STUN/TURN config needed.
 
 - Discord-style channel list: tap a channel to join, live participant list,
   speaking rings (green ring = talking), mute / deafen / hand-raise / call chat
-- Real group voice via Agora (`io.agora.rtc:agora-rtc-sdk:4.1.0`):
+- Real group voice via Agora (`io.agora.rtc:full-sdk:4.1.0` + `io.agora:authentication:2.1.3`):
   - `voice/AgoraVoiceManager.kt` owns the `RtcEngine`, joins the channel, and
     publishes/subscribes audio for everyone in the room
   - Speaking detection uses Agora's `onAudioVolumeIndication` (no mute-flag hacks)
@@ -34,13 +34,27 @@ AGORA_APP_ID=f8159b2c6adc4a468f269897bec01748
 
 - `AGORA_APP_ID` is required — without it the join fails with
   *"Could not reach voice servers"*.
-- `AGORA_APP_CERTIFICATE` is kept out of code by design. While your Agora
-  project still has the **App Certificate disabled** (test mode), the app joins
-  without tokens and the certificate value is unused.
-- If you later **enable** the certificate in the Agora Console, you must fetch
-  tokens from a server (`agora-token-service`) and pass them to
-  `AgoraVoiceManager.join(..., token)` — client-side token generation with a
-  certificate is not possible by design.
+- **Token mode:** if your Agora project has the **App Certificate enabled**
+  (recommended; Agora rejects unauthenticated joins with **error 110**), add the
+  certificate **locally** — do NOT commit it:
+
+  ```properties
+  AGORA_APP_CERTIFICATE=<your-certificate-here>
+  ```
+
+  The app then builds RTC tokens on-device (`AgoraVoiceManager.buildToken`) and
+  auto-renews them before the 24h expiry, so joins work in both modes:
+
+  | Agora console setting | gradle.properties | Result |
+  |---|---|---|
+  | Certificate disabled (test mode) | only `AGORA_APP_ID` | joins with no token |
+  | Certificate enabled (secure mode) | `AGORA_APP_ID` + `AGORA_APP_CERTIFICATE` | joins with auto-built token |
+  | Certificate enabled, no certificate in gradle.properties | `AGORA_APP_ID` only | ❌ Agora error 110 |
+
+- If you later distribute the app publicly, move token generation to a small
+  server (`agora-token-service`) and pass the token to
+  `AgoraVoiceManager.join(..., token)` so the certificate never ships inside
+  client APKs.
 
 > ⚠️ The App ID + token you pasted in chat are already in your Agora console.
 > Treat the certificate as a secret: don't commit it anywhere public.

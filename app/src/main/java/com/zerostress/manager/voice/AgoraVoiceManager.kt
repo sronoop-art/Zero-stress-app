@@ -5,6 +5,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import com.zerostress.manager.BuildConfig
+import io.agora.media.RtcTokenBuilder2
 import io.agora.rtc2.ChannelMediaOptions
 import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
@@ -30,9 +31,16 @@ object AgoraVoiceManager {
 
     private const val TAG = "AgoraVoiceManager"
 
+    /** Token lifetime: 24h. Renewed automatically ~40s before expiry via callback. */
+    private const val TOKEN_EXPIRY_SECONDS = 24 * 3600
+
     private var engine: RtcEngine? = null
     private var joinedChannel: String? = null
     private var isLocalMuted = false
+
+    /** True if the last join attempt returned an error (so the next join is allowed). */
+    @Volatile
+    private var lastJoinFailed = false
 
     // --- Auto-rejoin state (network drops / Wi-Fi ↔ data switches) ---
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -127,7 +135,20 @@ object AgoraVoiceManager {
 
                     override fun onError(err: Int) {
                         Log.e(TAG, "agora error=$err")
+                        // 110 = ERR_INVALID_TOKEN: certificate is enabled in the Agora
+                        // console but no valid token was supplied. Allow a retry.
+                        if (err == 110) joinedChannel = null
                         listener?.onError(err)
+                    }
+
+                    override fun onTokenPrivilegeWillExpire(token: String?) {
+                        Log.w(TAG, "token about to expire — renewing")
+                        renewToken()
+                    }
+
+                    override fun onRequestToken() {
+                        Log.w(TAG, "token expired — renewing")
+                        renewToken()
                     }
 
                     override fun onRejoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
@@ -160,17 +181,55 @@ object AgoraVoiceManager {
     }
 
     /**
+     * Builds an RTC token from the App Certificate (when provided in
+     * gradle.properties). Returns null when no certificate is configured —
+     * that works while the Agora project runs in test (certificate-less) mode.
+     */
+    private fun buildToken(channelName: String, uid: Int): String? {
+        val certificate = BuildConfig.AGORA_APP_CERTIFICATE
+        if (certificate.isBlank()) return null
+        return try {
+            RtcTokenBuilder2().buildTokenWithUid(
+                BuildConfig.AGORA_APP_ID,
+                certificate,
+                channelName,
+                uid,
+                RtcTokenBuilder2.Role.ROLE_PUBLISHER,
+                TOKEN_EXPIRY_SECONDS,
+                TOKEN_EXPIRY_SECONDS
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "token build failed", e)
+            null
+        }
+    }
+
+    private fun renewToken() {
+        val channel = joinedChannel ?: return
+        val token = buildToken(channel, lastUid)
+        if (token != null) {
+            try {
+                engine?.renewToken(token)
+            } catch (e: Exception) {
+                Log.w(TAG, "renewToken failed", e)
+            }
+        }
+    }
+
+    /**
      * Joins the given channel and starts publishing the mic.
-     * `token` may be null when the Agora project is in test (certificate-less) mode.
-     * Uses the 4-arg joinChannel(token, channelName, optionalInfo, optionalUid).
+     * If a token is passed it is used as-is; otherwise one is generated from the
+     * App Certificate when available (test mode joins without any token).
+     * Uses the 4-arg joinChannel(token, channelName, uid, options).
      */
     @Synchronized
     fun join(context: Context, channelName: String, uid: Int, token: String?): Boolean {
         if (!ensureEngine(context)) return false
-        if (joinedChannel != null) return true // already in a channel
+        if (joinedChannel != null && !lastJoinFailed) return true // already in a channel
         lastChannel = channelName
         lastUid = uid
-        lastToken = token
+        val effectiveToken = token ?: buildToken(channelName, uid)
+        lastToken = effectiveToken
         return try {
             // In 4.1.0 the ChannelMediaOptions fields are java Boolean/Integer objects;
             // Kotlin assigns fine, but read them back via the manager if ever needed.
@@ -182,12 +241,15 @@ object AgoraVoiceManager {
             }
             // 4.1.0 offers joinChannel(token, channelId, uid, options) — use that so
             // the media options (publish mic, autosubscribe) actually apply.
-            val code = engine?.joinChannel(token, channelName, uid, options) ?: -1
+            val code = engine?.joinChannel(effectiveToken, channelName, uid, options) ?: -1
             if (code == 0) {
+                lastJoinFailed = false
                 setMuted(isLocalMuted) // re-apply mute state on rejoin
                 true
             } else {
                 Log.e(TAG, "joinChannel failed code=$code")
+                lastJoinFailed = true
+                joinedChannel = null
                 false
             }
         } catch (e: Exception) {
@@ -200,6 +262,7 @@ object AgoraVoiceManager {
     fun leave() {
         cancelPendingRejoin()
         lastChannel = null
+        lastJoinFailed = false
         try {
             engine?.leaveChannel()
         } catch (e: Exception) {

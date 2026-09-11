@@ -177,7 +177,12 @@ private fun VoiceScreen() {
             }
 
             override fun onError(code: Int) {
-                callError = "Agora error $code"
+                callError = when (code) {
+                    110 -> "Voice auth failed (110): token rejected. Check AGORA_APP_CERTIFICATE in gradle.properties."
+                    101 -> "Invalid App ID — check AGORA_APP_ID in gradle.properties."
+                    2 -> "Invalid voice channel. Try rejoining."
+                    else -> "Agora error $code"
+                }
             }
 
             override fun onLeftChannel() {
@@ -397,7 +402,11 @@ private fun VoiceScreen() {
                     VoiceForegroundService.start(context, channel.name)
                     Toast.makeText(context, "Joined ${channel.name}", Toast.LENGTH_SHORT).show()
                 } else {
-                    callError = "Could not reach voice servers. Is AGORA_APP_ID set in gradle.properties?"
+                    callError = if (BuildConfig.AGORA_APP_ID.isBlank()) {
+                        "Could not reach voice servers. AGORA_APP_ID is missing from gradle.properties."
+                    } else {
+                        "Could not join voice. See Logcat (AgoraVoiceManager) for the exact Agora error."
+                    }
                     Toast.makeText(context, callError!!, Toast.LENGTH_LONG).show()
                 }
             }

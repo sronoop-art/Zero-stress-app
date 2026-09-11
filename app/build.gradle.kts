@@ -133,6 +133,10 @@ dependencies {
     // NOT "agora-rtc-sdk" — that one only exists on Agora's own maven repo.
     implementation("io.agora.rtc:full-sdk:4.1.0")
 
+    // Agora official token builder — lets the app generate RTC tokens on-device
+    // from AGORA_APP_CERTIFICATE (required when the App Certificate is enabled).
+    implementation("io.agora:authentication:2.1.3")
+
     // SwipeRefreshLayout (kept for pull-to-refresh where needed)
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
