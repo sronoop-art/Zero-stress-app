@@ -3,7 +3,6 @@ package com.zerostress.manager.voice
 import android.content.Context
 import android.util.Log
 import com.zerostress.manager.BuildConfig
-import io.agora.rtc2.AudioVolumeInfo
 import io.agora.rtc2.ChannelMediaOptions
 import io.agora.rtc2.Constants
 import io.agora.rtc2.IRtcEngineEventHandler
@@ -11,7 +10,7 @@ import io.agora.rtc2.RtcEngine
 import io.agora.rtc2.RtcEngineConfig
 
 /**
- * Thin singleton wrapper around the Agora RTC SDK for the ZERO STRESS
+ * Thin singleton wrapper around the Agora RTC SDK (4.1.0) for the ZERO STRESS
  * Discord-style voice channels.
  *
  * - Everyone in the same channel publishes and receives audio (group call).
@@ -45,7 +44,7 @@ object AgoraVoiceManager {
         fun onUserOffline(uid: Int) {}
         fun onUserMuted(uid: Int, muted: Boolean) {}
         fun onUserSpeaking(uid: Int, volume: Int) {}
-        fun onError(code: Int, message: String) {}
+        fun onError(code: Int) {}
         fun onLeftChannel() {}
     }
 
@@ -82,7 +81,7 @@ object AgoraVoiceManager {
                         listener?.onJoinedChannel(channel ?: "")
                     }
 
-                    override fun onLeaveChannel(stats: RtcStats?) {
+                    override fun onLeaveChannel(stats: IRtcEngineEventHandler.RtcStats?) {
                         Log.i(TAG, "left channel")
                         joinedChannel = null
                         listener?.onLeftChannel()
@@ -104,7 +103,7 @@ object AgoraVoiceManager {
                     }
 
                     override fun onAudioVolumeIndication(
-                        speakers: Array<AudioVolumeInfo>?,
+                        speakers: Array<out IRtcEngineEventHandler.AudioVolumeInfo>?,
                         totalVolume: Int
                     ) {
                         speakers?.forEach { s ->
@@ -113,9 +112,9 @@ object AgoraVoiceManager {
                         }
                     }
 
-                    override fun onError(err: Int, msg: String?) {
-                        Log.e(TAG, "agora error=$err msg=$msg")
-                        listener?.onError(err, msg ?: "unknown")
+                    override fun onError(err: Int) {
+                        Log.e(TAG, "agora error=$err")
+                        listener?.onError(err)
                     }
                 }
             }
@@ -132,19 +131,24 @@ object AgoraVoiceManager {
     /**
      * Joins the given channel and starts publishing the mic.
      * `token` may be null when the Agora project is in test (certificate-less) mode.
+     * Uses the 4-arg joinChannel(token, channelName, optionalInfo, optionalUid).
      */
     @Synchronized
     fun join(context: Context, channelName: String, uid: Int, token: String?): Boolean {
         if (!ensureEngine(context)) return false
         if (joinedChannel != null) return true // already in a channel
         return try {
+            // In 4.1.0 the ChannelMediaOptions fields are java Boolean/Integer objects;
+            // Kotlin assigns fine, but read them back via the manager if ever needed.
             val options = ChannelMediaOptions().apply {
                 clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
                 channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
                 autoSubscribeAudio = true
                 publishMicrophoneTrack = true
             }
-            val code = engine?.joinChannel(token, channelName, null, uid, options) ?: -1
+            // 4.1.0 offers joinChannel(token, channelId, uid, options) — use that so
+            // the media options (publish mic, autosubscribe) actually apply.
+            val code = engine?.joinChannel(token, channelName, uid, options) ?: -1
             if (code == 0) {
                 setMuted(isLocalMuted) // re-apply mute state on rejoin
                 true

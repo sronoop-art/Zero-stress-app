@@ -174,8 +174,8 @@ private fun VoiceScreen() {
                 }
             }
 
-            override fun onError(code: Int, message: String) {
-                callError = "Agora error $code: $message"
+            override fun onError(code: Int) {
+                callError = "Agora error $code"
             }
 
             override fun onLeftChannel() {
@@ -336,32 +336,6 @@ private fun VoiceScreen() {
 
     // --- Actions ------------------------------------------------------------
 
-    fun joinChannel(channel: VoiceChannelRow) {
-        val uid = userId ?: return
-        if (!micGranted) {
-            micLauncher.launch(Manifest.permission.RECORD_AUDIO)
-            return
-        }
-        if (!isAdmin) {
-            // Voice-access check — admins always allowed.
-            db.collection("players").document(uid).get()
-                .addOnSuccessListener { doc ->
-                    if (doc.getBoolean("voiceAllowed") == false) {
-                        Toast.makeText(
-                            context,
-                            "🚫 Voice access denied. Ask an admin to enable it.",
-                            Toast.LENGTH_LONG
-                        ).show()
-                    } else {
-                        doJoin(channel)
-                    }
-                }
-                .addOnFailureListener { doJoin(channel) } // fail open on lookup error
-            return
-        }
-        doJoin(channel)
-    }
-
     fun doJoin(channel: VoiceChannelRow) {
         val uid = userId ?: return
         currentChannelId = channel.id
@@ -401,6 +375,32 @@ private fun VoiceScreen() {
             .addOnFailureListener { e ->
                 Toast.makeText(context, "Failed to join: ${e.message}", Toast.LENGTH_SHORT).show()
             }
+    }
+
+    fun joinChannel(channel: VoiceChannelRow) {
+        val uid = userId ?: return
+        if (!micGranted) {
+            micLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        if (!isAdmin) {
+            // Voice-access check — admins always allowed.
+            db.collection("players").document(uid).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.getBoolean("voiceAllowed") == false) {
+                        Toast.makeText(
+                            context,
+                            "🚫 Voice access denied. Ask an admin to enable it.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    } else {
+                        doJoin(channel)
+                    }
+                }
+                .addOnFailureListener { doJoin(channel) } // fail open on lookup error
+            return
+        }
+        doJoin(channel)
     }
 
     fun leaveCall() {
