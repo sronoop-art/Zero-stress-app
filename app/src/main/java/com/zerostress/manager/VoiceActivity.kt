@@ -65,6 +65,7 @@ import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 import com.zerostress.manager.ui.theme.ZsWarning
 import com.zerostress.manager.voice.AgoraVoiceManager
+import com.zerostress.manager.voice.VoiceForegroundService
 import kotlinx.coroutines.delay
 
 // ---------------------------------------------------------------------------
@@ -366,6 +367,9 @@ private fun VoiceScreen() {
                     isMuted = false
                     isDeafened = false
                     isHandRaised = false
+                    // Keep the mic + Agora connection alive while the app is in the
+                    // background (mic-type foreground service, Android 11+ requirement).
+                    VoiceForegroundService.start(context, channel.name)
                     Toast.makeText(context, "Joined ${channel.name}", Toast.LENGTH_SHORT).show()
                 } else {
                     callError = "Could not reach voice servers. Is AGORA_APP_ID set in gradle.properties?"
@@ -414,6 +418,7 @@ private fun VoiceScreen() {
                 .delete()
         }
         AgoraVoiceManager.leave()
+        VoiceForegroundService.stop(context)
         currentChannelId = null
         currentChannelName = "No channel"
         isInCall = false

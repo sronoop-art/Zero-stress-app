@@ -1,6 +1,8 @@
 package com.zerostress.manager.voice
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import com.zerostress.manager.BuildConfig
 import io.agora.rtc2.ChannelMediaOptions
@@ -32,6 +34,14 @@ object AgoraVoiceManager {
     private var joinedChannel: String? = null
     private var isLocalMuted = false
 
+    // --- Auto-rejoin state (network drops / Wi-Fi ↔ data switches) ---
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var lastChannel: String? = null
+    private var lastUid: Int = 0
+    private var lastToken: String? = null
+    private var rejoinAttempts = 0
+    private var pendingRejoin: Runnable? = null
+
     /** Stable numeric UID derived from the Firebase UID string. */
     fun uidFor(firebaseUid: String): Int {
         return (firebaseUid.hashCode().toLong() and 0x7FFFFFFFL).toInt().coerceAtLeast(1)
@@ -46,6 +56,7 @@ object AgoraVoiceManager {
         fun onUserSpeaking(uid: Int, volume: Int) {}
         fun onError(code: Int) {}
         fun onLeftChannel() {}
+        fun onConnectionStateChanged(state: Int, reason: Int) {}
     }
 
     @Volatile
@@ -73,6 +84,8 @@ object AgoraVoiceManager {
                     override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
                         Log.i(TAG, "join success channel=$channel uid=$uid")
                         joinedChannel = channel
+                        rejoinAttempts = 0
+                        cancelPendingRejoin()
                         try {
                             engine?.setEnableSpeakerphone(true)
                         } catch (e: Exception) {
@@ -116,6 +129,24 @@ object AgoraVoiceManager {
                         Log.e(TAG, "agora error=$err")
                         listener?.onError(err)
                     }
+
+                    override fun onRejoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
+                        Log.i(TAG, "rejoined channel=$channel uid=$uid")
+                    }
+
+                    override fun onConnectionLost() {
+                        Log.w(TAG, "connection lost — SDK will try to reconnect")
+                    }
+
+                    override fun onConnectionStateChanged(state: Int, reason: Int) {
+                        Log.w(TAG, "connection state=$state reason=$reason")
+                        listener?.onConnectionStateChanged(state, reason)
+                        // If the SDK gave up auto-reconnecting (state 5 = FAILED),
+                        // rejoin the channel ourselves with backoff.
+                        if (state == Constants.CONNECTION_STATE_FAILED) {
+                            scheduleRejoin()
+                        }
+                    }
                 }
             }
             engine = RtcEngine.create(config)
@@ -137,6 +168,9 @@ object AgoraVoiceManager {
     fun join(context: Context, channelName: String, uid: Int, token: String?): Boolean {
         if (!ensureEngine(context)) return false
         if (joinedChannel != null) return true // already in a channel
+        lastChannel = channelName
+        lastUid = uid
+        lastToken = token
         return try {
             // In 4.1.0 the ChannelMediaOptions fields are java Boolean/Integer objects;
             // Kotlin assigns fine, but read them back via the manager if ever needed.
@@ -164,6 +198,8 @@ object AgoraVoiceManager {
 
     @Synchronized
     fun leave() {
+        cancelPendingRejoin()
+        lastChannel = null
         try {
             engine?.leaveChannel()
         } catch (e: Exception) {
@@ -199,6 +235,49 @@ object AgoraVoiceManager {
         } catch (e: Exception) {
             Log.w(TAG, "setSpeakerphone($on) failed", e)
         }
+    }
+
+    // --- Auto-rejoin helpers ------------------------------------------------------------
+
+    private fun cancelPendingRejoin() {
+        pendingRejoin?.let { mainHandler.removeCallbacks(it) }
+        pendingRejoin = null
+    }
+
+    /**
+     * Called when the SDK reports CONNECTION_STATE_FAILED (it gave up auto-reconnecting,
+     * e.g. after a Wi-Fi ↔ mobile-data switch or airplane mode). Re-joins the last
+     * channel with increasing backoff so the user drops back into the call instead of
+     * being silently stranded.
+     */
+    private fun scheduleRejoin() {
+        val channel = lastChannel ?: return // user already left — nothing to rejoin
+        cancelPendingRejoin()
+        if (rejoinAttempts >= 5) {
+            Log.e(TAG, "giving up rejoin after $rejoinAttempts attempts")
+            return
+        }
+        rejoinAttempts++
+        val attempt = rejoinAttempts
+        val r = Runnable {
+            pendingRejoin = null
+            if (lastChannel != channel) return@Runnable
+            Log.w(TAG, "rejoin attempt $attempt -> $channel")
+            try {
+                engine?.leaveChannel() // start from a clean state
+                val options = ChannelMediaOptions().apply {
+                    clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
+                    channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
+                    autoSubscribeAudio = true
+                    publishMicrophoneTrack = true
+                }
+                engine?.joinChannel(lastToken, channel, lastUid, options)
+            } catch (e: Exception) {
+                Log.e(TAG, "rejoin failed", e)
+            }
+        }
+        pendingRejoin = r
+        mainHandler.postDelayed(r, 2000L * attempt)
     }
 
     @Synchronized
