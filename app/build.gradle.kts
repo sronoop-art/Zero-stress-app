@@ -4,6 +4,18 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// ---- Agora credentials ------------------------------------------------------
+// Read from gradle.properties (project or ~/.gradle) or environment variables.
+// Do NOT hardcode real secrets in this file — it is committed to git.
+//
+//   gradle.properties :  AGORA_APP_ID=f8159b2c...
+//   gradle.properties :  AGORA_APP_CERTIFICATE=9032a220...
+//   (or set the same names as environment variables)
+val agoraAppId: String =
+    (project.findProperty("AGORA_APP_ID") as String? ?: System.getenv("AGORA_APP_ID") ?: "")
+val agoraAppCertificate: String =
+    (project.findProperty("AGORA_APP_CERTIFICATE") as String? ?: System.getenv("AGORA_APP_CERTIFICATE") ?: "")
+
 android {
     namespace = "com.zerostress.manager"
     compileSdk = 34
@@ -19,6 +31,12 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+
+        // Available in Kotlin as BuildConfig.AGORA_APP_ID / BuildConfig.AGORA_APP_CERTIFICATE.
+        // Empty string = token auth disabled in Agora (fine for the App-Certificate-less
+        // test mode; with a certificate enabled you must use token mode below).
+        buildConfigField("String", "AGORA_APP_ID", "\"$agoraAppId\"")
+        buildConfigField("String", "AGORA_APP_CERTIFICATE", "\"$agoraAppCertificate\"")
     }
 
     signingConfigs {
@@ -51,6 +69,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     // Compose compiler matched to Kotlin 1.9.24 (classic composeOptions setup —
@@ -108,6 +127,13 @@ dependencies {
 
     // OkHttp (used for signaling helpers)
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Agora RTC 4.x — real-time voice for the Discord-style channels.
+    // Ships with native .so libs for arm64-v8a + armeabi-v7a; no extra repo needed
+    // (mavenCentral hosts io.agora.rtc artifacts).
+    implementation("io.agora.rtc:agora-rtc-sdk:4.1.0") {
+        exclude(group = "com.google.android.gms")
+    }
 
     // SwipeRefreshLayout (kept for pull-to-refresh where needed)
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")

@@ -301,29 +301,6 @@ fun ZSStat(
     }
 }
 
-/** Voice call status chip used by the voice-call screen. */
-@Composable
-fun ZSVoiceStatusChip(
-    emoji: String,
-    label: String,
-    active: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val container = if (active) ZsCyan else ZsCard
-    val content = if (active) Color.Companion(0xFF06251D) else ZsTextPrimary
-    Column(
-        modifier = modifier
-            .background(container, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(emoji, fontSize = 18.sp)
-        Text(label, color = content, fontSize = 9.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
 /** Grid tile used for dashboard navigation buttons. */
 @Composable
 fun ZSMenuTile(
