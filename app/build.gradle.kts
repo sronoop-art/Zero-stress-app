@@ -1,12 +1,11 @@
-plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services")
-}
+// App module build script.
+// NOTE: kept intentionally conservative (no exotic DSL, ASCII only) because this
+// project is built on-device with AndroidIDE, whose embedded Kotlin script
+// compiler is fragile with unusual constructs or non-ASCII characters.
 
 // ---- Agora credentials ------------------------------------------------------
 // Read from gradle.properties (project or ~/.gradle) or environment variables.
-// Do NOT hardcode real secrets in this file — it is committed to git.
+// Do NOT hardcode real secrets in this file - it is committed to git.
 //
 //   gradle.properties :  AGORA_APP_ID=f8159b2c...
 //   gradle.properties :  AGORA_APP_CERTIFICATE=9032a220...
@@ -17,12 +16,18 @@ val agoraAppCertificate: String =
     (project.findProperty("AGORA_APP_CERTIFICATE") as String? ?: System.getenv("AGORA_APP_CERTIFICATE") ?: "")
 
 if (agoraAppId.isBlank()) {
-    logger.warn("⚠️  AGORA_APP_ID is missing — voice join will fail immediately. Add it to gradle.properties.")
+    logger.warn("WARNING: AGORA_APP_ID is missing - voice join will fail immediately. Add it to gradle.properties.")
 }
 if (agoraAppId.isNotBlank() && agoraAppCertificate.isBlank()) {
-    logger.warn("⚠️  AGORA_APP_CERTIFICATE is missing — if the Agora console has the App Certificate")
-    logger.warn("    enabled, voice joins will fail with Agora error 110 (invalid token). Add the")
-    logger.warn("    certificate locally to gradle.properties (never commit it).")
+    logger.warn("WARNING: AGORA_APP_CERTIFICATE is missing - if the Agora console has the App")
+    logger.warn("    certificate enabled, voice joins will fail with Agora error 110 (invalid token).")
+    logger.warn("    Add the certificate locally to gradle.properties (never commit it).")
+}
+
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -42,13 +47,11 @@ android {
         }
 
         // Available in Kotlin as BuildConfig.AGORA_APP_ID / BuildConfig.AGORA_APP_CERTIFICATE.
-        // Empty string = token auth disabled in Agora (fine for the App-Certificate-less
-        // test mode; with a certificate enabled you must use token mode below).
         buildConfigField("String", "AGORA_APP_ID", "\"$agoraAppId\"")
         buildConfigField("String", "AGORA_APP_CERTIFICATE", "\"$agoraAppCertificate\"")
 
         // Smaller APK: only ship native .so libs for devices people actually use.
-        // (Agora ships armeabi-v7a, arm64-v8a, x86, x86_64 — most phones are ARM.)
+        // (Agora ships armeabi-v7a, arm64-v8a, x86, x86_64 - most phones are ARM.)
         ndk {
             abiFilters += listOf("armeabi-v7a", "arm64-v8a")
         }
@@ -79,8 +82,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Keep a copy of the obfuscation map so crashes can be de-obfuscated.
-            debugSymbolLevel = "SYMBOL_TABLE"
         }
         debug {
             // Debug builds stay unshrunk for fast iteration.
@@ -98,7 +99,7 @@ android {
         buildConfig = true
     }
 
-    // Compose compiler matched to Kotlin 1.9.24 (classic composeOptions setup —
+    // Compose compiler matched to Kotlin 1.9.24 (classic composeOptions setup -
     // the kotlin.plugin.compose helper only exists for Kotlin 2.x)
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -107,10 +108,9 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
-            // Trim native-lib metadata that ends up duplicated in the APK.
-            excludes += "/META-INF/*.version"
         }
-        // Compress native libraries into the APK (smaller download, a bit more RAM at runtime).
+        // Pack native libraries uncompressed-aligned (smaller install footprint,
+        // no extraction step at install time). Works with useLegacyPackaging=false.
         jniLibs {
             useLegacyPackaging = false
         }
@@ -139,26 +139,25 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
 
-    // Firebase BOM — 33.1.2 is the newest line whose artifacts are compiled with
+    // Firebase BOM - 33.1.2 is the newest line whose artifacts are compiled with
     // Kotlin 1.8/1.9 metadata (readable by the Kotlin 1.9.24 compiler AndroidIDE uses).
-    // Do NOT jump to BOM 34.x: those artifacts (firebase-auth 24.x, play-services
-    // measurement 23.x) carry Kotlin 2.2+ metadata and fail on-device.
+    // Do NOT jump to BOM 34.x: those artifacts carry Kotlin 2.2+ metadata and fail on-device.
     implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")
 
-    // Firebase App Check (debug provider — replace with a Play Integrity /
+    // Firebase App Check (debug provider - replace with a Play Integrity /
     // DeviceCheck provider before releasing to production)
     implementation("com.google.firebase:firebase-appcheck")
     implementation("com.google.firebase:firebase-appcheck-debug")
 
-    // Agora RTC 4.x — real-time voice for the Discord-style channels.
+    // Agora RTC 4.x - real-time voice for the Discord-style channels.
     // NOTE: the Maven Central artifact is "full-sdk" (io.agora.rtc:full-sdk),
-    // NOT "agora-rtc-sdk" — that one only exists on Agora's own maven repo.
+    // NOT "agora-rtc-sdk" - that one only exists on Agora's own maven repo.
     implementation("io.agora.rtc:full-sdk:4.1.0")
 
-    // Agora official token builder — lets the app generate RTC tokens on-device
+    // Agora official token builder - lets the app generate RTC tokens on-device
     // from AGORA_APP_CERTIFICATE (required when the App Certificate is enabled).
     implementation("io.agora:authentication:2.1.3")
 }
