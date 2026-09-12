@@ -92,7 +92,7 @@ private fun SendNotificationScreen() {
             loading = false
             Toast.makeText(
                 context,
-                "✅ Notification sent!\n\n• Foreground: instant in-app display\n• Background/Killed: FCM push via Cloud Function",
+                "Notification sent!\n\n• Foreground: instant in-app display\n• Background/Killed: FCM push via Cloud Function",
                 Toast.LENGTH_LONG
             ).show()
             title = ""
@@ -127,7 +127,7 @@ private fun SendNotificationScreen() {
                         value = title,
                         onValueChange = { title = it },
                         label = "Title",
-                        placeholder = "e.g., 📢 Quick Alert"
+                        placeholder = "e.g., Quick Alert"
                     )
                     Spacer(Modifier.height(12.dp))
                     ZSField(
@@ -146,7 +146,7 @@ private fun SendNotificationScreen() {
                             CircularProgressIndicator(color = ZsCyan)
                         }
                     } else {
-                        ZSButton(text = "📤 SEND TO ALL PLAYERS", onClick = { sendNotification(title, message) }, container = ZsAccent)
+                        ZSButton(text = "SEND TO ALL PLAYERS", onClick = { sendNotification(title, message) }, container = ZsAccent)
                     }
                 }
 
@@ -154,7 +154,7 @@ private fun SendNotificationScreen() {
                 Text("QUICK ALERTS", color = ZsTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
                 quickAlerts.forEach { alert ->
-                    TextButton(onClick = { sendNotification("📢 Quick Alert", alert) }, modifier = Modifier.fillMaxWidth()) {
+                    TextButton(onClick = { sendNotification("Quick Alert", alert) }, modifier = Modifier.fillMaxWidth()) {
                         Text(alert, modifier = Modifier.fillMaxWidth(), color = ZsTextSecondary)
                     }
                 }

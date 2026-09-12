@@ -40,7 +40,9 @@ import com.zerostress.manager.ui.ZSBadge
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSField
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZSMenuTile
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.ZSStat
 import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.theme.ZeroStressTheme
@@ -138,7 +140,7 @@ private fun AdminDashboardScreen() {
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
             ZSTopBar(title = "Admin Dashboard", right = {
-                Text("👑", fontSize = 20.sp, modifier = Modifier.padding(end = 8.dp))
+                ZsPngIcon(R.drawable.ic_menu_crown, size = 20.dp, tint = ZsGold, modifier = Modifier.padding(end = 8.dp))
             })
 
             LazyColumn(
@@ -171,27 +173,27 @@ private fun AdminDashboardScreen() {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("📝", "Daily Input", { context.startActivity(Intent(context, DailyInputActivity::class.java)) }, Modifier.weight(1f), ZsCyan)
-                        ZSMenuTile("📢", "Broadcast", { showAnnouncementOrSchedule = true }, Modifier.weight(1f), ZsAccent)
-                        ZSMenuTile("🏆", "Leaderboard", { context.startActivity(Intent(context, LeaderboardActivity::class.java)) }, Modifier.weight(1f), ZsGold)
+                        ZSMenuTile("", "Daily Input", { context.startActivity(Intent(context, DailyInputActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_edit)
+                        ZSMenuTile("", "Broadcast", { showAnnouncementOrSchedule = true }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_announce)
+                        ZSMenuTile("", "Leaderboard", { context.startActivity(Intent(context, LeaderboardActivity::class.java)) }, Modifier.weight(1f), ZsGold, iconRes = R.drawable.ic_menu_trophy)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("💬", "Chat", { context.startActivity(Intent(context, ChatActivity::class.java)) }, Modifier.weight(1f), ZsAccent)
-                        ZSMenuTile("📞", "Voice Call", { context.startActivity(Intent(context, VoiceActivity::class.java)) }, Modifier.weight(1f), ZsCyan)
-                        ZSMenuTile("🗓️", "Seasons", { context.startActivity(Intent(context, ManageSeasonsActivity::class.java)) }, Modifier.weight(1f), ZsPrimary)
+                        ZSMenuTile("", "Chat", { context.startActivity(Intent(context, ChatActivity::class.java)) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_chat)
+                        ZSMenuTile("", "Voice Call", { context.startActivity(Intent(context, VoiceActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_call)
+                        ZSMenuTile("", "Seasons", { context.startActivity(Intent(context, ManageSeasonsActivity::class.java)) }, Modifier.weight(1f), ZsPrimary, iconRes = R.drawable.ic_menu_calendar)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("👥", "All Stats", { context.startActivity(Intent(context, ViewAllPlayersStatsActivity::class.java)) }, Modifier.weight(1f), ZsCyan)
-                        ZSMenuTile("🔔", "Notify", { context.startActivity(Intent(context, SendNotificationActivity::class.java)) }, Modifier.weight(1f), ZsGold)
-                        ZSMenuTile("🎛️", "Voice Channels", { context.startActivity(Intent(context, ManageVoiceChannelsActivity::class.java)) }, Modifier.weight(1f), ZsAccent)
+                        ZSMenuTile("", "All Stats", { context.startActivity(Intent(context, ViewAllPlayersStatsActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_people)
+                        ZSMenuTile("", "Notify", { context.startActivity(Intent(context, SendNotificationActivity::class.java)) }, Modifier.weight(1f), ZsGold, iconRes = R.drawable.ic_menu_bell)
+                        ZSMenuTile("", "Voice Channels", { context.startActivity(Intent(context, ManageVoiceChannelsActivity::class.java)) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_channels)
                     }
                 }
 
@@ -207,11 +209,11 @@ private fun AdminDashboardScreen() {
                         val status = doc.getString("status") ?: "pending"
                         val gameRole = doc.getString("gameRole")
                         val roleEmoji = when (gameRole) {
-                            "Rusher" -> "⚔️ "
-                            "Sniper" -> "🎯 "
-                            "IGL" -> "👑 "
-                            "Supporter" -> "🛡️ "
-                            "Bomber" -> "💣 "
+                            "Rusher" -> "Rusher • "
+                            "Sniper" -> "Sniper • "
+                            "IGL" -> "IGL • "
+                            "Supporter" -> "Supporter • "
+                            "Bomber" -> "Bomber • "
                             else -> ""
                         }
                         val statusColor = when (status) {
@@ -259,13 +261,13 @@ private fun AdminDashboardScreen() {
                 text = {
                     Column {
                         listOf(
-                            "✏️ Edit Name" to 0,
-                            "👑 Change Admin Role" to 1,
-                            "🎮 Set Game Role" to 2,
-                            "✅ Approve" to 3,
-                            "❌ Reject" to 4,
-                            "🚫 Ban" to 5,
-                            "🗑️ Delete Player" to 6
+                            "Edit Name" to 0,
+                            "Change Admin Role" to 1,
+                            "Set Game Role" to 2,
+                            "Approve" to 3,
+                            "Reject" to 4,
+                            "Ban" to 5,
+                            "Delete Player" to 6
                         ).forEach { (label, idx) ->
                             TextButton(
                                 onClick = { selectedAction = idx },
@@ -333,13 +335,13 @@ private fun AdminDashboardScreen() {
                         showAnnouncementOrSchedule = false
                         showScheduleDialog = true
                     }, modifier = Modifier.fillMaxWidth()) {
-                        Text("📋 Create Match Schedule", modifier = Modifier.fillMaxWidth())
+                        Text("Create Match Schedule", modifier = Modifier.fillMaxWidth())
                     }
                     TextButton(onClick = {
                         showAnnouncementOrSchedule = false
                         showAnnouncementDialog = true
                     }, modifier = Modifier.fillMaxWidth()) {
-                        Text("📢 Broadcast Announcement", modifier = Modifier.fillMaxWidth())
+                        Text("Broadcast Announcement", modifier = Modifier.fillMaxWidth())
                     }
                 }
             },
@@ -355,7 +357,7 @@ private fun AdminDashboardScreen() {
         var text by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAnnouncementDialog = false },
-            title = { Text("📢 Broadcast Announcement") },
+            title = { Text("Broadcast Announcement") },
             text = {
                 ZSField(
                     value = text,
@@ -375,7 +377,7 @@ private fun AdminDashboardScreen() {
                                 "timestamp" to System.currentTimeMillis()
                             )
                         ).addOnSuccessListener {
-                            Toast.makeText(context, "📢 Announcement sent to all players!", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Announcement sent to all players!", Toast.LENGTH_SHORT).show()
                         }
                     }
                     showAnnouncementDialog = false
@@ -394,7 +396,7 @@ private fun AdminDashboardScreen() {
         var type by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showScheduleDialog = false },
-            title = { Text("📋 Add Match Schedule") },
+            title = { Text("Add Match Schedule") },
             text = {
                 Column {
                     ZSField(value = title, onValueChange = { title = it }, label = "Match Title", placeholder = "e.g., Squad Battle #1")
@@ -433,7 +435,7 @@ private fun AdminDashboardScreen() {
                             "createdBy" to auth.uid
                         )
                     ).addOnSuccessListener {
-                        Toast.makeText(context, "✅ Schedule created!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Schedule created!", Toast.LENGTH_SHORT).show()
                     }.addOnFailureListener { e ->
                         Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
@@ -453,7 +455,7 @@ private fun EditNameDialog(player: DocumentSnapshot, onDone: () -> Unit) {
     var name by remember { mutableStateOf(player.getString("name") ?: "") }
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("✏️ Edit Player Name") },
+        title = { Text("Edit Player Name") },
         text = { ZSField(value = name, onValueChange = { name = it }, label = "Name") },
         confirmButton = {
             TextButton(onClick = {
@@ -477,7 +479,7 @@ private fun ChangeRoleDialog(player: DocumentSnapshot, onDone: () -> Unit) {
     val roles = listOf("player", "moderator", "admin")
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("👑 Change Role for ${player.getString("name")}") },
+        title = { Text("Change Role for ${player.getString("name")}") },
         text = {
             Column {
                 roles.forEach { r ->
@@ -503,16 +505,16 @@ private fun GameRoleDialog(player: DocumentSnapshot, onDone: () -> Unit) {
     val context = LocalContext.current
     val db = remember { FirebaseFirestore.getInstance() }
     val gameRoles = listOf(
-        "⚔️ Rusher" to "Rusher",
-        "🎯 Sniper" to "Sniper",
-        "👑 IGL" to "IGL",
-        "🛡️ Supporter" to "Supporter",
-        "💣 Bomber" to "Bomber",
-        "❌ None" to ""
+        "Rusher" to "Rusher",
+        "Sniper" to "Sniper",
+        "IGL" to "IGL",
+        "Supporter" to "Supporter",
+        "Bomber" to "Bomber",
+        "None" to ""
     )
     AlertDialog(
         onDismissRequest = onDone,
-        title = { Text("🎮 Set Game Role for ${player.getString("name")}") },
+        title = { Text("Set Game Role for ${player.getString("name")}") },
         text = {
             Column {
                 gameRoles.forEach { (label, value) ->

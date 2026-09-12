@@ -31,9 +31,11 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSTopBar
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCyan
@@ -247,7 +249,7 @@ private fun ManageVoiceChannelsScreen() {
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(
-                                    "${if (enabled) "✅" else "❌"} ${player.getString("name") ?: "Unknown"}",
+                                    "${if (enabled) "ALLOWED" else "BLOCKED"} ${player.getString("name") ?: "Unknown"}",
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }
@@ -299,21 +301,21 @@ private fun SelectionCard(
             Column(horizontalAlignment = Alignment.End) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = onManagePlayers) {
-                        Text("👥", color = ZsCyan, fontSize = 16.sp)
+                        ZsPngIcon(R.drawable.ic_menu_people, size = 16.dp, tint = ZsCyan)
                     }
                     TextButton(onClick = onSelect) {
-                        Text("✏️", color = ZsTextSecondary, fontSize = 16.sp)
+                        ZsPngIcon(R.drawable.ic_menu_edit, size = 16.dp, tint = ZsTextSecondary)
                     }
                 }
                 Spacer(Modifier.height(4.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (item.enabled) {
                         TextButton(onClick = onDisable) {
-                            Text("⏸️", color = ZsWarning, fontSize = 16.sp)
+                            ZsPngIcon(R.drawable.ic_action_pause, size = 16.dp, tint = ZsWarning)
                         }
                     }
                     TextButton(onClick = onDelete) {
-                        Text("🗑️", color = ZsDanger, fontSize = 16.sp)
+                        ZsPngIcon(R.drawable.ic_action_delete, size = 16.dp, tint = ZsDanger)
                     }
                 }
             }

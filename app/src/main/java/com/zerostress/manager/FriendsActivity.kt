@@ -185,7 +185,7 @@ private fun FriendsScreen() {
                     Toast.makeText(context, "Friend request sent to $targetName!", Toast.LENGTH_SHORT).show()
                     db.collection("notifications").add(
                         mapOf(
-                            "title" to "🤝 Friend Request",
+                            "title" to "Friend Request",
                             "message" to "$userName sent you a friend request!\nOpen Friends to accept.",
                             "type" to "general",
                             "timestamp" to System.currentTimeMillis()
@@ -214,7 +214,7 @@ private fun FriendsScreen() {
                         )
                     ).addOnSuccessListener {
                         req.reference.update("status", "accepted")
-                        Toast.makeText(context, "✅ $fromUserName is now your friend!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "$fromUserName is now your friend!", Toast.LENGTH_SHORT).show()
                         refreshKey++
                     }
                 }
@@ -257,7 +257,7 @@ private fun FriendsScreen() {
                         ZSCard(highlight = ZsAccent) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("📨 ${row.name}", color = ZsTextPrimary, fontWeight = FontWeight.Bold)
+                                    Text("${row.name}", color = ZsTextPrimary, fontWeight = FontWeight.Bold)
                                     Spacer(Modifier.height(3.dp))
                                     Text(row.detail, color = ZsTextMuted, fontSize = 12.sp)
                                 }
@@ -289,8 +289,8 @@ private fun FriendsScreen() {
                                 }
                                 Text(
                                     when (row.online) {
-                                        true -> "🟢 Online"
-                                        false -> "⚫ Offline"
+                                        true -> "Online"
+                                        false -> "Offline"
                                         null -> "..."
                                     },
                                     color = if (row.online == true) ZsGreen else ZsTextMuted,
@@ -309,7 +309,7 @@ private fun FriendsScreen() {
         var inputName by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("🤝 Add Friend") },
+            title = { Text("Add Friend") },
             text = {
                 ZSField(
                     value = inputName,

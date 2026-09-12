@@ -133,14 +133,14 @@ private fun DailyLoginRewardsScreen() {
             )
 
             Text(
-                "🔥 Streak: $currentStreak days",
+                "Streak: $currentStreak days",
                 modifier = Modifier.padding(horizontal = 16.dp),
                 color = ZsGold,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
             Text(
-                if (claimedToday) "✓ Claimed today" else "Tap to claim!",
+                if (claimedToday) "Claimed today" else "Tap to claim!",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 color = if (claimedToday) ZsAccentDark else ZsAccent,
                 fontSize = 13.sp,
@@ -187,7 +187,7 @@ private fun DailyLoginRewardsScreen() {
                         )
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            if (reward.unlocked) "✓" else if (isToday) "CLAIM" else "🔒",
+                            if (reward.unlocked) "CLAIMED" else if (isToday) "CLAIM" else "LOCKED",
                             color = if (reward.unlocked) ZsAccent else if (isToday) androidx.compose.ui.graphics.Color.White else ZsTextMuted,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold
@@ -201,7 +201,7 @@ private fun DailyLoginRewardsScreen() {
     if (showClaimDialog && todayReward != null) {
         AlertDialog(
             onDismissRequest = { showClaimDialog = false },
-            title = { Text("🎁 Claim Daily Reward") },
+            title = { Text("Claim Daily Reward") },
             text = {
                 Text(
                     "Claim your Day ${dayIndex + 1} reward?",

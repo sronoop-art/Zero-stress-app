@@ -154,8 +154,7 @@ private fun BattlePassScreen() {
                                     fontSize = 13.sp
                                 )
                             }
-                            Text(
-                                if (tier.unlocked) "✓ UNLOCKED" else "LOCKED",
+                            Text(                                 if (tier.unlocked) "UNLOCKED" else "LOCKED",
                                 color = if (tier.unlocked) ZsAccentDark else ZsTextMuted,
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.Bold

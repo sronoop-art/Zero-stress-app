@@ -127,8 +127,7 @@ private fun AchievementsScreen() {
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
-                            Text(
-                                if (unlocked) "✅ Unlocked" else "🔒 Locked",
+                            Text(                                 if (unlocked) "Unlocked" else "Locked",
                                 color = if (unlocked) ZsGreen else ZsTextMuted,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Bold

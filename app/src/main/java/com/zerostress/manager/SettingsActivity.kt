@@ -138,15 +138,15 @@ private fun SettingsScreen() {
 
                 SectionTitle("GENERAL")
                 ZSCard {
-                    SettingAction("🗑️ Clear Cache") {
+                    SettingAction("Clear Cache") {
                         Toast.makeText(context, "Cache cleared!", Toast.LENGTH_SHORT).show()
                     }
-                    SettingAction("ℹ️ About Zero Stress") { showAbout = true }
+                    SettingAction("About Zero Stress") { showAbout = true }
                 }
 
                 SectionTitle("ACCOUNT")
                 ZSButton(
-                    text = "🚪 Logout",
+                    text = "Logout",
                     onClick = {
                         FirebaseAuth.getInstance().signOut()
                         context.startActivity(Intent(context, LoginActivity::class.java))
@@ -156,7 +156,7 @@ private fun SettingsScreen() {
                 )
                 Spacer(Modifier.height(12.dp))
                 ZSButton(
-                    text = "⚠️ Delete Account",
+                    text = "Delete Account",
                     onClick = { showDeleteConfirm = true },
                     container = ZsDanger
                 )
@@ -185,7 +185,7 @@ private fun SettingsScreen() {
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("⚠️ Delete Account") },
+            title = { Text("Delete Account") },
             text = {
                 Text(
                     "This will permanently delete your account and all your data.\n\nThis action CANNOT be undone!",

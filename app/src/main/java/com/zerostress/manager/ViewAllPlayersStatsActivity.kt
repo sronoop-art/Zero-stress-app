@@ -82,7 +82,7 @@ private fun ViewAllPlayersStatsScreen() {
                     totalWins += doc.getLong("wins") ?: 0
                     totalMatches += doc.getLong("matches") ?: 0
                 }
-                summary = "👥 $totalPlayers Players | ⚔️ $totalKills Kills | 🏆 $totalWins Wins | 🎮 $totalMatches Matches"
+                summary = "$totalPlayers Players | $totalKills Kills | $totalWins Wins | $totalMatches Matches"
             }
     }
 
@@ -94,19 +94,11 @@ private fun ViewAllPlayersStatsScreen() {
 
     fun roleText(role: String?, gameRole: String?): String {
         val displayRole = when (role) {
-            "admin" -> "👑 ADMIN"
-            "moderator" -> "🛡️ MOD"
+            "admin" -> "ADMIN"
+            "moderator" -> "MOD"
             else -> (role ?: "player").uppercase()
         }
-        val emoji = when (gameRole) {
-            "Rusher" -> "⚔️ "
-            "Sniper" -> "🎯 "
-            "IGL" -> "👑 "
-            "Supporter" -> "🛡️ "
-            "Bomber" -> "💣 "
-            else -> ""
-        }
-        return if (!gameRole.isNullOrEmpty()) "$emoji$gameRole • $displayRole" else displayRole
+        return if (!gameRole.isNullOrEmpty()) "$gameRole • $displayRole" else displayRole
     }
 
     ZSBackground {

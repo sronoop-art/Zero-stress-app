@@ -132,8 +132,7 @@ private fun DailyChallengesScreen() {
                             color = if (challenge.isCompleted) ZsGreen else ZsPrimary
                         )
                         Spacer(Modifier.height(8.dp))
-                        Text(
-                            if (challenge.isCompleted) "✓ COMPLETED" else "IN PROGRESS",
+                        Text(                             if (challenge.isCompleted) "COMPLETED" else "IN PROGRESS",
                             color = if (challenge.isCompleted) ZsGreen else ZsPrimary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold

@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.EmptyState
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
@@ -133,7 +135,7 @@ private fun ManageSeasonsScreen() {
                                     )
                                     Spacer(Modifier.height(6.dp))
                                     TextButton(onClick = { deleteTarget = doc }) {
-                                        Text("🗑️", color = ZsDanger)
+                                        ZsPngIcon(R.drawable.ic_action_delete, size = 18.dp, tint = ZsDanger)
                                     }
                                 }
                             }
@@ -150,7 +152,7 @@ private fun ManageSeasonsScreen() {
         var duration by remember { mutableStateOf("") }
         AlertDialog(
             onDismissRequest = { showAddDialog = false },
-            title = { Text("➕ Add New Season") },
+            title = { Text("Add New Season") },
             text = {
                 Column {
                     ZSField(value = name, onValueChange = { name = it }, label = "Season Name", placeholder = "e.g., Season 2")

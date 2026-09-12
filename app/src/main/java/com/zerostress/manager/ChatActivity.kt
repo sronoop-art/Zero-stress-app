@@ -54,6 +54,7 @@ import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCard
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.theme.ZsPrimary
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
@@ -182,7 +183,7 @@ private fun ChatScreen() {
                 if (mentions.isNotEmpty()) {
                     db.collection("notifications").add(
                         mapOf(
-                            "title" to "📢 You were mentioned in chat!",
+                            "title" to "You were mentioned in chat!",
                             "message" to "$userName mentioned ${mentions.joinToString(", ")}: $text",
                             "type" to "mention",
                             "timestamp" to System.currentTimeMillis(),
@@ -193,7 +194,7 @@ private fun ChatScreen() {
                 }
                 db.collection("notifications").add(
                     mapOf(
-                        "title" to "💬 New Chat Message",
+                        "title" to "New Chat Message",
                         "message" to "$userName: $text",
                         "type" to "chat",
                         "timestamp" to System.currentTimeMillis(),
@@ -222,7 +223,7 @@ private fun ChatScreen() {
                 }
                 batch.commit()
                     .addOnSuccessListener {
-                        Toast.makeText(context, "✅ Chat cleared! $count messages deleted", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Chat cleared! $count messages deleted", Toast.LENGTH_SHORT).show()
                     }
                     .addOnFailureListener { e ->
                         Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -245,7 +246,7 @@ private fun ChatScreen() {
                 right = {
                     if (isAdmin) {
                         TextButton(onClick = { showClearChatDialog = true }) {
-                            Text("🗑️", color = ZsDanger)
+                            ZsPngIcon(R.drawable.ic_action_delete, size = 20.dp, tint = ZsDanger)
                         }
                     }
                 }
@@ -311,7 +312,7 @@ private fun ChatScreen() {
             // Typing indicator
             if (typingCount > 0) {
                 Text(
-                    "💬 ${typingCount} person${if (typingCount > 1) "s" else ""} typing",
+                    "${typingCount} person${if (typingCount > 1) "s" else ""} typing",
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                     color = ZsTextMuted,
                     fontSize = 12.sp
@@ -347,7 +348,7 @@ private fun ChatScreen() {
                 )
                 Spacer(Modifier.width(8.dp))
                 TextButton(onClick = { sendMessage() }) {
-                    Text("➤", color = ZsAccent, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                    ZsPngIcon(R.drawable.ic_action_send, size = 22.dp, tint = ZsAccent)
                 }
             }
         }
@@ -357,7 +358,7 @@ private fun ChatScreen() {
     if (showMentionDialog) {
         AlertDialog(
             onDismissRequest = { showMentionDialog = false },
-            title = { Text("📢 Mention a Player") },
+            title = { Text("Mention a Player") },
             text = {
                 Column {
                     players.forEach { player ->
@@ -371,7 +372,7 @@ private fun ChatScreen() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                if (role == "admin") "$name 👑" else name,
+                                if (role == "admin") "$name (admin)" else name,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }
@@ -389,7 +390,7 @@ private fun ChatScreen() {
     if (showClearChatDialog) {
         AlertDialog(
             onDismissRequest = { showClearChatDialog = false },
-            title = { Text("🗑️ Clear All Chat Messages") },
+            title = { Text("Clear All Chat Messages") },
             text = {
                 Text(
                     "This will permanently delete ALL chat messages.\n\nThis action cannot be undone!",

@@ -117,7 +117,7 @@ private fun PerformanceScreen() {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(
-                                        "${if (win) "🏆" else "❌"} K:$kills  Dmg:$damage",
+                                        "${if (win) "WIN" else "LOSS"}  K:$kills  Dmg:$damage",
                                         color = ZsTextPrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp

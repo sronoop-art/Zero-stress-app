@@ -156,7 +156,7 @@ private fun LeaderboardScreen() {
                             )
                     }
                 }
-                Toast.makeText(context, "🏆 Rewards distributed to top 3!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Rewards distributed to top 3!", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -212,7 +212,7 @@ private fun LeaderboardScreen() {
                             if (done >= total) {
                                 Toast.makeText(
                                     context,
-                                    "✅ ${type.uppercase()} leaderboard reset for $total players!",
+                                    "${type.uppercase()} leaderboard reset for $total players!",
                                     Toast.LENGTH_LONG
                                 ).show()
                                 awardRewards(type)
@@ -244,7 +244,7 @@ private fun LeaderboardScreen() {
                 right = {
                     if (isAdmin) {
                         TextButton(onClick = { showResetTypeDialog = true }) {
-                            Text("♻️ Reset", color = ZsDanger, fontWeight = FontWeight.Bold)
+                            Text("Reset", color = ZsDanger, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -298,17 +298,17 @@ private fun LeaderboardScreen() {
                         val gameRole = doc.getString("gameRole")
 
                         val (medal, medalColor) = when (index) {
-                            0 -> "👑 " to ZsGold
-                            1 -> "🥈 " to ZsSilver
-                            2 -> "🥉 " to ZsBronze
+                            0 -> "#1 " to ZsGold
+                            1 -> "#2 " to ZsSilver
+                            2 -> "#3 " to ZsBronze
                             else -> "" to ZsTextPrimary
                         }
                         val gameRoleText = when (gameRole) {
-                            "Rusher" -> "⚔️ Rusher"
-                            "Sniper" -> "🎯 Sniper"
-                            "IGL" -> "👑 IGL"
-                            "Supporter" -> "🛡️ Supporter"
-                            "Bomber" -> "💣 Bomber"
+                            "Rusher" -> "Rusher"
+                            "Sniper" -> "Sniper"
+                            "IGL" -> "IGL"
+                            "Supporter" -> "Supporter"
+                            "Bomber" -> "Bomber"
                             else -> ""
                         }
 
@@ -356,14 +356,14 @@ private fun LeaderboardScreen() {
     if (showResetTypeDialog) {
         AlertDialog(
             onDismissRequest = { showResetTypeDialog = false },
-            title = { Text("⚠️ Reset Leaderboard") },
+            title = { Text("Reset Leaderboard") },
             text = {
                 Column {
                     listOf(
-                        "📅 Daily Leaderboard" to "daily",
-                        "📆 Weekly Leaderboard" to "weekly",
-                        "🗓️ Monthly Leaderboard" to "monthly",
-                        "💣 Everything (All Time)" to "all"
+                        "Daily Leaderboard" to "daily",
+                        "Weekly Leaderboard" to "weekly",
+                        "Monthly Leaderboard" to "monthly",
+                        "Everything (All Time)" to "all"
                     ).forEach { (label, value) ->
                         TextButton(onClick = {
                             showResetTypeDialog = false
@@ -384,10 +384,10 @@ private fun LeaderboardScreen() {
     // Reset confirmation
     showResetConfirmDialog?.let { type ->
         val (title, message) = when (type) {
-            "daily" -> "📅 Reset Daily Leaderboard" to "All DAILY stats (kills, wins, score) will be set to 0 for every player.\n\nWeekly and Monthly stats are NOT affected."
-            "weekly" -> "📆 Reset Weekly Leaderboard" to "All WEEKLY stats (kills, wins, score) will be set to 0 for every player.\n\nDaily and Monthly stats are NOT affected."
-            "monthly" -> "🗓️ Reset Monthly Leaderboard" to "All MONTHLY stats (kills, wins, score) will be set to 0 for every player.\n\nDaily and Weekly stats are NOT affected."
-            else -> "💣 Reset EVERYTHING" to "⚠️ DANGER ZONE ⚠️\n\nThis resets ALL stats for every player:\n• Total score, kills, wins, damage\n• XP → Level 1\n• Coins → 0\n• Rank → Iron\n• Daily, Weekly & Monthly stats\n\nThis cannot be undone!"
+            "daily" -> "Reset Daily Leaderboard" to "All DAILY stats (kills, wins, score) will be set to 0 for every player.\n\nWeekly and Monthly stats are NOT affected."
+            "weekly" -> "Reset Weekly Leaderboard" to "All WEEKLY stats (kills, wins, score) will be set to 0 for every player.\n\nDaily and Monthly stats are NOT affected."
+            "monthly" -> "Reset Monthly Leaderboard" to "All MONTHLY stats (kills, wins, score) will be set to 0 for every player.\n\nDaily and Weekly stats are NOT affected."
+            else -> "Reset EVERYTHING" to "DANGER ZONE\n\nThis resets ALL stats for every player:\n- Total score, kills, wins, damage\n- XP to Level 1\n- Coins to 0\n- Rank to Iron\n- Daily, Weekly & Monthly stats\n\nThis cannot be undone!"
         }
         AlertDialog(
             onDismissRequest = { showResetConfirmDialog = null },

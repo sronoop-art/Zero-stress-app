@@ -164,7 +164,7 @@ private fun SubmitMatchScreen() {
                         loading = false
                         Toast.makeText(
                             context,
-                            "✅ +$xpGained XP, +$coinsGained coins",
+                            "+$xpGained XP, +$coinsGained coins",
                             Toast.LENGTH_LONG
                         ).show()
                         (context as? android.app.Activity)?.finish()
@@ -226,9 +226,9 @@ private fun SubmitMatchScreen() {
                     Text("Result", color = ZsTextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
                     Row {
-                        ZSChoiceChip("🏆 Win", isWin, { isWin = true }, Modifier.weight(1f), ZsAccent)
+                        ZSChoiceChip("Win", isWin, { isWin = true }, Modifier.weight(1f), ZsAccent)
                         Spacer(Modifier.width(10.dp))
-                        ZSChoiceChip("💀 Loss", !isWin, { isWin = false }, Modifier.weight(1f), ZsPrimary)
+                        ZSChoiceChip("Loss", !isWin, { isWin = false }, Modifier.weight(1f), ZsPrimary)
                     }
                     Spacer(Modifier.height(16.dp))
 

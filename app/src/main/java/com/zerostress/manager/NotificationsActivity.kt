@@ -83,15 +83,15 @@ private fun NotificationsScreen() {
                 ) {
                     items(notifications, key = { it.id }) { doc ->
                         val type = doc.getString("type") ?: "general"
-                        val emoji = when (type) {
-                            "chat" -> "💬"
-                            "mention" -> "📢"
-                            "admin" -> "📣"
-                            else -> "🔔"
+                        val typeLabel = when (type) {
+                            "chat" -> "Chat"
+                            "mention" -> "Mention"
+                            "admin" -> "Admin"
+                            else -> "Alert"
                         }
                         ZSCard(highlight = ZsCyan) {
                             Text(
-                                "$emoji ${doc.getString("title") ?: "Notification"}",
+                                "$typeLabel: ${doc.getString("title") ?: "Notification"}",
                                 color = ZsTextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 15.sp

@@ -72,7 +72,7 @@ private fun SeasonScreen() {
     val current = seasons.lastOrNull()
     val currentText = if (current != null) {
         val active = current.getBoolean("active") != false
-        "Current: ${current.getString("name")} (${if (active) "🟢 Active" else "⚪ Ended"})"
+        "Current: ${current.getString("name")} (${if (active) "Active" else "Ended"})"
     } else {
         "No seasons yet"
     }
@@ -105,7 +105,7 @@ private fun SeasonScreen() {
                         val duration = doc.getString("duration")
                         val desc = doc.getString("description")
                         val info = buildString {
-                            if (createdAt != null) append("📅 ${formatDate(createdAt)}")
+                            if (createdAt != null) append("${formatDate(createdAt)}")
                             if (!duration.isNullOrEmpty()) append(" • $duration days")
                             if (!desc.isNullOrEmpty()) append(" • $desc")
                         }
@@ -128,7 +128,7 @@ private fun SeasonScreen() {
                                     )
                                 }
                                 Text(
-                                    if (active) "🟢 Active" else "⚪ Ended",
+                                    if (active) "Active" else "Ended",
                                     color = if (active) ZsGreen else ZsTextMuted,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold

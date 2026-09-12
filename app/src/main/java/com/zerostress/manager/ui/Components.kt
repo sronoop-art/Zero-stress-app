@@ -21,9 +21,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -190,7 +193,12 @@ fun ZSTopBar(
     ) {
         if (onBack != null) {
             TextButton(onClick = onBack) {
-                Text("←", color = ZsCyan, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back",
+                    tint = ZsCyan,
+                    modifier = Modifier.size(20.dp)
+                )
                 Spacer(Modifier.width(2.dp))
                 Text("Back", color = ZsCyan, fontWeight = FontWeight.Bold)
             }
@@ -301,14 +309,20 @@ fun ZSStat(
     }
 }
 
-/** Grid tile used for dashboard navigation buttons. */
+/**
+ * Grid tile used for dashboard navigation buttons.
+ * Pass [iconRes] (a PNG drawable id, e.g. R.drawable.ic_menu_calendar) instead of
+ * [emoji] — the emoji parameter is kept only for legacy callers and is ignored
+ * when an iconRes is given.
+ */
 @Composable
 fun ZSMenuTile(
     emoji: String,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    accent: Color = ZsPrimary
+    accent: Color = ZsPrimary,
+    iconRes: Int? = null
 ) {
     Column(
         modifier = modifier
@@ -320,7 +334,11 @@ fun ZSMenuTile(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(emoji, fontSize = 26.sp)
+        if (iconRes != null) {
+            ZsPngIcon(iconRes, size = 30.dp)
+        } else {
+            Text(emoji, fontSize = 26.sp)
+        }
         Spacer(Modifier.height(8.dp))
         Text(
             label,

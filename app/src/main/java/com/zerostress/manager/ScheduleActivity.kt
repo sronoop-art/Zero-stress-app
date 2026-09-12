@@ -33,7 +33,9 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.EmptyState
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSTopBar
@@ -108,9 +110,9 @@ private fun ScheduleScreen() {
                         val status = doc.getString("status") ?: "Upcoming"
                         val userDateTime = doc.getString("dateTime")
                         val timeText = if (!userDateTime.isNullOrEmpty() && userDateTime != "TBD") {
-                            "🕐 $userDateTime"
+                            userDateTime
                         } else {
-                            "🕐 ${com.zerostress.manager.ui.formatDateTime(doc.getLong("matchTime") ?: 0L)}"
+                            com.zerostress.manager.ui.formatDateTime(doc.getLong("matchTime") ?: 0L)
                         }
 
                         ZSCard(highlight = if (status == "Upcoming") ZsCyan else ZsGreen) {
@@ -131,8 +133,7 @@ private fun ScheduleScreen() {
                                     )
                                     if (isAdmin) {
                                         Spacer(Modifier.height(6.dp))
-                                        TextButton(onClick = { deleteTarget = doc }) {
-                                            Text("🗑️", color = ZsDanger)
+                                        TextButton(onClick = { deleteTarget = doc }) {                                             ZsPngIcon(R.drawable.ic_action_delete, size = 18.dp, tint = ZsDanger)
                                         }
                                     }
                                 }
@@ -147,7 +148,7 @@ private fun ScheduleScreen() {
     deleteTarget?.let { doc ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("🗑️ Delete Schedule") },
+            title = { Text("Delete Schedule") },
             text = { Text("Are you sure you want to delete this schedule?", color = ZsTextSecondary) },
             confirmButton = {
                 TextButton(onClick = {

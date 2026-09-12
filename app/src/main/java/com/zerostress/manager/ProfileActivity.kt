@@ -41,7 +41,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZSBackground
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.ZSCard
@@ -199,7 +201,7 @@ private fun ProfileScreen() {
                                     contentScale = ContentScale.Crop
                                 )
                             } else {
-                                Text("👤", fontSize = 40.sp)
+                                ZsPngIcon(R.drawable.ic_menu_person, size = 72.dp, tint = ZsTextSecondary)
                             }
                         }
                         Spacer(Modifier.height(10.dp))
@@ -215,7 +217,7 @@ private fun ProfileScreen() {
                         Spacer(Modifier.height(12.dp))
                         ZSField(value = editPhone, onValueChange = { editPhone = it }, label = "Phone", keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone)
                         Spacer(Modifier.height(14.dp))
-                        ZSButton(text = "💾 Save Profile", onClick = { saveProfile() }, container = ZsAccent)
+                        ZSButton(text = "Save Profile", onClick = { saveProfile() }, container = ZsAccent)
                         TextButton(onClick = { isEditing = false }, modifier = Modifier.fillMaxWidth()) {
                             Text("Cancel", color = ZsTextMuted)
                         }
@@ -255,7 +257,7 @@ private fun ProfileScreen() {
 
                 Spacer(Modifier.height(16.dp))
                 ZSButton(
-                    text = if (isEditing) "" else "✏️ Edit Profile",
+                    text = if (isEditing) "" else "Edit Profile",
                     onClick = {
                         if (!isEditing) {
                             editName = name

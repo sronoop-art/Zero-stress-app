@@ -32,6 +32,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.fcm.ZSFCMService
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
@@ -59,7 +60,7 @@ class PlayerDashboardActivity : ComponentActivity() {
     }
 }
 
-private data class MenuItem(val emoji: String, val label: String, val target: Class<*>)
+private data class MenuItem(val iconRes: Int, val label: String, val target: Class<*>)
 
 @Composable
 private fun PlayerDashboardScreen() {
@@ -78,22 +79,22 @@ private fun PlayerDashboardScreen() {
 
     val menuItems = remember {
         listOf(
-            MenuItem("🗓️", "Schedule", ScheduleActivity::class.java),
-            MenuItem("🏆", "Leaderboard", LeaderboardActivity::class.java),
-            MenuItem("💬", "Team Chat", ChatActivity::class.java),
-            MenuItem("🎙️", "Voice Chat", VoiceActivity::class.java),
-            MenuItem("👤", "My Profile", ProfileActivity::class.java),
-            MenuItem("🤝", "Friends", FriendsActivity::class.java),
-            MenuItem("🏅", "Seasons", SeasonActivity::class.java),
-            MenuItem("🏅", "Achievements", AchievementsActivity::class.java),
-            MenuItem("📢", "Announcements", AnnouncementsActivity::class.java),
-            MenuItem("🎁", "Daily Rewards", DailyLoginRewardsActivity::class.java),
-            MenuItem("🔥", "Daily Challenges", DailyChallengesActivity::class.java),
-            MenuItem("🎟️", "Battle Pass", BattlePassActivity::class.java),
-            MenuItem("✨", "My Titles", PlayerTitlesActivity::class.java),
-            MenuItem("📊", "Performance", PerformanceGraphsActivity::class.java),
-            MenuItem("🔔", "Notifications", NotificationsActivity::class.java),
-            MenuItem("⚙️", "Settings", SettingsActivity::class.java)
+            MenuItem(R.drawable.ic_menu_calendar, "Schedule", ScheduleActivity::class.java),
+            MenuItem(R.drawable.ic_menu_trophy, "Leaderboard", LeaderboardActivity::class.java),
+            MenuItem(R.drawable.ic_menu_chat, "Team Chat", ChatActivity::class.java),
+            MenuItem(R.drawable.ic_menu_mic, "Voice Chat", VoiceActivity::class.java),
+            MenuItem(R.drawable.ic_menu_person, "My Profile", ProfileActivity::class.java),
+            MenuItem(R.drawable.ic_menu_friends, "Friends", FriendsActivity::class.java),
+            MenuItem(R.drawable.ic_menu_medal, "Seasons", SeasonActivity::class.java),
+            MenuItem(R.drawable.ic_menu_medal, "Achievements", AchievementsActivity::class.java),
+            MenuItem(R.drawable.ic_menu_announce, "Announcements", AnnouncementsActivity::class.java),
+            MenuItem(R.drawable.ic_menu_gift, "Daily Rewards", DailyLoginRewardsActivity::class.java),
+            MenuItem(R.drawable.ic_menu_fire, "Daily Challenges", DailyChallengesActivity::class.java),
+            MenuItem(R.drawable.ic_menu_ticket, "Battle Pass", BattlePassActivity::class.java),
+            MenuItem(R.drawable.ic_menu_sparkles, "My Titles", PlayerTitlesActivity::class.java),
+            MenuItem(R.drawable.ic_menu_chart, "Performance", PerformanceGraphsActivity::class.java),
+            MenuItem(R.drawable.ic_menu_bell, "Notifications", NotificationsActivity::class.java),
+            MenuItem(R.drawable.ic_menu_settings, "Settings", SettingsActivity::class.java)
         )
     }
 
@@ -137,8 +138,7 @@ private fun PlayerDashboardScreen() {
                             fontWeight = FontWeight.ExtraBold
                         )
                     }
-                    Text("🔔", fontSize = 20.sp, modifier = Modifier.padding(end = 4.dp))
-                }
+                    ZsPngIcon(R.drawable.ic_menu_bell, size = 20.dp, tint = ZsGold, modifier = Modifier.padding(end = 4.dp))                }
                 Spacer(Modifier.height(12.dp))
 
                 // Stat cards
@@ -175,7 +175,6 @@ private fun PlayerDashboardScreen() {
                 items(menuItems.size) { i ->
                     val item = menuItems[i]
                     ZSMenuTile(
-                        emoji = item.emoji,
                         label = item.label,
                         accent = when (i) {
                             0 -> ZsCyan
@@ -183,14 +182,15 @@ private fun PlayerDashboardScreen() {
                             2 -> ZsAccent
                             else -> androidx.compose.ui.graphics.Color(0xFF667EEA)
                         },
+                        iconRes = item.iconRes,
                         onClick = { context.startActivity(Intent(context, item.target)) }
                     )
                 }
                 item {
                     ZSMenuTile(
-                        emoji = "🚪",
                         label = "Logout",
                         accent = ZsDanger,
+                        iconRes = R.drawable.ic_menu_logout,
                         onClick = {
                             auth.signOut()
                             context.startActivity(Intent(context, LoginActivity::class.java))

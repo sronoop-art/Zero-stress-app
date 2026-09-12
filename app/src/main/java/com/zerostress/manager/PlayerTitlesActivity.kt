@@ -175,10 +175,8 @@ private fun PlayerTitlesScreen() {
                         Text(title.requirement, color = ZsTextSecondary, fontSize = 11.sp)
                         Spacer(Modifier.height(10.dp))
                         Text(
-                            when {
-                                currentTitle == title.name -> "✓ EQUIPPED"
-                                unlocked -> "UNLOCKED"
-                                else -> "🔒 LOCKED"
+                            when {                                 currentTitle == title.name -> "EQUIPPED"
+                                unlocked -> "UNLOCKED"                                 else -> "LOCKED"
                             },
                             color = when {
                                 currentTitle == title.name -> com.zerostress.manager.ui.theme.ZsAccentDark
