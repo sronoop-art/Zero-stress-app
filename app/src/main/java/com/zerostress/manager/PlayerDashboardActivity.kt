@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.R
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.fcm.ZSFCMService
 import com.zerostress.manager.ui.ZsPngIcon

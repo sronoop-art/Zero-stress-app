@@ -45,6 +45,8 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+// ZsPngIcon lives in this same package (ui/PngIcon.kt) — no import needed
+import com.zerostress.manager.R
 import com.zerostress.manager.ui.theme.ZsBgStart
 import com.zerostress.manager.ui.theme.ZsBgMid
 import com.zerostress.manager.ui.theme.ZsBorder
