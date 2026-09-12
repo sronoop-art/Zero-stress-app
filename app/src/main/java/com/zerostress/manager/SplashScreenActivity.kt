@@ -53,11 +53,18 @@ import kotlinx.coroutines.delay
 class SplashScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // App-start intro sound (res/raw/app_start.mp3) — plays once as the loading screen appears.
+        com.zerostress.manager.audio.ZsSoundManager.playAppStart(this)
         setContent {
             ZeroStressTheme {
                 SplashScreen()
             }
         }
+    }
+
+    override fun onDestroy() {
+        com.zerostress.manager.audio.ZsSoundManager.stop()
+        super.onDestroy()
     }
 
     @Deprecated("Back is disabled on the splash screen")

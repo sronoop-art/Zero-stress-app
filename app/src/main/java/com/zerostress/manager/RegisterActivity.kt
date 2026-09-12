@@ -116,6 +116,7 @@ private fun RegisterScreen() {
                             loading = true
                             db.createUserWithEmailAndPassword(phone, password)
                                 .addOnSuccessListener {
+                                    com.zerostress.manager.audio.ZsSoundManager.playRegisterSuccess(context)
                                     Toast.makeText(context, "Account created", Toast.LENGTH_SHORT).show()
                                     loading = false
                                     (context as? android.app.Activity)?.finish()

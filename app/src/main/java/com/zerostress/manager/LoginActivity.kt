@@ -102,6 +102,7 @@ private fun LoginScreen() {
                             loading = true
                             db.signInWithEmailAndPassword(phone, password)
                                 .addOnSuccessListener {
+                                    com.zerostress.manager.audio.ZsSoundManager.playLoginSuccess(context)
                                     Toast.makeText(context, "Signed in", Toast.LENGTH_SHORT).show()
                                     loading = false
                                     (context as? android.app.Activity)?.finish()
