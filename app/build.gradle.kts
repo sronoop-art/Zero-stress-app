@@ -46,6 +46,12 @@ android {
         // test mode; with a certificate enabled you must use token mode below).
         buildConfigField("String", "AGORA_APP_ID", "\"$agoraAppId\"")
         buildConfigField("String", "AGORA_APP_CERTIFICATE", "\"$agoraAppCertificate\"")
+
+        // Smaller APK: only ship native .so libs for devices people actually use.
+        // (Agora ships armeabi-v7a, arm64-v8a, x86, x86_64 — most phones are ARM.)
+        ndk {
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        }
     }
 
     signingConfigs {
@@ -63,11 +69,22 @@ android {
         release {
             // Comment out the line below if you build release APKs without app/zerostress.jks
             signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false
+
+            // ---- APK SIZE: R8 code shrinking + resource shrinking + obfuscation ----
+            isMinifyEnabled = true
+            isShrinkResources = true
+            // Crash logs stay readable: upload app/build/outputs/mapping/release/mapping.txt
+            // to the Play Console (or keep it safe) before publishing.
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Keep a copy of the obfuscation map so crashes can be de-obfuscated.
+            debugSymbolLevel = "SYMBOL_TABLE"
+        }
+        debug {
+            // Debug builds stay unshrunk for fast iteration.
+            isMinifyEnabled = false
         }
     }
 
@@ -90,6 +107,12 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            // Trim native-lib metadata that ends up duplicated in the APK.
+            excludes += "/META-INF/*.version"
+        }
+        // Compress native libraries into the APK (smaller download, a bit more RAM at runtime).
+        jniLibs {
+            useLegacyPackaging = false
         }
     }
 
@@ -101,14 +124,11 @@ android {
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.13.1")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
 
     // Jetpack Compose
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
-    implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
@@ -127,15 +147,11 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")
-    implementation("com.google.firebase:firebase-storage")
 
     // Firebase App Check (debug provider — replace with a Play Integrity /
     // DeviceCheck provider before releasing to production)
     implementation("com.google.firebase:firebase-appcheck")
     implementation("com.google.firebase:firebase-appcheck-debug")
-
-    // OkHttp (used for signaling helpers)
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 
     // Agora RTC 4.x — real-time voice for the Discord-style channels.
     // NOTE: the Maven Central artifact is "full-sdk" (io.agora.rtc:full-sdk),
@@ -145,7 +161,4 @@ dependencies {
     // Agora official token builder — lets the app generate RTC tokens on-device
     // from AGORA_APP_CERTIFICATE (required when the App Certificate is enabled).
     implementation("io.agora:authentication:2.1.3")
-
-    // SwipeRefreshLayout (kept for pull-to-refresh where needed)
-    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
 }
