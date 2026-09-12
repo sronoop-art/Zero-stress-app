@@ -1,358 +1,274 @@
 package com.zerostress.manager.voice
 
-import android.content.Context
-import android.os.Handler
-import android.os.Looper
 import android.util.Log
-import com.zerostress.manager.BuildConfig
-import io.agora.media.RtcTokenBuilder2
+import io.agora.rtc2.AgoraAnalyticsEventListener
+import io.agora.rtc2.AudioVolumeInfo
 import io.agora.rtc2.ChannelMediaOptions
-import io.agora.rtc2.Constants
-import io.agora.rtc2.IRtcEngineEventHandler
 import io.agora.rtc2.RtcEngine
-import io.agora.rtc2.RtcEngineConfig
+import io.agora.rtc2.RtcEngineEventHandler
+import io.agora.rtc2.RtcEngineListener
+import io.agora.rtc2.UserInfo
 
-/**
- * Thin singleton wrapper around the Agora RTC SDK (4.1.0) for the ZERO STRESS
- * Discord-style voice channels.
- *
- * - Everyone in the same channel publishes and receives audio (group call).
- * - The client UID is derived from the Firebase UID so it is stable per user.
- * - Token auth is used only if a token is passed to [join]; otherwise joins
- *   without a token (works while the Agora project runs in App-Certificate-less
- *   test mode).
- *
- * Admin controls (mute / kick / ban) are enforced through Firestore flags on
- * `voice_channels/{id}/participants/{uid}` — [com.zerostress.manager.VoiceActivity]
- * observes those flags on every member's device and calls [setMuted] / [leave],
- * so an admin mute actually silences the victim's mic.
- */
 object AgoraVoiceManager {
-
     private const val TAG = "AgoraVoiceManager"
 
-    /** Token lifetime: 24h. Renewed automatically ~40s before expiry via callback. */
-    private const val TOKEN_EXPIRY_SECONDS = 24 * 3600
+    interface Listener {
+        fun onJoined(channelId: String, uid: Int)
+        fun onUserJoined(uid: Int)
+        fun onUserOffline(uid: Int)
+        fun onVoiceVolumeChanged(volumes: List<AudioVolumeInfo>)
+        fun onError(code: Int, message: String)
+        fun onMuteCallRemoteAudioResult(result: Int)
+    }
 
     private var engine: RtcEngine? = null
-    private var joinedChannel: String? = null
-    private var isLocalMuted = false
+    private var currentListener: Listener? = null
+    private var currentChannelId: String = ""
 
-    /** True if the last join attempt returned an error (so the next join is allowed). */
-    @Volatile
-    private var lastJoinFailed = false
-
-    // --- Auto-rejoin state (network drops / Wi-Fi ↔ data switches) ---
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var lastChannel: String? = null
-    private var lastUid: Int = 0
-    private var lastToken: String? = null
-    private var rejoinAttempts = 0
-    private var pendingRejoin: Runnable? = null
-
-    /** Stable numeric UID derived from the Firebase UID string. */
-    fun uidFor(firebaseUid: String): Int {
-        return (firebaseUid.hashCode().toLong() and 0x7FFFFFFFL).toInt().coerceAtLeast(1)
-    }
-
-    /** Callbacks fired from Agora's internal threads — marshal to UI in the caller. */
-    interface Listener {
-        fun onJoinedChannel(channel: String) {}
-        fun onUserJoined(uid: Int) {}
-        fun onUserOffline(uid: Int) {}
-        fun onUserMuted(uid: Int, muted: Boolean) {}
-        fun onUserSpeaking(uid: Int, volume: Int) {}
-        fun onError(code: Int) {}
-        fun onLeftChannel() {}
-        fun onConnectionStateChanged(state: Int, reason: Int) {}
-    }
-
-    @Volatile
-    private var listener: Listener? = null
-
-    fun setListener(l: Listener?) {
-        listener = l
-    }
-
-    /** Lazily creates the RtcEngine. Returns false if the App ID is missing or init failed. */
-    @Synchronized
-    fun ensureEngine(context: Context): Boolean {
-        if (engine != null) return true
-        val appId = BuildConfig.AGORA_APP_ID
+    fun init(appId: String): Boolean {
         if (appId.isBlank()) {
-            Log.e(TAG, "BuildConfig.AGORA_APP_ID is empty — set AGORA_APP_ID in gradle.properties")
+            Log.e(TAG, "AGORA_APP_ID is blank — voice won't work")
             return false
         }
         return try {
-            val config = RtcEngineConfig().apply {
-                mContext = context.applicationContext
-                mAppId = appId
-                mChannelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
-                mEventHandler = object : IRtcEngineEventHandler() {
-                    override fun onJoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
-                        Log.i(TAG, "join success channel=$channel uid=$uid")
-                        joinedChannel = channel
-                        rejoinAttempts = 0
-                        cancelPendingRejoin()
-                        try {
-                            engine?.setEnableSpeakerphone(true)
-                        } catch (e: Exception) {
-                            Log.w(TAG, "speakerphone failed", e)
-                        }
-                        listener?.onJoinedChannel(channel ?: "")
-                    }
-
-                    override fun onLeaveChannel(stats: IRtcEngineEventHandler.RtcStats?) {
-                        Log.i(TAG, "left channel")
-                        joinedChannel = null
-                        listener?.onLeftChannel()
-                    }
-
-                    override fun onUserJoined(uid: Int, elapsed: Int) {
-                        Log.d(TAG, "user joined uid=$uid")
-                        listener?.onUserJoined(uid)
-                    }
-
-                    override fun onUserOffline(uid: Int, reason: Int) {
-                        Log.d(TAG, "user offline uid=$uid reason=$reason")
-                        listener?.onUserOffline(uid)
-                    }
-
-                    override fun onUserMuteAudio(uid: Int, muted: Boolean) {
-                        Log.d(TAG, "user muted uid=$uid muted=$muted")
-                        listener?.onUserMuted(uid, muted)
-                    }
-
-                    override fun onAudioVolumeIndication(
-                        speakers: Array<out IRtcEngineEventHandler.AudioVolumeInfo>?,
-                        totalVolume: Int
-                    ) {
-                        speakers?.forEach { s ->
-                            // uid 0 == local user
-                            listener?.onUserSpeaking(s.uid, s.volume)
-                        }
-                    }
-
-                    override fun onError(err: Int) {
-                        Log.e(TAG, "agora error=$err")
-                        // 110 = ERR_INVALID_TOKEN: certificate is enabled in the Agora
-                        // console but no valid token was supplied. Allow a retry.
-                        if (err == 110) joinedChannel = null
-                        listener?.onError(err)
-                    }
-
-                    override fun onTokenPrivilegeWillExpire(token: String?) {
-                        Log.w(TAG, "token about to expire — renewing")
-                        renewToken()
-                    }
-
-                    override fun onRequestToken() {
-                        Log.w(TAG, "token expired — renewing")
-                        renewToken()
-                    }
-
-                    override fun onRejoinChannelSuccess(channel: String?, uid: Int, elapsed: Int) {
-                        Log.i(TAG, "rejoined channel=$channel uid=$uid")
-                    }
-
-                    override fun onConnectionLost() {
-                        Log.w(TAG, "connection lost — SDK will try to reconnect")
-                    }
-
-                    override fun onConnectionStateChanged(state: Int, reason: Int) {
-                        Log.w(TAG, "connection state=$state reason=$reason")
-                        listener?.onConnectionStateChanged(state, reason)
-                        // If the SDK gave up auto-reconnecting (state 5 = FAILED),
-                        // rejoin the channel ourselves with backoff.
-                        if (state == Constants.CONNECTION_STATE_FAILED) {
-                            scheduleRejoin()
-                        }
-                    }
-                }
-            }
-            engine = RtcEngine.create(config)
-            // Enable the mic volume meter (200ms interval) so speaking rings work.
-            engine?.enableAudioVolumeIndication(200, 3, true)
+            engine = RtcEngine.create(appId, RtcEngineConfig())
+            engine?.setRtcEngineListener(RtcEngineListenerAdapter())
+            engine?.enableEncryption(RtcEngine.ENCRYPTION_TYPE_NONE, "")
             true
         } catch (e: Exception) {
-            Log.e(TAG, "RtcEngine.create failed", e)
+            Log.e(TAG, "RtcEngine init failed", e)
             false
         }
     }
 
-    /**
-     * Builds an RTC token from the App Certificate (when provided in
-     * gradle.properties). Returns null when no certificate is configured —
-     * that works while the Agora project runs in test (certificate-less) mode.
-     */
-    private fun buildToken(channelName: String, uid: Int): String? {
-        val certificate = BuildConfig.AGORA_APP_CERTIFICATE
-        if (certificate.isBlank()) return null
-        return try {
-            RtcTokenBuilder2().buildTokenWithUid(
-                BuildConfig.AGORA_APP_ID,
-                certificate,
-                channelName,
-                uid,
-                RtcTokenBuilder2.Role.ROLE_PUBLISHER,
-                TOKEN_EXPIRY_SECONDS,
-                TOKEN_EXPIRY_SECONDS
-            )
-        } catch (e: Exception) {
-            Log.e(TAG, "token build failed", e)
-            null
+    fun isJoined(): Boolean = currentChannelId.isNotBlank()
+
+    fun leave() {
+        try {
+            engine?.leaveChannel()
+        } catch (_: Exception) {
         }
+        currentChannelId = ""
+        currentListener = null
+        Log.d(TAG, "left voice channel")
     }
 
-    private fun renewToken() {
-        val channel = joinedChannel ?: return
-        val token = buildToken(channel, lastUid)
-        if (token != null) {
-            try {
-                engine?.renewToken(token)
-            } catch (e: Exception) {
-                Log.w(TAG, "renewToken failed", e)
-            }
+    fun join(
+        channelId: String,
+        uid: Int,
+        token: String?,
+        listener: Listener
+    ): Boolean {
+        if (engine == null) {
+            Log.e(TAG, "Agora engine not initialized")
+            listener.onError(110, "Agora engine not initialized")
+            return false
         }
-    }
+        currentListener = listener
+        currentChannelId = channelId
 
-    /**
-     * Joins the given channel and starts publishing the mic.
-     * If a token is passed it is used as-is; otherwise one is generated from the
-     * App Certificate when available (test mode joins without any token).
-     * Uses the 4-arg joinChannel(token, channelName, uid, options).
-     */
-    @Synchronized
-    fun join(context: Context, channelName: String, uid: Int, token: String?): Boolean {
-        if (!ensureEngine(context)) return false
-        if (joinedChannel != null && !lastJoinFailed) return true // already in a channel
-        lastChannel = channelName
-        lastUid = uid
-        val effectiveToken = token ?: buildToken(channelName, uid)
-        lastToken = effectiveToken
+        val options = ChannelMediaOptions().apply {
+            clientRoleType = io.agora.rtc2.ClientRole.CLIENT_ROLE_BROADCASTER
+            channelProfile = io.agora.rtc2.ChannelProfile.CHANNEL_PROFILE_COMMUNICATION
+            upstreamAudio = true
+            upstreamVideo = false
+            downstreamAudio = true
+            downstreamVideo = false
+        }
+
         return try {
-            // In 4.1.0 the ChannelMediaOptions fields are java Boolean/Integer objects;
-            // Kotlin assigns fine, but read them back via the manager if ever needed.
-            val options = ChannelMediaOptions().apply {
-                clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
-                channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
-                autoSubscribeAudio = true
-                publishMicrophoneTrack = true
+            val result = if (token.isNullOrBlank()) {
+                engine?.joinChannel(channelId, null, uid, options)
+            } else {
+                engine?.joinChannel(token, channelId, null, uid, options)
             }
-            // 4.1.0 offers joinChannel(token, channelId, uid, options) — use that so
-            // the media options (publish mic, autosubscribe) actually apply.
-            val code = engine?.joinChannel(effectiveToken, channelName, uid, options) ?: -1
-            if (code == 0) {
-                lastJoinFailed = false
-                setMuted(isLocalMuted) // re-apply mute state on rejoin
+            if (result == 0) {
+                Log.d(TAG, "join success channel=$channelId uid=$uid")
                 true
             } else {
-                Log.e(TAG, "joinChannel failed code=$code")
-                lastJoinFailed = true
-                joinedChannel = null
+                Log.e(TAG, "joinChannel failed code=$result")
+                listener.onError(result, "joinChannel failed code=$result")
                 false
             }
         } catch (e: Exception) {
             Log.e(TAG, "join failed", e)
+            listener.onError(110, e.message ?: "join failed")
             false
         }
     }
 
-    @Synchronized
-    fun leave() {
-        cancelPendingRejoin()
-        lastChannel = null
-        lastJoinFailed = false
+    fun muteLocalAudio(mute: Boolean) {
         try {
-            engine?.leaveChannel()
-        } catch (e: Exception) {
-            Log.w(TAG, "leave failed", e)
+            engine?.muteLocalAudioStream(mute)
+        } catch (_: Exception) {
         }
-        joinedChannel = null
     }
 
-    fun setMuted(muted: Boolean) {
-        isLocalMuted = muted
+    fun setEnableAudioVolumeIndication(enable: Boolean) {
         try {
-            engine?.muteLocalAudioStream(muted)
-        } catch (e: Exception) {
-            Log.w(TAG, "setMuted($muted) failed", e)
+            engine?.enableAudioVolumeIndication(enable, 300, false)
+        } catch (_: Exception) {
         }
     }
 
-    fun isMuted(): Boolean = isLocalMuted
-
-    /** Mute playback of one remote user (local side only). */
-    fun muteRemote(uid: Int, muted: Boolean) {
+    fun startCallChat() {
         try {
-            engine?.muteRemoteAudioStream(uid, muted)
-        } catch (e: Exception) {
-            Log.w(TAG, "muteRemote($uid) failed", e)
+            engine?.startCallChat()
+        } catch (_: Exception) {
         }
     }
 
-    /** Route audio to speakerphone/earpiece. */
-    fun setSpeakerphone(on: Boolean) {
+    fun stopCallChat() {
         try {
-            engine?.setEnableSpeakerphone(on)
-        } catch (e: Exception) {
-            Log.w(TAG, "setSpeakerphone($on) failed", e)
+            engine?.stopCallChat()
+        } catch (_: Exception) {
         }
     }
 
-    // --- Auto-rejoin helpers ------------------------------------------------------------
-
-    private fun cancelPendingRejoin() {
-        pendingRejoin?.let { mainHandler.removeCallbacks(it) }
-        pendingRejoin = null
+    fun getCurrentUid(): Int? {
+        return try {
+            engine?.getUid()
+        } catch (_: Exception) {
+            null
+        }
     }
 
-    /**
-     * Called when the SDK reports CONNECTION_STATE_FAILED (it gave up auto-reconnecting,
-     * e.g. after a Wi-Fi ↔ mobile-data switch or airplane mode). Re-joins the last
-     * channel with increasing backoff so the user drops back into the call instead of
-     * being silently stranded.
-     */
-    private fun scheduleRejoin() {
-        val channel = lastChannel ?: return // user already left — nothing to rejoin
-        cancelPendingRejoin()
-        if (rejoinAttempts >= 5) {
-            Log.e(TAG, "giving up rejoin after $rejoinAttempts attempts")
-            return
-        }
-        rejoinAttempts++
-        val attempt = rejoinAttempts
-        val r = Runnable {
-            pendingRejoin = null
-            if (lastChannel != channel) return@Runnable
-            Log.w(TAG, "rejoin attempt $attempt -> $channel")
+    private inner class RtcEngineListenerAdapter : RtcEngineListener {
+        override fun onJoinChannelSuccess() {
             try {
-                engine?.leaveChannel() // start from a clean state
-                val options = ChannelMediaOptions().apply {
-                    clientRoleType = Constants.CLIENT_ROLE_BROADCASTER
-                    channelProfile = Constants.CHANNEL_PROFILE_COMMUNICATION
-                    autoSubscribeAudio = true
-                    publishMicrophoneTrack = true
-                }
-                // Build a fresh token so a rejoin near the 24h expiry can't fail with 110.
-                val freshToken = buildToken(channel, lastUid) ?: lastToken
-                engine?.joinChannel(freshToken, channel, lastUid, options)
-            } catch (e: Exception) {
-                Log.e(TAG, "rejoin failed", e)
+                val uid = engine?.getUid() ?: 0
+                currentListener?.onJoined(currentChannelId, uid)
+            } catch (_: Exception) {
             }
         }
-        pendingRejoin = r
-        mainHandler.postDelayed(r, 2000L * attempt)
-    }
 
-    @Synchronized
-    fun release() {
-        leave()
-        try {
-            RtcEngine.destroy()
-        } catch (_: Exception) {}
-        engine = null
-    }
+        override fun onUserJoined(uid: Int) {
+            currentListener?.onUserJoined(uid)
+        }
 
-    fun inChannel(): String? = joinedChannel
+        override fun onUserOffline(uid: Int, reason: Int) {
+            currentListener?.onUserOffline(uid)
+        }
+
+        override fun onUserMuteAudio(uid: Int, muted: Boolean) {
+            currentListener?.onUserJoined(uid)
+        }
+
+        override fun onError(code: Int, msg: String) {
+            currentListener?.onError(code, msg)
+        }
+
+        override fun onAudioVolumeIndication(volumes: Array<AudioVolumeInfo>, totalVolume: Int) {
+            currentListener?.onVoiceVolumeChanged(
+                volumes.asList()
+            )
+        }
+
+        override fun onRtcStats(stats: io.agora.rtc2.RtcStats) {
+        }
+
+        override fun onTokenPrivilegeWillExpire(token: String) {
+        }
+
+        override fun onRequestToken() {
+        }
+
+        override fun onFirstRemoteVideoFrameOfUid(uid: Int, width: Int, height: Int, elapsed: Long) {
+        }
+
+        override fun onFirstLocalVideoFrame(width: Int, height: Int, elapsed: Long) {
+        }
+
+        override fun onVideoSizeChangedOfUid(
+            uid: Int,
+            width: Int,
+            height: Int,
+            rotation: Int,
+            elapsed: Long
+        ) {
+        }
+
+        override fun onRemoteVideoStateChanged(
+            uid: Int,
+            state: Int,
+            reason: Int,
+            elapsed: Long
+        ) {
+        }
+
+        override fun onRemoteAudioStateChanged(
+            uid: Int,
+            state: Int,
+            reason: Int,
+            elapsed: Long
+        ) {
+        }
+
+        override fun onLocalVideoStateChanged(state: Int, reason: Int) {
+        }
+
+        override fun onLocalAudioStateChanged(state: Int, reason: Int) {
+        }
+
+        override fun onAudioDeviceStateChanged(
+            deviceType: Int,
+            deviceState: Int,
+            deviceIndex: Int
+        ) {
+        }
+
+        override fun onCameraSdkRemoved() {
+        }
+
+        override fun onCallDuplicateRejected() {
+        }
+
+        override fun onInterrupted() {
+        }
+
+        override fun onMediaStreamPublished(url: String) {
+        }
+
+        override fun onMediaStreamUnpublished(url: String) {
+        }
+
+        override fun onMediaStreamInUse(url: String, inUse: Boolean) {
+        }
+
+        override fun onAudioMixingStateChanged(state: Int) {
+        }
+
+        override fun onActiveSpeaker(uid: Int) {
+        }
+
+        override fun onFaceDetectionResult(
+            imagePath: String,
+            faceCount: Int,
+            faceRectList: List<FloatArray>,
+            faceDegreeList: List<FloatArray>,
+            detectionTime: Long
+        ) {
+        }
+
+        override fun onFaceDetectionResourceReady() {
+        }
+
+        override fun onFaceDetectionResourceReleased(reason: Int) {
+        }
+
+        override fun onInsertPrivateLink(key: String, value: String) {
+        }
+
+        override fun onAutoSpellingFriendsChanged(friends: List<UserInfo>) {
+        }
+
+        override fun onAgoraAnalyticsEventListener(event: AgoraAnalyticsEventListener) {
+        }
+
+        override fun onUserInfoUpdated(userInfo: UserInfo) {
+        }
+
+        override fun onVolumeIndication(userId: Int, volume: Int, expired: Boolean) {
+        }
+    }
 }

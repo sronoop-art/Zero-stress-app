@@ -1,64 +1,40 @@
 package com.zerostress.manager
 
-import android.Manifest
-import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.messaging.FirebaseMessaging
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import com.zerostress.manager.fcm.FCMConfig
-import android.util.Log
+import com.zerostress.manager.ui.PasswordField
 import com.zerostress.manager.ui.ZSBackground
-import com.zerostress.manager.ui.ZSButton
-import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.ZSCard
+import com.zerostress.manager.ui.ZSField
+import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.theme.ZeroStressTheme
-import com.zerostress.manager.ui.theme.ZsBgMid
-import com.zerostress.manager.ui.theme.ZsBgStart
-import com.zerostress.manager.ui.theme.ZsCyan
-import com.zerostress.manager.ui.theme.ZsTextMuted
+import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsTextPrimary
-import com.zerostress.manager.ui.theme.ZsTextSecondary
-import com.zerostress.manager.ui.theme.ZsWarning
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -73,274 +49,80 @@ class LoginActivity : ComponentActivity() {
 
 @Composable
 private fun LoginScreen() {
-    val context = LocalContext.current
-    val auth = remember { FirebaseAuth.getInstance() }
-    val db = remember { FirebaseFirestore.getInstance() }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val db = remember { FirebaseAuth.getInstance() }
 
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
-    var showForgotDialog by remember { mutableStateOf(false) }
-    var showResetSent by remember { mutableStateOf(false) }
-
-    val notifPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) FirebaseMessaging.getInstance().subscribeToTopic("all_players")
-    }
-
-    LaunchedEffect(Unit) {
-        FCMConfig.checkFCMConfiguration(context as android.app.Activity)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-    }
-
-    fun handleLogin() {
-        val phoneT = phone.trim()
-        val passwordT = password.trim()
-        if (phoneT.isEmpty()) {
-            Toast.makeText(context, "Enter phone number", Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (passwordT.isEmpty()) {
-            Toast.makeText(context, "Enter password", Toast.LENGTH_SHORT).show()
-            return
-        }
-
-        loading = true
-        val email = "$phoneT@zerostress.local"
-        Log.d(LoginTag, "Login attempt: email=$email")
-        try {
-            auth.signInWithEmailAndPassword(email, passwordT)
-                .addOnSuccessListener { result ->
-                    val uid = result.user?.uid ?: run {
-                        Log.w(LoginTag, "signIn succeeded but result.user was null")
-                        loading = false
-                        Toast.makeText(context, "Login succeeded but user ID missing. Try again.", Toast.LENGTH_LONG).show()
-                        return@addOnSuccessListener
-                    }
-                    Log.d(LoginTag, "Auth signIn succeeded, uid=$uid")
-
-                    // Keep login responsive: resolve locally first, load profile from Firestore after.
-                    db.collection("players").document(uid).get()
-                        .addOnSuccessListener { doc ->
-                            Log.d(LoginTag, "Firestore players/$uid get finished, exists=${doc.exists()}")
-                            loading = false
-                            if (doc.exists()) {
-                                val role = doc.getString("role")
-                                Log.d(LoginTag, "Player role=$role")
-                                saveFcmToken(uid)
-                            } else {
-                                // No profile yet: treat existing auth user as pending-login so the app
-                                // doesn't feel stuck. The dashboard can prompt re/capture later.
-                                Log.w(LoginTag, "No players/$uid doc; proceeding with auth-only login")
-                            }
-                            val role = if (doc.exists()) doc.getString("role") else null
-                            val intent = when (role) {
-                                "admin" -> AdminDashboardActivity::class.java
-                                else -> PlayerDashboardActivity::class.java
-                            }
-                            val i = Intent(context, intent)
-                            i.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            context.startActivity(i)
-                            (context as? android.app.Activity)?.finish()
-                        }
-                        .addOnFailureListener { e ->
-                            Log.w(LoginTag, "Firestore players/$uid get failed: ${e.message}")
-                            loading = false
-                            Toast.makeText(context, "Profile load failed: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                }
-                .addOnFailureListener { e ->
-                    Log.w(LoginTag, "Auth signIn failed: ${e.message}")
-                    loading = false
-                    val msg = when {
-                        e.message?.contains("user-not-found", ignoreCase = true) == true ->
-                            "No account with that phone number"
-                        e.message?.contains("wrong-password", ignoreCase = true) == true ->
-                            "Wrong password"
-                        e.message?.contains("invalid-credential", ignoreCase = true) == true ->
-                            "No account with that phone number"
-                        e.message?.contains("disabled", ignoreCase = true) == true ->
-                            "Email/Password sign-in may be disabled in Firebase console"
-                        e.message?.contains("network", ignoreCase = true) == true ->
-                            "No internet connection"
-                        else -> e.message
-                    }
-                    Toast.makeText(context, "Login failed: $msg", Toast.LENGTH_LONG).show()
-                }
-        } catch (e: Exception) {
-            Log.e(LoginTag, "Login threw synchronously: ${e.message}")
-            loading = false
-            Toast.makeText(context, "Login error: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-
-        // Safety timeout: if auth + Firestore never finish, unblock the UI.
-        kotlinx.coroutines.GlobalScope.launch {
-            delay(30_000)
-            if (loading) {
-                loading = false
-                Toast.makeText(
-                    context,
-                    "Took too long. Check your internet and try again.",
-                    Toast.LENGTH_LONG
-                ).show()
-            }
-        }
-    }
 
     ZSBackground {
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 24.dp)
-                .padding(top = 72.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            // Logo
-            Column(
-                modifier = Modifier
-                    .width(80.dp)
-                    .height(80.dp)
-                    .background(
-                        Brush.linearGradient(listOf(ZsCyan, ZsBgMid)),
-                        RoundedCornerShape(22.dp)
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text("ZS", color = ZsTextPrimary, fontSize = 30.sp, fontWeight = FontWeight.Black)
-            }
-            Spacer(Modifier.height(20.dp))
-            Text("ZERO STRESS", color = ZsTextPrimary, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold)
             Text(
-                "Login to Leaderboards",
-                modifier = Modifier.padding(top = 4.dp),
-                color = ZsTextSecondary,
+                text = "ZERO STRESS",
+                color = ZsAccent,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "Sign in to your account",
+                color = com.zerostress.manager.ui.theme.ZsTextSecondary,
                 fontSize = 14.sp
             )
-            Spacer(Modifier.height(36.dp))
+            Spacer(Modifier.height(24.dp))
 
             ZSCard {
-                Spacer(Modifier.height(8.dp))
-                ZSField(
-                    value = phone,
-                    onValueChange = { phone = it },
-                    label = "Phone Number",
-                    placeholder = "+880 1XXXXXXXXX",
-                    keyboardType = KeyboardType.Phone
-                )
-                Spacer(Modifier.height(14.dp))
-                ZSField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = "Password",
-                    isPassword = true
-                )
-                Spacer(Modifier.height(20.dp))
-                if (loading) {
-                    Row(
-                        Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(color = ZsCyan)
-                    }
-                    Spacer(Modifier.height(12.dp))
-                } else {
-                    ZSButton(text = "LOGIN", onClick = { handleLogin() })
-                }
-                TextButton(
-                    onClick = { showForgotDialog = true },
-                    modifier = Modifier.padding(top = 4.dp)
-                ) {
-                    Text("Forgot Password?", color = ZsTextMuted, fontSize = 13.sp)
-                }
-            }
-
-            Spacer(Modifier.height(24.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("New here?", color = ZsTextMuted, fontSize = 14.sp)
-                Spacer(Modifier.width(6.dp))
-                TextButton(onClick = {
-                    context.startActivity(Intent(context, RegisterActivity::class.java))
-                }) {
-                    Text("Create Account", color = ZsCyan, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-
-    if (showForgotDialog) {
-        var inputPhone by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showForgotDialog = false },
-            title = { Text("Forgot Password") },
-            text = {
                 Column {
-                    Text(
-                        "Enter your phone number so we can send a password reset link",
-                        color = ZsTextSecondary,
-                        fontSize = 14.sp
+                    ZSField(
+                        value = phone,
+                        onValueChange = { phone = it },
+                        label = "Phone or email"
                     )
                     Spacer(Modifier.height(12.dp))
-                    ZSField(
-                        value = inputPhone,
-                        onValueChange = { inputPhone = it },
-                        label = "Phone number",
-                        keyboardType = KeyboardType.Phone
+                    PasswordField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = "Password"
                     )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    showForgotDialog = false
-                    if (inputPhone.trim().isEmpty()) {
-                        Toast.makeText(context, "Enter your phone number", Toast.LENGTH_SHORT).show()
-                    } else {
-                        showResetSent = true
+                    Spacer(Modifier.height(20.dp))
+
+                    Button(
+                        onClick = {
+                            if (phone.isBlank() || password.isBlank()) {
+                                Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
+                                return@Button
+                            }
+                            loading = true
+                            db.signInWithEmailAndPassword(phone, password)
+                                .addOnSuccessListener {
+                                    Toast.makeText(context, "Signed in", Toast.LENGTH_SHORT).show()
+                                    loading = false
+                                    (context as? android.app.Activity)?.finish()
+                                }
+                                .addOnFailureListener { e ->
+                                    Toast.makeText(context, "Login failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                                    loading = false
+                                }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !loading
+                    ) {
+                        Text(
+                            if (loading) "Signing in..." else "Sign in",
+                            color = ZsTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
                     }
-                }) { Text("Send Reset Link", color = ZsCyan) }
-            },
-            dismissButton = {
-                TextButton(onClick = { showForgotDialog = false }) { Text("Cancel") }
-            }
-        )
-    }
-
-    if (showResetSent) {
-        AlertDialog(
-            onDismissRequest = { showResetSent = false },
-            title = { Text("Reset Link Sent") },
-            text = {
-                Text(
-                    "A password reset link has been sent to your account email.\n\nCheck your email to reset your password.",
-                    color = ZsTextSecondary,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = { showResetSent = false }) { Text("OK", color = ZsCyan) }
-            }
-        )
-    }
-}
-
-private const val LoginTag = "ZSM.Login"
-
-private fun saveFcmToken(uid: String) {
-    FirebaseMessaging.getInstance().token
-        .addOnSuccessListener { token ->
-            if (token != null) {
-                FirebaseFirestore.getInstance()
-                    .collection("players").document(uid)
-                    .update("fcmToken", token)
-                    .addOnSuccessListener { }
-                    .addOnFailureListener { }
+                }
             }
         }
-    FirebaseMessaging.getInstance().subscribeToTopic("all_players")
-    FirebaseMessaging.getInstance().subscribeToTopic("match_updates")
-    FirebaseMessaging.getInstance().subscribeToTopic("announcements")
+    }
 }
