@@ -1,0 +1,165 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------------------------------------------------------------------
+    // Helpers
+    // ---------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // Reads the caller's role directly from their player doc.
+    // Kept as get() (single read) — rules are evaluated once per request batch.
+    function callerRole() {
+      return get(/databases/$(database)/documents/players/$(request.auth.uid)).data.role;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && callerRole() == "admin";
+    }
+
+    // ---------------------------------------------------------------------
+    // players — profile / role / stats
+    // Anyone signed in can read the roster (leaderboards, friend search).
+    // Players may edit their own doc but NOT their role or approval state.
+    // Only admins may promote/demote, approve, or ban players.
+    // ---------------------------------------------------------------------
+    match /players/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid)
+                    // allow online-status + fcmToken heartbeat writes
+                    || (isSignedIn()
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['online', 'lastSeen', 'fcmToken']));
+      allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // chat_messages / chat_typing — team chat
+    // ---------------------------------------------------------------------
+    match /chat_messages/{msgId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.senderId == request.auth.uid;
+      // No edits; admins can clean up.
+      allow delete: if isAdmin();
+    }
+
+    match /chat_typing/{uid} {
+      allow read, write: if isSignedIn();
+    }
+
+    // ---------------------------------------------------------------------
+    // voice_channels — Discord-style voice (Agora)
+    // ---------------------------------------------------------------------
+    match /voice_channels/{channelId} {
+      allow read, write: if isSignedIn();
+
+      match /participants/{uid} {
+        allow read, write: if isSignedIn();
+      }
+
+      match /call_chat/{msgId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn()
+                      && request.resource.data.senderId == request.auth.uid;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ---------------------------------------------------------------------
+    // match_schedules / match_logs — schedule + submitted results
+    // ---------------------------------------------------------------------
+    match /match_schedules/{scheduleId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /match_logs/{logId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn(); // players submit their own matches
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // announcements / notifications — admin broadcasts
+    // ---------------------------------------------------------------------
+    match /announcements/{announcementId} {
+      allow read: if isSignedIn();
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isSignedIn() && resource.data.to == request.auth.uid;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // friend_requests / friendships — friend system
+    // ---------------------------------------------------------------------
+    match /friend_requests/{requestId} {
+      allow read: if isSignedIn()
+                  && (resource.data.from == request.auth.uid
+                      || resource.data.to == request.auth.uid);
+      allow create: if isSignedIn()
+                    && request.resource.data.from == request.auth.uid;
+      // Only the recipient accepts/rejects.
+      allow update, delete: if isSignedIn()
+                            && resource.data.to == request.auth.uid;
+    }
+
+    match /friendships/{friendshipId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
+    }
+
+    // ---------------------------------------------------------------------
+    // daily_stats — per-day performance input
+    // ---------------------------------------------------------------------
+    match /daily_stats/{statId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn()
+                            && request.resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // player_achievements / player_titles — gamification
+    // ---------------------------------------------------------------------
+    match /player_achievements/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    match /player_titles/{docId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // seasons — admin-managed 30-day seasons
+    // ---------------------------------------------------------------------
+    match /seasons/{seasonId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // Default deny — anything not matched above is rejected.
+    // ---------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

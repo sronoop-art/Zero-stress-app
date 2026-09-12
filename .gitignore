@@ -22,3 +22,6 @@ functions/*.log
 
 # google-services.json contains project identifiers; keep it local
 app/google-services.json
+
+# Original source snapshot — code now lives unpacked in the repo
+Zerostress.zip/

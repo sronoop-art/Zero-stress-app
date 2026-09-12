@@ -12,7 +12,7 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-s
 .bg-grid{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(ellipse 600px 400px at 20% 20%,rgba(56,189,248,0.06) 0%,transparent 70%),radial-gradient(ellipse 500px 500px at 80% 70%,rgba(14,165,233,0.04) 0%,transparent 70%)}
 .bg-dots{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:radial-gradient(circle,rgba(56,189,248,0.12) 1px,transparent 1px);background-size:32px 32px;opacity:0.3}
 .page{position:relative;z-index:1;max-width:640px;margin:0 auto;padding:40px 20px 60px;display:flex;flex-direction:column;align-items:center;text-align:center}
-.app-icon{width:100px;height:100px;border-radius:24px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,#2563eb 100%);display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;color:#090d16;margin-bottom:24px;box-shadow:0 0 40px var(--glow),0 8px 32px rgba(0,0,0,0.4);animation:float 3s ease-in-out infinite}
+.app-icon{width:100px;height:100px;border-radius:24px;background:linear-gradient(135deg,var(--accent) 0%,var(--accent2) 50%,#2563eb 100%);display:flex;align-items:center;justify-content:center;font-size:38px;font-weight:900;color:#090d16;margin-bottom:24px;box-shadow:0 0 40px var(--glow),0 8px 32px rgba(0,0,0,0.4);animation:float 3s ease-in-out infinite}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
 .app-name{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;color:#fff;letter-spacing:-0.5px;margin-bottom:4px}
 .app-name span{color:var(--accent)}
@@ -45,7 +45,11 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-s
 <div class="bg-grid"></div>
 <div class="bg-dots"></div>
 <div class="page">
-<div class="app-icon"><img src="logo.png" alt="Zero Stress" style="width:100%;height:100%;border-radius:24px;object-fit:cover"></div>
+<!-- Logo: drop your 512x512 logo.png next to this file to replace the placeholder -->
+<div class="app-icon" id="appIcon">ZS</div>
+<script>
+(function(){var i=new Image();i.onload=function(){var el=document.getElementById("appIcon");el.innerHTML="";el.style.padding="0";var img=i.cloneNode();img.style.width="100%";img.style.height="100%";img.style.borderRadius="24px";img.style.objectFit="cover";img.alt="Zero Stress";el.appendChild(img);};i.src="logo.png";})();
+</script>
 <h1 class="app-name">ZERO <span>STRESS</span></h1>
 <p class="app-version">Performance &amp; Leaderboard Manager &bull; v2.2</p>
 <p class="app-tagline">Track matches, climb leaderboards, chat with your squad, and dominate with real-time stats powered by Firebase Cloud.</p>
