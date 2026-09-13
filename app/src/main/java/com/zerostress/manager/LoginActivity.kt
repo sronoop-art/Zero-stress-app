@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.ui.PasswordField
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSCard
@@ -53,6 +54,7 @@ class LoginActivity : ComponentActivity() {
 private fun LoginScreen() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val db = remember { FirebaseAuth.getInstance() }
+    val fs = remember { FirebaseFirestore.getInstance() }
 
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -116,7 +118,7 @@ private fun LoginScreen() {
                                     loading = false
                                     val uid = result.user?.uid
                                     if (uid != null) {
-                                        db.collection("players").document(uid).get()
+                                        fs.collection("players").document(uid).get()
                                             .addOnSuccessListener { doc ->
                                                 val target = if (doc.exists() && doc.getString("role") == "admin")
                                                     AdminDashboardActivity::class.java
