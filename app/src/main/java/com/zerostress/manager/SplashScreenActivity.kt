@@ -118,7 +118,7 @@ private fun SplashScreen() {
                 if (com.zerostress.manager.ota.ZsRemoteConfig.contentPackVersion() > 0) return@withContext
                 kotlinx.coroutines.delay(300)
             }
-            if (com.zerostress.manager.ota.ZsRemoteConfig.updateAvailable(context)) {
+            if (com.zerostress.manager.ota.ZsAssetUpdater.updateAvailable(context)) {
                 val ok = com.zerostress.manager.ota.ZsAssetUpdater.downloadIfNewer(context)
                 android.util.Log.d("SplashScreen", "asset pack update: $ok")
             }
@@ -274,7 +274,7 @@ private fun SplashScreen() {
                     onClick = {
                         try {
                             if (updateUrl.isNotBlank()) {
-                                startActivity(
+                                context.startActivity(
                                     android.content.Intent(
                                         android.content.Intent.ACTION_VIEW,
                                         android.net.Uri.parse(updateUrl)
@@ -282,13 +282,13 @@ private fun SplashScreen() {
                                 )
                             } else {
                                 Toast.makeText(
-                                    this@SplashScreenActivity,
+                                    context,
                                     "No download link configured",
                                     Toast.LENGTH_LONG
                                 ).show()
                             }
                         } catch (e: Exception) {
-                            Toast.makeText(this@SplashScreenActivity, "Cannot open link", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Cannot open link", Toast.LENGTH_SHORT).show()
                         }
                     }
                 ) { Text("Update Now", color = ZsAccent, fontWeight = FontWeight.Bold) }
