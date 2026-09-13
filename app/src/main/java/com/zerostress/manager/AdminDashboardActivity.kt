@@ -264,13 +264,27 @@ private fun AdminDashboardScreen() {
                             "Edit Name" to 0,
                             "Change Admin Role" to 1,
                             "Set Game Role" to 2,
-                            "Approve" to 3,
-                            "Reject" to 4,
-                            "Ban" to 5,
-                            "Delete Player" to 6
+                            "Log Daily Stats" to 3,
+                            "Approve" to 4,
+                            "Reject" to 5,
+                            "Ban" to 6,
+                            "Delete Player" to 7
                         ).forEach { (label, idx) ->
                             TextButton(
-                                onClick = { selectedAction = idx },
+                                onClick = {
+                                    if (idx == 3) {
+                                        // Open Daily Input preloaded with this player
+                                        val i = Intent(context, DailyInputActivity::class.java).apply {
+                                            putExtra(DailyInputActivity.EXTRA_PLAYER_ID, player.id)
+                                            putExtra(DailyInputActivity.EXTRA_PLAYER_NAME, playerName)
+                                        }
+                                        context.startActivity(i)
+                                        selectedAction = null
+                                        targetPlayer = null
+                                    } else {
+                                        selectedAction = idx
+                                    }
+                                },
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Text(label, color = ZsTextPrimary, modifier = Modifier.fillMaxWidth())
@@ -307,10 +321,10 @@ private fun AdminDashboardScreen() {
                 if (action != null) {
                     LaunchedEffect(action) {
                         when (action) {
-                            3 -> updateStatus(player.id, "approved")
-                            4 -> updateStatus(player.id, "rejected")
-                            5 -> updateStatus(player.id, "banned")
-                            6 -> db.collection("players").document(player.id).delete()
+                            4 -> updateStatus(player.id, "approved")
+                            5 -> updateStatus(player.id, "rejected")
+                            6 -> updateStatus(player.id, "banned")
+                            7 -> db.collection("players").document(player.id).delete()
                                 .addOnSuccessListener {
                                     Toast.makeText(context, "Player deleted!", Toast.LENGTH_SHORT).show()
                                     loadPlayers()

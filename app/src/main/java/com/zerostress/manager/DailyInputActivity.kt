@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -46,22 +45,45 @@ import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.ZSTopBar
 
+/**
+ * Daily stats input.
+ *
+ * - Opened from the PLAYER dashboard: logs stats for the signed-in player.
+ * - Opened from the ADMIN dashboard: passes "playerId" + "playerName" extras,
+ *   shows a PLAYER picker at the top and the stats are saved for that player.
+ */
 class DailyInputActivity : ComponentActivity() {
+    companion object {
+        const val EXTRA_PLAYER_ID = "playerId"
+        const val EXTRA_PLAYER_NAME = "playerName"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val presetPlayerId = intent.getStringExtra(EXTRA_PLAYER_ID)
+        val presetPlayerName = intent.getStringExtra(EXTRA_PLAYER_NAME)
         setContent {
             com.zerostress.manager.ui.theme.ZeroStressTheme {
-                DailyInputScreen()
+                DailyInputScreen(presetPlayerId, presetPlayerName)
             }
         }
     }
 }
 
 @Composable
-private fun DailyInputScreen() {
+private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?) {
     val context = LocalContext.current
     val db = FirebaseFirestore.getInstance()
     val uid = com.google.firebase.auth.FirebaseAuth.getInstance().uid
+
+    // Which player the entry belongs to. Defaults to the signed-in user;
+    // admins get a picker (preselected with the player they tapped).
+    var targetPlayerId by remember { mutableStateOf(presetPlayerId ?: uid ?: "") }
+    var targetPlayerName by remember { mutableStateOf(presetPlayerName ?: "") }
+    var isAdminMode by remember { mutableStateOf(presetPlayerId != null) }
+
+    var roster by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) } // uid to name
+    var showPlayerPicker by remember { mutableStateOf(false) }
 
     var kills by remember { mutableStateOf("") }
     var deaths by remember { mutableStateOf("") }
@@ -74,16 +96,27 @@ private fun DailyInputScreen() {
 
     val matchTypes = listOf("Casual", "Ranked", "Tournament", "Scrim")
 
-    LaunchedEffect(Unit) {
-        if (uid == null) return@LaunchedEffect
+    // Resolve the current target's display name when not preset by the admin.
+    LaunchedEffect(targetPlayerId, presetPlayerName) {
+        if (targetPlayerName.isNotEmpty()) return@LaunchedEffect
+        if (targetPlayerId.isEmpty()) return@LaunchedEffect
+        db.collection("players").document(targetPlayerId).get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) targetPlayerName = doc.getString("name") ?: "Player"
+            }
+    }
+
+    // Recent entries of the selected player.
+    LaunchedEffect(targetPlayerId, recent) {
+        if (targetPlayerId.isEmpty()) return@LaunchedEffect
         db.collection("daily_stats")
-            .whereEqualTo("playerId", uid)
+            .whereEqualTo("playerId", targetPlayerId)
             .orderBy("timestamp", Query.Direction.DESCENDING)
             .limit(5)
             .get()
             .addOnSuccessListener { snap ->
                 recent = if (snap.isEmpty) {
-                    "No entries yet"
+                    ""
                 } else {
                     snap.documents.joinToString("\n") { doc ->
                         val k = doc.getLong("kills") ?: 0
@@ -92,10 +125,28 @@ private fun DailyInputScreen() {
                         val dm = doc.getLong("damage") ?: 0
                         val h = doc.getLong("hours") ?: 0
                         val mt = doc.getString("matchType") ?: "-"
-                        "$mt — ${k}K/${d}D/${a}A · $dm dmg · ${h}h"
+                        "$mt - ${k}K/${d}D/${a}A - $dm dmg - ${h}h"
                     }
                 }
             }
+    }
+
+    // Admins can re-pick any player; load the roster lazily when needed.
+    fun openPlayerPicker() {
+        if (roster.isEmpty()) {
+            db.collection("players").get()
+                .addOnSuccessListener { snap ->
+                    roster = snap.documents
+                        .filter { it.getString("role") != "admin" }
+                        .map { (it.id) to (it.getString("name") ?: "Unknown") }
+                    showPlayerPicker = true
+                }
+                .addOnFailureListener {
+                    Toast.makeText(context, "Failed to load players", Toast.LENGTH_SHORT).show()
+                }
+        } else {
+            showPlayerPicker = true
+        }
     }
 
     fun submit() {
@@ -108,13 +159,13 @@ private fun DailyInputScreen() {
             Toast.makeText(context, "Fill every field with a valid number", Toast.LENGTH_SHORT).show()
             return
         }
-        if (uid == null) {
-            Toast.makeText(context, "Not signed in", Toast.LENGTH_SHORT).show()
+        if (targetPlayerId.isEmpty()) {
+            Toast.makeText(context, "Select a player first", Toast.LENGTH_SHORT).show()
             return
         }
         loading = true
         val entry = mapOf(
-            "playerId" to uid,
+            "playerId" to targetPlayerId,
             "kills" to k,
             "deaths" to d,
             "assists" to a,
@@ -126,9 +177,10 @@ private fun DailyInputScreen() {
         db.collection("daily_stats").add(entry)
             .addOnSuccessListener {
                 loading = false
-                Toast.makeText(context, "Stats logged", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "Stats logged for $targetPlayerName", Toast.LENGTH_SHORT).show()
                 kills = ""; deaths = ""; assists = ""; damage = ""; hours = ""
                 matchType = null
+                recent = "" // triggers the recent-entries reload
             }
             .addOnFailureListener { e ->
                 loading = false
@@ -152,6 +204,39 @@ private fun DailyInputScreen() {
             ZSCard {
                 Text("TODAY'S PERFORMANCE", color = com.zerostress.manager.ui.theme.ZsTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
+
+                // Player picker (admin mode only)
+                if (isAdminMode) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { openPlayerPicker() }
+                            .background(
+                                color = com.zerostress.manager.ui.theme.ZsBgMid,
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "PLAYER",
+                                color = com.zerostress.manager.ui.theme.ZsTextMuted,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                targetPlayerName.ifEmpty { "Tap to select player" },
+                                color = if (targetPlayerName.isNotEmpty()) com.zerostress.manager.ui.theme.ZsTextPrimary else com.zerostress.manager.ui.theme.ZsTextMuted,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                        Text("CHANGE", color = com.zerostress.manager.ui.theme.ZsCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.height(14.dp))
+                }
+
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
                     Box(Modifier.weight(1f)) { ZSField(value = kills, onValueChange = { kills = it }, label = "Kills", keyboardType = KeyboardType.Number) }
                     Spacer(Modifier.width(10.dp))
@@ -171,17 +256,62 @@ private fun DailyInputScreen() {
                     onSelect = { matchType = it }
                 )
                 Spacer(Modifier.height(20.dp))
-                ZSButton(text = if (loading) "Saving…" else "Log stats", enabled = !loading, onClick = { submit() })
+                ZSButton(text = if (loading) "Saving..." else "Log stats", enabled = !loading, onClick = { submit() })
             }
 
-            Spacer(Modifier.height(20.dp))
-            ZSCard {
-                Text("RECENT ENTRIES", color = com.zerostress.manager.ui.theme.ZsTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(10.dp))
-                Text(recent.ifEmpty { "No entries yet" }, color = com.zerostress.manager.ui.theme.ZsTextMuted, fontSize = 13.sp)
+            if (recent.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                ZSCard {
+                    Text("RECENT ENTRIES - ${targetPlayerName.ifEmpty { "selected player" }}", color = com.zerostress.manager.ui.theme.ZsTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(10.dp))
+                    Text(recent, color = com.zerostress.manager.ui.theme.ZsTextMuted, fontSize = 13.sp)
+                }
             }
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    // --- Player selection dialog (admin) ---
+    if (showPlayerPicker) {
+        AlertDialog(
+            onDismissRequest = { showPlayerPicker = false },
+            title = { Text("Select Player") },
+            text = {
+                Column {
+                    if (roster.isEmpty()) {
+                        Text("No players found", color = com.zerostress.manager.ui.theme.ZsTextMuted)
+                    } else {
+                        Column(
+                            Modifier
+                                .verticalScroll(rememberScrollState())
+                                .height(320.dp)
+                        ) {
+                            roster.forEach { (id, name) ->
+                                TextButton(
+                                    onClick = {
+                                        targetPlayerId = id
+                                        targetPlayerName = name
+                                        recent = ""
+                                        showPlayerPicker = false
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        name,
+                                        color = if (id == targetPlayerId) com.zerostress.manager.ui.theme.ZsCyan else com.zerostress.manager.ui.theme.ZsTextPrimary,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showPlayerPicker = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
@@ -217,7 +347,7 @@ private fun ZSDropdown(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                selected ?: "Select…",
+                selected ?: "Select...",
                 color = if (selected != null) com.zerostress.manager.ui.theme.ZsTextPrimary else com.zerostress.manager.ui.theme.ZsTextMuted,
                 fontSize = 15.sp
             )
