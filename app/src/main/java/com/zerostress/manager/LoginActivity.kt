@@ -42,6 +42,9 @@ import com.zerostress.manager.ui.theme.ZsTextSecondary
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // If the user lands here before the splash finished (notification, back
+        // stack restore), make sure the loading loop is running.
+        com.zerostress.manager.audio.ZsSoundManager.startLoadingLoop(this)
         setContent {
             ZeroStressTheme {
                 LoginScreen()

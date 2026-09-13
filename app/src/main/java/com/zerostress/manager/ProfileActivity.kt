@@ -80,6 +80,7 @@ private fun ProfileScreen() {
     var name by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
     var score by remember { mutableStateOf(0L) }
+    var equippedTitle by remember { mutableStateOf("") }
     var level by remember { mutableStateOf(1) }
     var rank by remember { mutableStateOf("Iron") }
     var kills by remember { mutableStateOf(0L) }
@@ -123,6 +124,7 @@ private fun ProfileScreen() {
                     name = doc.getString("name") ?: ""
                     phone = doc.getString("phone") ?: ""
                     score = doc.getLong("score") ?: 0
+                    equippedTitle = doc.getString("title") ?: ""
                     level = (doc.getLong("level") ?: 1).toInt()
                     rank = doc.getString("rank") ?: "Iron"
                     kills = doc.getLong("kills") ?: 0
@@ -186,26 +188,43 @@ private fun ProfileScreen() {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Box(
-                            Modifier
-                                .size(88.dp)
-                                .background(ZsPrimary, CircleShape)
-                                .clickable { avatarPicker.launch("image/*") },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (avatarBitmap != null) {
-                                Image(
-                                    bitmap = avatarBitmap!!.asImageBitmap(),
-                                    contentDescription = "Avatar",
-                                    modifier = Modifier.size(88.dp),
-                                    contentScale = ContentScale.Crop
-                                )
-                            } else {
-                                ZsPngIcon(R.drawable.ic_menu_person, size = 72.dp, tint = ZsTextSecondary)
+                        // Avatar with rank-title frame (frame_<rank>.png when equipped
+                        // title matches a rank; colored ring fallback otherwise).
+                        val titleObj = com.zerostress.manager.models.ZsRankTitles.byName(equippedTitle)
+                        val frameRes = if (titleObj != null)
+                            com.zerostress.manager.models.ZsRankTitles.frameRes(context, titleObj) else 0
+                        val frameColor = if (titleObj != null)
+                            Color(titleObj.color) else ZsPrimary
+                        com.zerostress.manager.ui.ZsAvatarFrame(frameRes, frameColor, 88.dp) {
+                            Box(
+                                Modifier
+                                    .size(88.dp)
+                                    .background(ZsPrimary, CircleShape)
+                                    .clickable { avatarPicker.launch("image/*") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (avatarBitmap != null) {
+                                    Image(
+                                        bitmap = avatarBitmap!!.asImageBitmap(),
+                                        contentDescription = "Avatar",
+                                        modifier = Modifier.size(88.dp),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                } else {
+                                    ZsPngIcon(R.drawable.ic_menu_person, size = 72.dp, tint = ZsTextSecondary)
+                                }
                             }
                         }
                         Spacer(Modifier.height(10.dp))
                         Text(name, color = ZsTextPrimary, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
+                        if (equippedTitle.isNotEmpty()) {
+                            Text(
+                                equippedTitle,
+                                color = frameColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                         Text("+880 $phone", color = ZsTextMuted, fontSize = 13.sp)
                         Spacer(Modifier.height(14.dp))
                     }

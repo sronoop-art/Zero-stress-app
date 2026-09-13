@@ -53,8 +53,9 @@ import kotlinx.coroutines.delay
 class SplashScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // App-start intro sound (res/raw/app_start.mp3) — plays once as the loading screen appears.
-        com.zerostress.manager.audio.ZsSoundManager.playAppStart(this)
+        // Loading-screen audio (res/raw/app_start.mp3) - LOOPS from app start until
+        // the player signs in / registers successfully, or a dashboard opens.
+        com.zerostress.manager.audio.ZsSoundManager.startLoadingLoop(this)
         setContent {
             ZeroStressTheme {
                 SplashScreen()
@@ -63,7 +64,11 @@ class SplashScreenActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
-        com.zerostress.manager.audio.ZsSoundManager.stop()
+        // The loop keeps playing on the Login/Register screens; only pause if the
+        // whole app is leaving (isFinishing). Login stops it for good on success.
+        if (isFinishing) {
+            com.zerostress.manager.audio.ZsSoundManager.stopLoadingLoop()
+        }
         super.onDestroy()
     }
 
@@ -96,6 +101,8 @@ private fun SplashScreen() {
     var ready by remember { mutableStateOf(false) }
 
     fun navigateToMain() {
+        // A dashboard is opening - the loading loop's job is done.
+        com.zerostress.manager.audio.ZsSoundManager.stopLoadingLoop()
         if (auth.currentUser != null) {
             val userId = auth.currentUser!!.uid
             // Save FCM token so push notifications work after app restart

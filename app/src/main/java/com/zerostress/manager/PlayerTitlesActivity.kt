@@ -41,6 +41,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.models.ZsRankTitles
+import com.zerostress.manager.models.ZsRankTitles.RankTitle
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.ZsPngIcon
@@ -62,27 +64,6 @@ class PlayerTitlesActivity : ComponentActivity() {
         }
     }
 }
-
-// 8 rank titles, unlocked by score (same ladder as Player.getRankTier, extended upward).
-// id = PNG name suffix: the badge loads ic_title_<id>.png from app/src/main/res/drawable/.
-private data class RankTitle(
-    val id: String,
-    val name: String,
-    val requirement: String,
-    val unlockScore: Long,
-    val color: Color
-)
-
-private val RANK_TITLES = listOf(
-    RankTitle("bronze", "Bronze", "Reach 600 score", 600, Color(0xFFCD7F32)),
-    RankTitle("silver", "Silver", "Reach 1,200 score", 1200, Color(0xFFC0C0C0)),
-    RankTitle("gold", "Gold", "Reach 2,000 score", 2000, Color(0xFFFFD700)),
-    RankTitle("platinum", "Platinum", "Reach 3,000 score", 3000, Color(0xFFE5E4E2)),
-    RankTitle("diamond", "Diamond", "Reach 4,000 score", 4000, Color(0xFF4FC3F7)),
-    RankTitle("heroic", "Heroic", "Reach 5,000 score", 5000, Color(0xFFB388FF)),
-    RankTitle("master", "Master", "Reach 7,000 score", 7000, Color(0xFFFF5252)),
-    RankTitle("grandmaster", "Grandmaster", "Reach 10,000 score", 10000, Color(0xFFFFD54F))
-)
 
 @Composable
 private fun PlayerTitlesScreen() {
@@ -127,8 +108,8 @@ private fun PlayerTitlesScreen() {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(RANK_TITLES.size) { i ->
-                    val title = RANK_TITLES[i]
+                items(ZsRankTitles.ALL.size) { i ->
+                    val title = ZsRankTitles.ALL[i]
                     val unlocked = score >= title.unlockScore
                     val equipped = currentTitle == title.name
                     Column(
@@ -149,7 +130,7 @@ private fun PlayerTitlesScreen() {
                             .padding(14.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        TitleBadge(title, unlocked, equipped)
+                        TitleBadge(context, title, unlocked, equipped)
                         Spacer(Modifier.height(8.dp))
                         Text(
                             title.name,
@@ -209,29 +190,25 @@ private fun PlayerTitlesScreen() {
 }
 
 /**
- * Rank badge: shows ic_title_<id>.png if you added it to res/drawable/,
+ * Rank badge: shows ic_title_<id>.png if added to res/drawable/,
  * otherwise a colored medallion with the rank's first letter.
  * Equipped titles get an accent ring.
  */
 @Composable
-private fun TitleBadge(title: RankTitle, unlocked: Boolean, equipped: Boolean) {
-    val context = LocalContext.current
-    val resId = remember(title.id) {
-        context.resources.getIdentifier(
-            "ic_title_${title.id}", "drawable", context.packageName
-        )
-    }
-    val badgeColor = if (unlocked) title.color else ZsTextMuted.copy(alpha = 0.6f)
+private fun TitleBadge(context: android.content.Context, title: RankTitle, unlocked: Boolean, equipped: Boolean) {
+    val resId = remember(title.id) { ZsRankTitles.badgeRes(context, title) }
+    val badgeColor = Color(title.color)
+    val displayColor = if (unlocked) badgeColor else ZsTextMuted.copy(alpha = 0.6f)
 
     Box(
         modifier = Modifier
             .size(64.dp)
             .alpha(if (unlocked) 1f else 0.45f)
             .clip(CircleShape)
-            .background(badgeColor.copy(alpha = 0.15f))
+            .background(displayColor.copy(alpha = 0.15f))
             .border(
                 width = 2.dp,
-                color = if (equipped) ZsAccent else badgeColor,
+                color = if (equipped) ZsAccent else displayColor,
                 shape = CircleShape
             ),
         contentAlignment = Alignment.Center
@@ -241,7 +218,7 @@ private fun TitleBadge(title: RankTitle, unlocked: Boolean, equipped: Boolean) {
         } else {
             Text(
                 title.name.take(1),
-                color = badgeColor,
+                color = displayColor,
                 fontWeight = FontWeight.Black,
                 fontSize = 26.sp
             )

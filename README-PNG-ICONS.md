@@ -64,6 +64,29 @@ Recommended: square PNG, 128x128 px, transparent background.
 Total: **8 PNG files**. These are optional - if a badge PNG is missing the app
 shows a colored medallion with the rank letter instead (no build error).
 
+## Avatar frames (My Profile screen - 8 rank frames)
+
+The player's avatar on My Profile gets a decorative frame based on the
+equipped title. A player whose title is Bronze automatically wears the
+bronze frame PNG. Drawn over a circular 88dp avatar, scaled to 112dp -
+so make each frame a **square PNG, 256x256 px, transparent background,
+with a transparent circular hole in the middle** (a ring).
+
+| File name | Frame for title |
+|---|---|
+| `frame_bronze.png` | Bronze |
+| `frame_silver.png` | Silver |
+| `frame_gold.png` | Gold |
+| `frame_platinum.png` | Platinum |
+| `frame_diamond.png` | Diamond |
+| `frame_heroic.png` | Heroic |
+| `frame_master.png` | Master |
+| `frame_grandmaster.png` | Grandmaster |
+
+Total: **8 PNG files**. Optional - when a frame PNG is missing, a colored
+ring in the title's color is drawn instead (no build error). The frame only
+appears after the player equips that title on the My Titles screen.
+
 ## Small action icons
 
 | File name | Used for |
