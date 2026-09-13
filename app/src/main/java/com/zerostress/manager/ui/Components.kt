@@ -27,12 +27,15 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -312,6 +315,40 @@ fun ZSStat(
 }
 
 /**
+ * Password text field with a show/hide toggle icon (vector drawables, no
+ * material-icons-extended dependency needed).
+ */
+@Composable
+fun PasswordField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier
+) {
+    var visible by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    ZSField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        isPassword = !visible,
+        modifier = modifier,
+        trailing = {
+            IconButton(
+                onClick = { visible = !visible },
+                modifier = Modifier.size(24.dp)
+            ) {
+                ZsPngIcon(
+                    if (visible) R.drawable.ic_visibility_off else R.drawable.ic_visibility,
+                    size = 22.dp,
+                    tint = ZsTextMuted,
+                    contentDescription = if (visible) "Hide password" else "Show password"
+                )
+            }
+        }
+    )
+}
+
+/**
  * Grid tile used for dashboard navigation buttons.
  * Pass [iconRes] (a PNG drawable id, e.g. R.drawable.ic_menu_calendar) instead of
  * [emoji] — the emoji parameter is kept only for legacy callers and is ignored
@@ -319,7 +356,7 @@ fun ZSStat(
  */
 @Composable
 fun ZSMenuTile(
-    emoji: String,
+    emoji: String = "",
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,

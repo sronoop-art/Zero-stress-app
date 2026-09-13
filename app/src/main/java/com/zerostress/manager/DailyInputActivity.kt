@@ -125,7 +125,8 @@ private fun DailyInputScreen() {
         )
         db.collection("daily_stats").add(entry)
             .addOnSuccessListener {
-                loading = false                 Toast.makeText(context, "Stats logged", Toast.LENGTH_SHORT).show()
+                loading = false
+                Toast.makeText(context, "Stats logged", Toast.LENGTH_SHORT).show()
                 kills = ""; deaths = ""; assists = ""; damage = ""; hours = ""
                 matchType = null
             }
