@@ -44,6 +44,26 @@ Good sources for white icon PNGs: [fonts.google.com/icons](https://fonts.google.
 | `ic_menu_channels.png` | Voice Channels admin tile |
 | `ic_menu_crown.png` | Admin crown in top bar |
 
+## Title badges (My Titles screen - 8 rank titles)
+
+Shown as round badges on the My Titles screen. These are displayed **with their
+own colors** (no tint), so use the real rank colors (bronze, silver, gold...).
+Recommended: square PNG, 128x128 px, transparent background.
+
+| File name | Title | Unlocks at |
+|---|---|---|
+| `ic_title_bronze.png` | Bronze | 600 score |
+| `ic_title_silver.png` | Silver | 1,200 score |
+| `ic_title_gold.png` | Gold | 2,000 score |
+| `ic_title_platinum.png` | Platinum | 3,000 score |
+| `ic_title_diamond.png` | Diamond | 4,000 score |
+| `ic_title_heroic.png` | Heroic | 5,000 score |
+| `ic_title_master.png` | Master | 7,000 score |
+| `ic_title_grandmaster.png` | Grandmaster | 10,000 score |
+
+Total: **8 PNG files**. These are optional - if a badge PNG is missing the app
+shows a colored medallion with the rank letter instead (no build error).
+
 ## Small action icons
 
 | File name | Used for |

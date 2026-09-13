@@ -5,16 +5,20 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -25,22 +29,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSTopBar
+import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCard
 import com.zerostress.manager.ui.theme.ZsCyan
-import com.zerostress.manager.ui.theme.ZsPrimary
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
@@ -56,13 +63,26 @@ class PlayerTitlesActivity : ComponentActivity() {
     }
 }
 
-private data class TitleItem(
+// 8 rank titles, unlocked by score (same ladder as Player.getRankTier, extended upward).
+// id = PNG name suffix: the badge loads ic_title_<id>.png from app/src/main/res/drawable/.
+private data class RankTitle(
+    val id: String,
     val name: String,
     val requirement: String,
-    val id: String
-) {
-    var unlocked: Boolean = false
-}
+    val unlockScore: Long,
+    val color: Color
+)
+
+private val RANK_TITLES = listOf(
+    RankTitle("bronze", "Bronze", "Reach 600 score", 600, Color(0xFFCD7F32)),
+    RankTitle("silver", "Silver", "Reach 1,200 score", 1200, Color(0xFFC0C0C0)),
+    RankTitle("gold", "Gold", "Reach 2,000 score", 2000, Color(0xFFFFD700)),
+    RankTitle("platinum", "Platinum", "Reach 3,000 score", 3000, Color(0xFFE5E4E2)),
+    RankTitle("diamond", "Diamond", "Reach 4,000 score", 4000, Color(0xFF4FC3F7)),
+    RankTitle("heroic", "Heroic", "Reach 5,000 score", 5000, Color(0xFFB388FF)),
+    RankTitle("master", "Master", "Reach 7,000 score", 7000, Color(0xFFFF5252)),
+    RankTitle("grandmaster", "Grandmaster", "Reach 10,000 score", 10000, Color(0xFFFFD54F))
+)
 
 @Composable
 private fun PlayerTitlesScreen() {
@@ -70,62 +90,20 @@ private fun PlayerTitlesScreen() {
     val db = remember { FirebaseFirestore.getInstance() }
     val userId = FirebaseAuth.getInstance().uid
 
-    val titles = remember {
-        listOf(
-            TitleItem("Iron Warrior", "Begin your journey", "iron"),
-            TitleItem("Bronze Fighter", "Reach 100 kills", "bronze"),
-            TitleItem("Silver Striker", "Reach 500 kills", "silver"),
-            TitleItem("Gold Champion", "Reach 1000 kills", "gold"),
-            TitleItem("Diamond Legend", "Reach 5000 kills", "diamond"),
-            TitleItem("Master Chief", "Reach 10000 kills", "master"),
-            TitleItem("Winning Streak", "Win 5 matches in a row", "streak"),
-            TitleItem("Untouchable", "Win without dying", "untouchable"),
-            TitleItem("Damage King", "Deal 50000 total damage", "damage"),
-            TitleItem("Team Player", "Play 100 matches", "team"),
-            TitleItem("Rising Star", "Reach Level 10", "star"),
-            TitleItem("Legendary", "Reach Mythic Rank", "legendary")
-        )
-    }
-
     var currentTitle by remember { mutableStateOf("") }
+    var score by remember { mutableStateOf(0L) }
     var refreshKey by remember { mutableStateOf(0) }
-    var pendingSelect by remember { mutableStateOf<TitleItem?>(null) }
+    var pendingSelect by remember { mutableStateOf<RankTitle?>(null) }
 
-    fun checkUnlocks() {
-        if (userId == null) return
+    LaunchedEffect(refreshKey) {
+        if (userId == null) return@LaunchedEffect
         db.collection("players").document(userId).get()
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
-                    val kills = doc.getLong("kills") ?: 0
-                    val wins = doc.getLong("wins") ?: 0
-                    val damage = doc.getLong("damage") ?: 0
-                    val matches = doc.getLong("matches") ?: 0
-                    val level = doc.getLong("level") ?: 1
-                    val rank = doc.getString("rank") ?: "Iron"
                     currentTitle = doc.getString("title") ?: ""
-
-                    for (title in titles) {
-                        title.unlocked = when (title.id) {
-                            "iron" -> true
-                            "bronze" -> kills >= 100
-                            "silver" -> kills >= 500
-                            "gold" -> kills >= 1000
-                            "diamond" -> kills >= 5000
-                            "master" -> kills >= 10000
-                            "streak" -> wins >= 5
-                            "damage" -> damage >= 50000
-                            "team" -> matches >= 100
-                            "star" -> level >= 10
-                            "legendary" -> rank == "Mythic"
-                            else -> false
-                        }
-                    }
+                    score = doc.getLong("score") ?: 0L
                 }
             }
-    }
-
-    LaunchedEffect(refreshKey) {
-        checkUnlocks()
     }
 
     ZSBackground {
@@ -149,38 +127,54 @@ private fun PlayerTitlesScreen() {
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                items(titles.size) { i ->
-                    val title = titles[i]
-                    val unlocked = title.unlocked
+                items(RANK_TITLES.size) { i ->
+                    val title = RANK_TITLES[i]
+                    val unlocked = score >= title.unlockScore
+                    val equipped = currentTitle == title.name
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .alpha(if (unlocked) 1f else 0.5f)
                             .background(ZsCard, RoundedCornerShape(14.dp))
                             .clickable {
                                 if (!unlocked) {
                                     Toast.makeText(
                                         context,
-                                        "Title locked! ${title.requirement}",
+                                        "Locked - ${title.requirement}",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
                                     pendingSelect = title
                                 }
                             }
-                            .padding(14.dp)
+                            .padding(14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(title.name, color = ZsTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Spacer(Modifier.height(4.dp))
-                        Text(title.requirement, color = ZsTextSecondary, fontSize = 11.sp)
-                        Spacer(Modifier.height(10.dp))
+                        TitleBadge(title, unlocked, equipped)
+                        Spacer(Modifier.height(8.dp))
                         Text(
-                            when {                                 currentTitle == title.name -> "EQUIPPED"
-                                unlocked -> "UNLOCKED"                                 else -> "LOCKED"
+                            title.name,
+                            color = ZsTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(2.dp))
+                        Text(
+                            title.requirement,
+                            color = ZsTextSecondary,
+                            fontSize = 11.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            when {
+                                equipped -> "EQUIPPED"
+                                unlocked -> "UNLOCKED"
+                                else -> "LOCKED"
                             },
                             color = when {
-                                currentTitle == title.name -> com.zerostress.manager.ui.theme.ZsAccentDark
-                                unlocked -> ZsPrimary
+                                equipped -> ZsAccent
+                                unlocked -> ZsCyan
                                 else -> ZsTextMuted
                             },
                             fontSize = 12.sp,
@@ -211,5 +205,46 @@ private fun PlayerTitlesScreen() {
                 TextButton(onClick = { pendingSelect = null }) { Text("Cancel") }
             }
         )
+    }
+}
+
+/**
+ * Rank badge: shows ic_title_<id>.png if you added it to res/drawable/,
+ * otherwise a colored medallion with the rank's first letter.
+ * Equipped titles get an accent ring.
+ */
+@Composable
+private fun TitleBadge(title: RankTitle, unlocked: Boolean, equipped: Boolean) {
+    val context = LocalContext.current
+    val resId = remember(title.id) {
+        context.resources.getIdentifier(
+            "ic_title_${title.id}", "drawable", context.packageName
+        )
+    }
+    val badgeColor = if (unlocked) title.color else ZsTextMuted.copy(alpha = 0.6f)
+
+    Box(
+        modifier = Modifier
+            .size(64.dp)
+            .alpha(if (unlocked) 1f else 0.45f)
+            .clip(CircleShape)
+            .background(badgeColor.copy(alpha = 0.15f))
+            .border(
+                width = 2.dp,
+                color = if (equipped) ZsAccent else badgeColor,
+                shape = CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        if (resId != 0) {
+            ZsPngIcon(resId, size = 40.dp)
+        } else {
+            Text(
+                title.name.take(1),
+                color = badgeColor,
+                fontWeight = FontWeight.Black,
+                fontSize = 26.sp
+            )
+        }
     }
 }
