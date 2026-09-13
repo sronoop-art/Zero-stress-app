@@ -280,7 +280,14 @@ private fun FriendsScreen() {
                     item { EmptyState("No friends yet — add some above!") }
                 } else {
                     items(rows.filter { !it.isRequest }, key = { it.id }) { row ->
-                        ZSCard {
+                        ZSCard(onClick = {
+                            // Open the friend's read-only profile view
+                            val i = android.content.Intent(context, PlayerProfileViewActivity::class.java).apply {
+                                putExtra(PlayerProfileViewActivity.EXTRA_PLAYER_ID, row.id)
+                                putExtra(PlayerProfileViewActivity.EXTRA_PLAYER_NAME, row.name)
+                            }
+                            context.startActivity(i)
+                        }) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Column(Modifier.weight(1f)) {
                                     Text(row.name, color = ZsTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)

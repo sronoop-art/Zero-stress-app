@@ -312,7 +312,17 @@ private fun LeaderboardScreen() {
                             else -> ""
                         }
 
-                        ZSCard(highlight = if (index == 0) ZsGold else null) {
+                        ZSCard(
+                            highlight = if (index == 0) ZsGold else null,
+                            onClick = {
+                                // Open the player's read-only profile view
+                                val i = android.content.Intent(context, PlayerProfileViewActivity::class.java).apply {
+                                    putExtra(PlayerProfileViewActivity.EXTRA_PLAYER_ID, doc.id)
+                                    putExtra(PlayerProfileViewActivity.EXTRA_PLAYER_NAME, name)
+                                }
+                                context.startActivity(i)
+                            }
+                        ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     "#${index + 1}",

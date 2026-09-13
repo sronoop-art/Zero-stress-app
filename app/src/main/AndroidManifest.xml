@@ -47,6 +47,7 @@
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".VoiceActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".ProfileActivity" android:theme="@style/Theme.ZeroStress" />
+        <activity android:name=".PlayerProfileViewActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".ScheduleActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".FriendsActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".AchievementsActivity" android:theme="@style/Theme.ZeroStress" />
