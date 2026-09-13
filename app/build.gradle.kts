@@ -146,6 +146,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")
+    // Remote Config - OTA switches and thresholds (min app version gate,
+    // rank-title unlock scores, content-pack URL) without shipping a new APK.
+    implementation("com.google.firebase:firebase-config")
 
     // Firebase App Check (debug provider - replace with a Play Integrity /
     // DeviceCheck provider before releasing to production)

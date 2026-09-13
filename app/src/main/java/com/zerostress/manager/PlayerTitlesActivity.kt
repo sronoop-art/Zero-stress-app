@@ -110,7 +110,10 @@ private fun PlayerTitlesScreen() {
             ) {
                 items(ZsRankTitles.ALL.size) { i ->
                     val title = ZsRankTitles.ALL[i]
-                    val unlocked = score >= title.unlockScore
+                    // Unlock threshold is OTA-tunable via Remote Config
+                    // (title_<id>_score) and falls back to the built-in value.
+                    val threshold = com.zerostress.manager.ota.ZsRemoteConfig.titleScore(title.id, title.unlockScore)
+                    val unlocked = score >= threshold
                     val equipped = currentTitle == title.name
                     Column(
                         modifier = Modifier

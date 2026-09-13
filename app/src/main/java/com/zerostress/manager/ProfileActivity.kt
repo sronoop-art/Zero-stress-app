@@ -188,14 +188,14 @@ private fun ProfileScreen() {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        // Avatar with rank-title frame (frame_<rank>.png when equipped
-                        // title matches a rank; colored ring fallback otherwise).
+                        // Avatar with rank-title frame (bundled or OTA-downloaded
+                        // frame_<rank>.png; colored ring fallback otherwise).
                         val titleObj = com.zerostress.manager.models.ZsRankTitles.byName(equippedTitle)
-                        val frameRes = if (titleObj != null)
-                            com.zerostress.manager.models.ZsRankTitles.frameRes(context, titleObj) else 0
+                        val frameSource = if (titleObj != null)
+                            com.zerostress.manager.models.ZsRankTitles.frameSource(context, titleObj) else null
                         val frameColor = if (titleObj != null)
                             Color(titleObj.color) else ZsPrimary
-                        com.zerostress.manager.ui.ZsAvatarFrame(frameRes, frameColor, 88.dp) {
+                        com.zerostress.manager.ui.ZsAvatarFrame(frameSource, frameColor, 88.dp) {
                             Box(
                                 Modifier
                                     .size(88.dp)

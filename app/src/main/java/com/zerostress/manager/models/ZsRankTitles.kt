@@ -1,6 +1,7 @@
 package com.zerostress.manager.models
 
 import android.content.Context
+import com.zerostress.manager.ota.ZsAssetUpdater
 
 /**
  * The 8 rank titles shown on the My Titles screen and used for avatar frames.
@@ -49,9 +50,26 @@ object ZsRankTitles {
             "ic_title_${title.id}", "drawable", context.packageName
         )
 
-    /** Drawable resource id for `frame_<id>`, or 0 when the PNG is not in the project. */
-    fun frameRes(context: Context, title: RankTitle): Int =
-        context.resources.getIdentifier(
+    /** Local OTA file for `frame_<id>.png`, or null when not downloaded. */
+    fun frameFile(context: Context, title: RankTitle): java.io.File? {
+        val f = java.io.File(ZsAssetUpdater.otaDir(context), "frame_${title.id}.png")
+        return if (f.exists() && f.length() > 0) f else null
+    }
+
+    /**
+     * Frame source for the title: an OTA file when downloaded (takes priority),
+     * otherwise the drawable resource id, otherwise null (use the fallback ring).
+     */
+    fun frameSource(context: Context, title: RankTitle): FrameSource? {
+        frameFile(context, title)?.let { return FrameSource.File(it) }
+        val res = context.resources.getIdentifier(
             "frame_${title.id}", "drawable", context.packageName
         )
+        return if (res != 0) FrameSource.Resource(res) else null
+    }
+
+    sealed class FrameSource {
+        class File(val file: java.io.File) : FrameSource()
+        class Resource(val resId: Int) : FrameSource()
+    }
 }

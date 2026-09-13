@@ -159,9 +159,9 @@ private fun PlayerProfileViewScreen(playerId: String?, presetName: String?) {
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         val titleObj = ZsRankTitles.byName(equippedTitle)
-                        val frameRes = if (titleObj != null) ZsRankTitles.frameRes(context, titleObj) else 0
+                        val frameSource = if (titleObj != null) ZsRankTitles.frameSource(context, titleObj) else null
                         val frameColor = if (titleObj != null) Color(titleObj.color) else ZsPrimary
-                        ZsAvatarFrame(frameRes, frameColor, 96.dp) {
+                        ZsAvatarFrame(frameSource, frameColor, 96.dp) {
                             Box(
                                 Modifier
                                     .size(96.dp)

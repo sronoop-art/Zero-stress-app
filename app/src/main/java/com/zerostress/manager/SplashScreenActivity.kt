@@ -2,6 +2,7 @@ package com.zerostress.manager
 
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.core.Animatable
@@ -56,6 +57,9 @@ class SplashScreenActivity : ComponentActivity() {
         // Loading-screen audio (res/raw/app_start.mp3) - LOOPS from app start until
         // the player signs in / registers successfully, or a dashboard opens.
         com.zerostress.manager.audio.ZsSoundManager.startLoadingLoop(this)
+        // Remote Config - OTA switches (update gate, title scores, asset pack).
+        com.zerostress.manager.ota.ZsRemoteConfig.init(this)
+        com.zerostress.manager.ota.ZsRemoteConfig.fetchAndActivate { }
         setContent {
             ZeroStressTheme {
                 SplashScreen()
@@ -99,6 +103,40 @@ private fun SplashScreen() {
     var progress by remember { mutableIntStateOf(0) }
     var messageIndex by remember { mutableIntStateOf(0) }
     var ready by remember { mutableStateOf(false) }
+
+    // OTA: blocking update dialog state
+    var updateRequired by remember { mutableStateOf(false) }
+    var updateMessage by remember { mutableStateOf("") }
+    var updateUrl by remember { mutableStateOf("") }
+    var checkedForUpdate by remember { mutableStateOf(false) }
+
+    // Kick off OTA asset-pack download in the background once config has fetched.
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            // Wait briefly for the fetch callback to populate the config cache.
+            repeat(10) {
+                if (com.zerostress.manager.ota.ZsRemoteConfig.contentPackVersion() > 0) return@withContext
+                kotlinx.coroutines.delay(300)
+            }
+            if (com.zerostress.manager.ota.ZsRemoteConfig.updateAvailable(context)) {
+                val ok = com.zerostress.manager.ota.ZsAssetUpdater.downloadIfNewer(context)
+                android.util.Log.d("SplashScreen", "asset pack update: $ok")
+            }
+        }
+    }
+
+    // Version gate: consult Remote Config once the loading bar is done.
+    LaunchedEffect(ready) {
+        if (!ready || checkedForUpdate) return@LaunchedEffect
+        checkedForUpdate = true
+        com.zerostress.manager.ota.ZsRemoteConfig.fetchAndActivate { ok ->
+            if (ok && com.zerostress.manager.ota.ZsRemoteConfig.updateRequired()) {
+                updateRequired = true
+                updateMessage = com.zerostress.manager.ota.ZsRemoteConfig.updateMessage()
+                updateUrl = com.zerostress.manager.ota.ZsRemoteConfig.updateUrl()
+            }
+        }
+    }
 
     fun navigateToMain() {
         // A dashboard is opening - the loading loop's job is done.
@@ -223,5 +261,39 @@ private fun SplashScreen() {
                 trackColor = ZsCard
             )
         }
+    }
+
+    // --- OTA: blocking update dialog ---
+    if (updateRequired) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { /* blocked until they update */ },
+            title = { Text("Update Required", color = ZsTextPrimary, fontWeight = FontWeight.Bold) },
+            text = { Text(updateMessage, color = ZsTextSecondary, fontSize = 14.sp) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        try {
+                            if (updateUrl.isNotBlank()) {
+                                startActivity(
+                                    android.content.Intent(
+                                        android.content.Intent.ACTION_VIEW,
+                                        android.net.Uri.parse(updateUrl)
+                                    )
+                                )
+                            } else {
+                                Toast.makeText(
+                                    this@SplashScreenActivity,
+                                    "No download link configured",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(this@SplashScreenActivity, "Cannot open link", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                ) { Text("Update Now", color = ZsAccent, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {}
+        )
     }
 }
