@@ -72,12 +72,29 @@ jobs:
             }
           "
 
-      - name: Deploy functions + Firestore rules
+      - name: Deploy Cloud Functions
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
         run: |
           npx --yes firebase-tools@13 deploy \
-            --only functions,firestore:rules \
+            --only functions \
             --project zerostress-manager \
-            --force
+            --force || {
+              echo "::error::Functions deploy failed - the service account is missing IAM roles."
+              echo "::error::Fix with Cloud Shell: grant roles/firebase.developAdmin, roles/iam.serviceAccountUser, roles/artifactregistry.writer to the firebase-adminsdk service account (see workflow header)."
+              exit 1
+            }
+
+      - name: Deploy Firestore rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          npx --yes firebase-tools@13 deploy \
+            --only firestore:rules \
+            --project zerostress-manager \
+            --force || {
+              echo "::error::Rules deploy failed with a permission error?"
+              echo "::error::Grant roles/firebase.developAdmin to the firebase-adminsdk service account via Cloud Shell (see workflow header), then re-run."
+              exit 1
+            }
           rm -f /tmp/sa.json
