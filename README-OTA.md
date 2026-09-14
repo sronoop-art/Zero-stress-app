@@ -23,6 +23,8 @@ Opened from the **Firebase Console → Remote Config**. Values the app reads:
 | `update_message` | "A new version is available..." | Text in the update dialog |
 | `content_pack_url` | *(empty)* | Direct GET URL of the asset ZIP (see section 2) |
 | `content_pack_version` | `0` | Bump to force devices to re-download the pack |
+| `cloudinary_cloud_name` | *(empty)* | Your Cloudinary cloud name - enables profile-picture uploads |
+| `cloudinary_upload_preset` | *(empty)* | UNSIGNED Cloudinary preset (Settings > Upload > Presets) |
 | `title_bronze_score` | `600` | Bronze title unlock score |
 | `title_silver_score` | `1200` | Silver title unlock score |
 | `title_gold_score` | `2000` | Gold title unlock score |

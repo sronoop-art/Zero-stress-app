@@ -44,6 +44,9 @@ object ZsRemoteConfig {
         put(UPDATE_MESSAGE, "A new version is available. Please update to keep playing.")
         put(CONTENT_PACK_URL, "")
         put(CONTENT_PACK_VERSION, 0L)
+        // Cloudinary profile-picture hosting (both blank = feature disabled)
+        put("cloudinary_cloud_name", "")
+        put("cloudinary_upload_preset", "")
         // Defaults must mirror ZsRankTitles.ALL thresholds
         put("title_bronze_score", 600L)
         put("title_silver_score", 1200L)

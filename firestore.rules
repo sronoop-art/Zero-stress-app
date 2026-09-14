@@ -162,11 +162,22 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
-    // seasons — admin-managed 30-day seasons
-    // ---------------------------------------------------------------------
+    // seasons — admin-managed, with automatic rollover by Cloud Functions.
+    // The Admin SDK bypasses rules, so no client write access is needed here.
     match /seasons/{seasonId} {
       allow read: if isSignedIn();
       allow write: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
+    // moderation_log — append-only audit trail of admin actions
+    // (created client-side by admin screens; nobody can edit or delete)
+    // ---------------------------------------------------------------------
+    match /moderation_log/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin()
+                    && request.resource.data.adminId == request.auth.uid;
+      allow update, delete: if false;
     }
 
     // ---------------------------------------------------------------------

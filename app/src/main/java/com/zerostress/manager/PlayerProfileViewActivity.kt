@@ -88,6 +88,7 @@ private fun PlayerProfileViewScreen(playerId: String?, presetName: String?) {
 
     var name by remember { mutableStateOf(presetName ?: "") }
     var equippedTitle by remember { mutableStateOf("") }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
     var score by remember { mutableStateOf(0L) }
     var level by remember { mutableStateOf(1L) }
     var rank by remember { mutableStateOf("Iron") }
@@ -114,6 +115,7 @@ private fun PlayerProfileViewScreen(playerId: String?, presetName: String?) {
                     return@addOnSuccessListener
                 }
                 name = doc.getString("name") ?: "Unknown"
+                avatarUrl = doc.getString("avatarUrl")
                 equippedTitle = doc.getString("title") ?: ""
                 score = doc.getLong("score") ?: 0
                 level = doc.getLong("level") ?: 1
@@ -168,11 +170,18 @@ private fun PlayerProfileViewScreen(playerId: String?, presetName: String?) {
                                     .background(ZsPrimary, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                ZsPngIcon(
-                                    R.drawable.ic_menu_person,
-                                    size = 76.dp,
-                                    tint = ZsTextSecondary
-                                )
+                                if (avatarUrl != null) {
+                                    com.zerostress.manager.ui.ZsRemoteAvatar(
+                                        url = avatarUrl,
+                                        size = 96.dp
+                                    )
+                                } else {
+                                    ZsPngIcon(
+                                        R.drawable.ic_menu_person,
+                                        size = 76.dp,
+                                        tint = ZsTextSecondary
+                                    )
+                                }
                             }
                         }
                         Spacer(Modifier.height(10.dp))

@@ -129,6 +129,9 @@ private fun AdminDashboardScreen() {
         db.collection("players").document(uid).update("status", status)
             .addOnSuccessListener {
                 Toast.makeText(context, "Status updated!", Toast.LENGTH_SHORT).show()
+                com.zerostress.manager.ui.ZsAuditLog.playerAction(
+                    "set_status", uid, players.firstOrNull { it.id == uid }?.getString("name"), status
+                )
                 loadPlayers()
             }
     }
@@ -137,6 +140,7 @@ private fun AdminDashboardScreen() {
         db.collection("players").document(uid).delete()
             .addOnSuccessListener {
                 Toast.makeText(context, "Player deleted!", Toast.LENGTH_SHORT).show()
+                com.zerostress.manager.ui.ZsAuditLog.playerAction("delete_player", uid, name)
                 loadPlayers()
             }
             .addOnFailureListener { e ->
@@ -497,6 +501,10 @@ private fun EditNameDialog(player: DocumentSnapshot, onDone: () -> Unit) {
                     db.collection("players").document(player.id).update("name", name.trim())
                         .addOnSuccessListener {
                             Toast.makeText(context, "Name updated to: ${name.trim()}", Toast.LENGTH_SHORT).show()
+                            com.zerostress.manager.ui.ZsAuditLog.playerAction(
+                                "rename_player", player.id, name.trim(),
+                                "was: ${player.getString("name")}"
+                            )
                             onDone()
                         }
                 }
@@ -521,6 +529,10 @@ private fun ChangeRoleDialog(player: DocumentSnapshot, onDone: () -> Unit) {
                         db.collection("players").document(player.id).update("role", r)
                             .addOnSuccessListener {
                                 Toast.makeText(context, "Role updated to: $r", Toast.LENGTH_SHORT).show()
+                                com.zerostress.manager.ui.ZsAuditLog.playerAction(
+                                    "set_role", player.id, player.getString("name"),
+                                    "role -> $r"
+                                )
                                 onDone()
                             }
                     }, modifier = Modifier.fillMaxWidth()) {
@@ -556,6 +568,9 @@ private fun GameRoleDialog(player: DocumentSnapshot, onDone: () -> Unit) {
                         db.collection("players").document(player.id).update("gameRole", value)
                             .addOnSuccessListener {
                                 Toast.makeText(context, "Game role set!", Toast.LENGTH_SHORT).show()
+                                com.zerostress.manager.ui.ZsAuditLog.playerAction(
+                                    "set_game_role", player.id, player.getString("name"), value
+                                )
                                 onDone()
                             }
                     }, modifier = Modifier.fillMaxWidth()) {

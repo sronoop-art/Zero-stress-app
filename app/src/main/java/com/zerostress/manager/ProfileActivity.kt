@@ -96,6 +96,9 @@ private fun ProfileScreen() {
     var editPhone by remember { mutableStateOf("") }
     var isEditing by remember { mutableStateOf(false) }
     var avatarBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+
+    var avatarUploading by remember { mutableStateOf(false) }
 
     val avatarPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
@@ -106,11 +109,34 @@ private fun ProfileScreen() {
                 val bitmap = BitmapFactory.decodeStream(input)
                 if (bitmap != null) {
                     avatarBitmap = bitmap
-                    Toast.makeText(context, "Avatar updated!", Toast.LENGTH_SHORT).show()
-                    // NOTE: upload to Firebase Storage is not wired up yet —
-                    // the original app also only stored it locally.
+                    if (com.zerostress.manager.ota.ZsCloudinary.isEnabled()) {
+                        // Upload to Cloudinary, then save the CDN URL on the profile.
+                        avatarUploading = true
+                        Thread {
+                            val url = com.zerostress.manager.ota.ZsCloudinary.uploadAvatar(bitmap)
+                            android.os.Handler(context.mainLooper).post {
+                                avatarUploading = false
+                                if (url != null && uid != null) {
+                                    db.collection("players").document(uid)
+                                        .update("avatarUrl", url)
+                                        .addOnSuccessListener {
+                                            avatarUrl = url
+                                            Toast.makeText(context, "Profile picture saved!", Toast.LENGTH_SHORT).show()
+                                        }
+                                        .addOnFailureListener { e ->
+                                            Toast.makeText(context, "Saved locally only: ${e.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                } else if (url == null) {
+                                    Toast.makeText(context, "Upload failed - avatar kept locally", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }.start()
+                    } else {
+                        Toast.makeText(context, "Avatar set locally (cloud upload not configured)", Toast.LENGTH_SHORT).show()
+                    }
                 }
             } catch (e: Exception) {
+                avatarUploading = false
                 Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
             }
         }
@@ -135,6 +161,7 @@ private fun ProfileScreen() {
                     matches = doc.getLong("matches") ?: 0
                     xp = (doc.getLong("xp") ?: 0).toInt()
                     coins = (doc.getLong("coins") ?: 0).toInt()
+                    avatarUrl = doc.getString("avatarUrl")
                 }
             }
     }
@@ -209,6 +236,11 @@ private fun ProfileScreen() {
                                         contentDescription = "Avatar",
                                         modifier = Modifier.size(88.dp),
                                         contentScale = ContentScale.Crop
+                                    )
+                                } else if (avatarUrl != null) {
+                                    com.zerostress.manager.ui.ZsRemoteAvatar(
+                                        url = avatarUrl,
+                                        size = 88.dp
                                     )
                                 } else {
                                     ZsPngIcon(R.drawable.ic_menu_person, size = 72.dp, tint = ZsTextSecondary)

@@ -28,6 +28,7 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 android {
@@ -150,10 +151,15 @@ dependencies {
     // rank-title unlock scores, content-pack URL) without shipping a new APK.
     implementation("com.google.firebase:firebase-config")
 
-    // Firebase App Check (debug provider - replace with a Play Integrity /
-    // DeviceCheck provider before releasing to production)
+    // Crash reporting - release crashes land in Firebase Console > Crashlytics
+    implementation("com.google.firebase:firebase-crashlytics")
+    implementation("com.google.firebase:firebase-analytics")
+
+    // App Check: Play Integrity in release, debug provider in debug builds
+    // (selection happens in ZeroStressApp.kt via BuildConfig.DEBUG)
     implementation("com.google.firebase:firebase-appcheck")
     implementation("com.google.firebase:firebase-appcheck-debug")
+    implementation("com.google.firebase:firebase-appcheck-playintegrity")
 
     // Agora RTC 4.x - real-time voice for the Discord-style channels.
     // NOTE: the Maven Central artifact is "full-sdk" (io.agora.rtc:full-sdk),

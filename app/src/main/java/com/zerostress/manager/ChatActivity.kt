@@ -29,7 +29,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -82,6 +84,7 @@ private fun ChatScreen() {
     val userId = FirebaseAuth.getInstance().uid
 
     var messages by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
+    var chatLimit by remember { mutableIntStateOf(50) } // grows as the user scrolls up
     var players by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
     var userName by remember { mutableStateOf("Unknown") }
     var messageText by remember { mutableStateOf("") }
@@ -93,9 +96,12 @@ private fun ChatScreen() {
     val typingRef = if (userId != null) db.collection("chat_typing").document(TYPING_PREFIX + userId) else null
     val typingSent = remember { AtomicBoolean(false) }
 
-    // Live message listener
-    DisposableEffect(Unit) {
-        db.collection("chat_messages").limit(200)
+    // Live message listener - newest `chatLimit` messages, re-attached when
+    // the limit grows so older history loads on demand (pagination).
+    DisposableEffect(chatLimit) {
+        db.collection("chat_messages")
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
+            .limit(chatLimit.toLong())
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
                     Toast.makeText(context, "Chat load error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -261,6 +267,16 @@ private fun ChatScreen() {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
         }
+    }
+
+    // Pagination: near the top of a full page, load older messages.
+    LaunchedEffect(listState) {
+        androidx.compose.runtime.snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index ->
+                if (index < 5 && messages.size >= chatLimit && chatLimit < 300) {
+                    chatLimit = minOf(chatLimit + 50, 300)
+                }
+            }
     }
 
     ZSBackground {

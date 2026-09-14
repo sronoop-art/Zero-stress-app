@@ -8,6 +8,7 @@ import android.util.Log
 import com.google.firebase.FirebaseApp
 import com.google.firebase.appcheck.FirebaseAppCheck
 import com.google.firebase.appcheck.debug.DebugAppCheckProviderFactory
+import com.google.firebase.appcheck.playintegrity.PlayIntegrityAppCheckProviderFactory
 
 class ZeroStressApp : Application() {
 
@@ -46,17 +47,17 @@ class ZeroStressApp : Application() {
     private fun setupAppCheck() {
         try {
             val appCheck = FirebaseAppCheck.getInstance()
-            appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+            if (BuildConfig.DEBUG) {
+                appCheck.installAppCheckProviderFactory(DebugAppCheckProviderFactory.getInstance())
+            } else {
+                // Production hardening: verify requests with Play Integrity.
+                // Enable "Play Integrity" as the provider in Firebase Console
+                // > App Check for your Android app before shipping release.
+                appCheck.installAppCheckProviderFactory(
+                    PlayIntegrityAppCheckProviderFactory.getInstance()
+                )
+            }
             appCheck.setTokenAutoRefreshEnabled(true)
-
-            appCheck.getToken(false)
-                .addOnSuccessListener { result ->
-                    Log.w(TAG, "APP CHECK DEBUG TOKEN: ${result.token}")
-                    Log.w(TAG, "Copy this token into Firebase Console > App Check > Debug provider tokens, or Auth/Firestore calls may be rejected")
-                }
-                .addOnFailureListener { e ->
-                    Log.e(TAG, "App Check token failed: ${e.message}", e)
-                }
         } catch (e: Exception) {
             Log.e(TAG, "App Check setup failed: ${e.message}", e)
         }

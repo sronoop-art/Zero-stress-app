@@ -62,12 +62,42 @@ private fun LoginScreen() {
     var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
+    var resetLoading by remember { mutableStateOf(false) }
 
     // Firebase Auth is email/password internally; a typed phone number is
     // mapped to <phone>@zerostress.local (same mapping as registration).
     fun accountFor(input: String): String {
         val t = input.trim()
         return if (t.contains("@")) t else "$t@zerostress.local"
+    }
+
+    fun sendPasswordReset() {
+        val account = accountFor(phone)
+        if (!account.contains("@") || account.startsWith("@")) {
+            Toast.makeText(context, "Enter your phone number or email first", Toast.LENGTH_SHORT).show()
+            return
+        }
+        resetLoading = true
+        db.sendPasswordResetEmail(account)
+            .addOnCompleteListener { task ->
+                resetLoading = false
+                if (task.isSuccessful) {
+                    Toast.makeText(
+                        context,
+                        "Reset link sent! Check your messages and follow the link to set a new password.",
+                        Toast.LENGTH_LONG
+                    ).show()
+                } else {
+                    val msg = when {
+                        task.exception?.message?.contains("no user record", true) == true ->
+                            "No account found for that phone/email"
+                        task.exception?.message?.contains("IDENTIFIER_INVALID", true) == true ->
+                            "That account uses an email we cannot email - ask an admin to reset it"
+                        else -> "Could not send reset email: ${task.exception?.localizedMessage}"
+                    }
+                    Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
+                }
+            }
     }
 
     ZSBackground {
@@ -105,7 +135,18 @@ private fun LoginScreen() {
                         onValueChange = { password = it },
                         label = "Password"
                     )
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(6.dp))
+                    TextButton(
+                        onClick = { sendPasswordReset() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (resetLoading) "Sending reset link..." else "Forgot password?",
+                            color = com.zerostress.manager.ui.theme.ZsCyan,
+                            fontSize = 13.sp
+                        )
+                    }
+                    Spacer(Modifier.height(14.dp))
 
                     Button(
                         onClick = {

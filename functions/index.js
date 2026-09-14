@@ -287,3 +287,127 @@ async function clearInvalidTokens(entries) {
     console.error("Token cleanup failed:", error);
   }
 }
+
+/**
+ * Scheduled: daily leaderboard resets + season auto-rollover.
+ * - Every day 00:00 UTC: zero dailyScore/dailyWins (and dailyKills).
+ * - Mondays: zero weekly fields. 1st of month: zero monthly fields.
+ * - Expired seasons are deactivated, top-3 players get their coins, and a
+ *   fresh 30-day season is created automatically.
+ */
+const { onSchedule } = require("firebase-functions/v2/scheduler");
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+async function resetFields(fieldScore, fieldWins, fieldKills) {
+  const db = getFirestore();
+  const snap = await db.collection("players")
+    .where("status", "==", "approved").get();
+  let batch = db.batch();
+  let ops = 0;
+  for (const doc of snap.docs) {
+    const update = { [fieldScore]: 0, [fieldWins]: 0 };
+    if (fieldKills) update[fieldKills] = 0;
+    batch.update(doc.ref, update);
+    ops++;
+    if (ops === 400) {
+      await batch.commit();
+      batch = db.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+}
+
+exports.resetLeaderboards = onSchedule("every day 00:00", async (event) => {
+  const now = new Date();
+  const jobs = [resetFields("dailyScore", "dailyWins", "dailyKills")];
+  if (now.getUTCDay() === 1) {
+    jobs.push(resetFields("weeklyScore", "weeklyWins", "weeklyKills"));
+  }
+  if (now.getUTCDate() === 1) {
+    jobs.push(resetFields("monthlyScore", "monthlyWins", "monthlyKills"));
+  }
+  await Promise.all(jobs);
+  console.log("Leaderboard reset done");
+});
+
+exports.autoSeasonReset = onSchedule("every day 00:05", async (event) => {
+  const db = getFirestore();
+  const now = Date.now();
+
+  // 1) Expire seasons older than their duration (days).
+  const seasons = await db.collection("seasons")
+    .where("active", "==", true).get();
+  for (const season of seasons.docs) {
+    const data = season.data();
+    const created = data.createdAt || 0;
+    const days = parseInt(data.duration || "30", 10) || 30;
+    if (created > 0 && now - created > days * DAY_MS) {
+      // Award top-3 approved players by all-time score.
+      const top = await db.collection("players")
+        .where("status", "==", "approved")
+        .orderBy("score", "desc").limit(3).get();
+      const rewards = [data.topRewardCoins || 500, 300, 150];
+      let rank = 0;
+      for (const p of top.docs) {
+        const coins = (p.data().coins || 0) + (rewards[rank] || 0);
+        await p.ref.update({ coins });
+        await db.collection("notifications").add({
+          uid: p.id,
+          title: "Season ended - you placed #" + (rank + 1) + "!",
+          message: `You earned ${rewards[rank] || 0} coins in ${data.name || "the season"}.`,
+          type: "achievement",
+          timestamp: now,
+        });
+        rank++;
+      }
+      await season.ref.update({ active: false, endedAt: now });
+      console.log(`Season ${season.id} ended; top players rewarded`);
+    }
+  }
+
+  // 2) Ensure an active season exists (auto-create 30-day seasons).
+  const activeCount = await db.collection("seasons")
+    .where("active", "==", true).count().get();
+  if (activeCount.data().count === 0) {
+    const total = await db.collection("seasons").count().get();
+    await db.collection("seasons").add({
+      name: "Season " + (total.data().count + 1),
+      description: "Auto-created season",
+      duration: "30",
+      active: true,
+      createdAt: now,
+    });
+    console.log("New season auto-created");
+  }
+});
+
+/**
+ * Scheduled: match reminders. Every 5 minutes, find upcoming matches that
+ * start within the next 15 minutes and push one reminder per match.
+ */
+exports.matchReminders = onSchedule("every 5 minutes", async (event) => {
+  const db = getFirestore();
+  const now = Date.now();
+  const windowEnd = now + 15 * 60 * 1000;
+
+  const snap = await db.collection("match_schedules")
+    .where("status", "==", "Upcoming")
+    .where("matchTime", ">=", now - DAY_MS) // guard against clock skew
+    .where("matchTime", "<=", windowEnd)
+    .get();
+
+  for (const doc of snap.docs) {
+    if (doc.data().reminderSent) continue;
+    const data = doc.data();
+    await db.collection("notifications").add({
+      title: "Match starting soon: " + (data.title || "Match"),
+      message: `${data.type || "Match"} starts at ${data.dateTime || "soon"}. Get ready!`,
+      type: "schedule",
+      timestamp: now,
+      scheduleId: doc.id,
+    });
+    await doc.ref.update({ reminderSent: true });
+    console.log("Reminder sent for match", doc.id);
+  }
+});
