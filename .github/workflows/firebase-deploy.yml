@@ -1,0 +1,52 @@
+name: Deploy Firebase Backend
+
+# Deploys Cloud Functions + Firestore rules whenever they change on ZS3.1
+# (or manually from the Actions tab). Requires ONE repository secret:
+#
+#   FIREBASE_SERVICE_ACCOUNT - a service-account JSON key with the
+#   "Firebase Admin" role for project zerostress-manager.
+#
+# How to create it (one time, ~2 minutes):
+#   1. https://console.firebase.google.com -> your project
+#   2. Project settings (gear) -> Service accounts
+#   3. "Generate new private key" -> downloads a JSON file
+#   4. GitHub repo -> Settings -> Secrets and variables -> Actions
+#      -> New repository secret -> Name: FIREBASE_SERVICE_ACCOUNT
+#      -> paste the WHOLE JSON file content as the value
+
+on:
+  push:
+    branches: [ZS3.1, main]
+    paths:
+      - "functions/**"
+      - "firestore.rules"
+      - ".github/workflows/firebase-deploy.yml"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install functions dependencies
+        run: npm --prefix functions install --no-audit --no-fund
+
+      - name: Syntax-check functions
+        run: node --check functions/index.js
+
+      - name: Deploy functions + Firestore rules
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          npx --yes firebase-tools@13 deploy \
+            --only functions,firestore:rules \
+            --project zerostress-manager \
+            --force
+          rm -f /tmp/sa.json
