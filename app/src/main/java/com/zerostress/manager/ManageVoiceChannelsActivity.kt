@@ -126,7 +126,7 @@ private fun ManageVoiceChannelsScreen() {
             confirmButton = {
                 TextButton(onClick = {
                     val enable = !selectedChannel!!.enabled
-                    selectedChannel!!.doc?.let { doc ->
+                    selectedChannel!!.doc.let { doc ->
                         db.collection("voice_channels").document(doc.id).update("active", enable)
                             .addOnSuccessListener {
                                 Toast.makeText(
@@ -173,7 +173,7 @@ private fun ManageVoiceChannelsScreen() {
             confirmButton = {
                 TextButton(
                     onClick = {
-                        selectedChannel!!.doc?.let { doc ->
+                        selectedChannel!!.doc.let { doc ->
                             db.collection("voice_channels").document(doc.id).delete()
                                 .addOnSuccessListener {
                                     Toast.makeText(context, "Channel deleted", Toast.LENGTH_SHORT).show()
@@ -200,18 +200,18 @@ private fun ManageVoiceChannelsScreen() {
 
     if (showPlayerDialog && selectedChannel != null) {
         var players by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
-        var loaded by remember { mutableStateOf(false) }
+        var playersLoaded by remember { mutableStateOf(false) }
         androidx.compose.runtime.LaunchedEffect(Unit) {
             db.collection("players")
                 .whereEqualTo("status", "approved")
                 .get()
                 .addOnSuccessListener {
                     players = it.documents.filter { it.id != userId }
-                    loaded = true
+                    playersLoaded = true
                 }
                 .addOnFailureListener {
                     Toast.makeText(context, "Failed to load players", Toast.LENGTH_SHORT).show()
-                    loaded = true
+                    playersLoaded = true
                 }
         }
         AlertDialog(
@@ -227,7 +227,7 @@ private fun ManageVoiceChannelsScreen() {
                         color = ZsTextMuted,
                         fontSize = 12.sp
                     )
-                    if (!loaded) {
+                    if (!playersLoaded) {
                         Text("Loading...", color = ZsTextMuted, modifier = Modifier.padding(8.dp))
                     } else if (players.isEmpty()) {
                         Text("No approved players found.", color = ZsTextMuted)

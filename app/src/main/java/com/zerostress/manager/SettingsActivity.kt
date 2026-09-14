@@ -18,6 +18,7 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,7 +59,12 @@ class SettingsActivity : ComponentActivity() {
 @Composable
 private fun SettingsScreen() {
     val context = LocalContext.current
-    val prefs = remember { context.getSharedPreferences("notif_prefs", android.content.Context.MODE_PRIVATE) }
+    val prefs = remember {
+        context.getSharedPreferences("notif_prefs", android.content.Context.MODE_PRIVATE)
+    }
+    val notifPrefs = remember {
+        com.zerostress.manager.fcm.NotificationPreferences.prefs(context)
+    }
 
     var notifEnabled by remember { mutableStateOf(prefs.getBoolean("notifications_enabled", true)) }
     var chatNotifs by remember { mutableStateOf(prefs.getBoolean("chat_notifs_enabled", true)) }
@@ -66,6 +72,20 @@ private fun SettingsScreen() {
     var showAbout by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showDeleteFinal by remember { mutableStateOf(false) }
+
+    // Ask for POST_NOTIFICATIONS on Android 13+ the first time Settings opens.
+    // Without it the system silently drops every push on modern devices.
+    LaunchedEffect(Unit) {
+        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+            !com.zerostress.manager.fcm.NotificationPreferences.pushPossible(context) &&
+            !com.zerostress.manager.fcm.NotificationPreferences.permissionRequested(context)
+        ) {
+            com.zerostress.manager.fcm.NotificationPreferences.setPermissionRequested(context, true)
+            (context as? android.app.Activity)?.requestPermissions(
+                arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 4101
+            )
+        }
+    }
 
     fun deleteAccount() {
         val uid = FirebaseAuth.getInstance().uid
@@ -82,6 +102,7 @@ private fun SettingsScreen() {
                         // Sign out and clear local data
                         FirebaseAuth.getInstance().signOut()
                         prefs.edit().clear().apply()
+                        notifPrefs.edit().clear().apply()
                         Toast.makeText(context, "Account deleted successfully", Toast.LENGTH_LONG).show()
                         val intent = Intent(context, LoginActivity::class.java).apply {
                             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
@@ -112,6 +133,7 @@ private fun SettingsScreen() {
                         onCheckedChange = {
                             notifEnabled = it
                             prefs.edit().putBoolean("notifications_enabled", it).apply()
+                            notifPrefs.edit().putBoolean("notifications_enabled", it).apply()
                         }
                     )
                     Spacer(Modifier.height(4.dp))
@@ -122,6 +144,7 @@ private fun SettingsScreen() {
                         onCheckedChange = {
                             chatNotifs = it
                             prefs.edit().putBoolean("chat_notifs_enabled", it).apply()
+                            notifPrefs.edit().putBoolean("chat_notifs_enabled", it).apply()
                         }
                     )
                     Spacer(Modifier.height(4.dp))
@@ -132,6 +155,7 @@ private fun SettingsScreen() {
                         onCheckedChange = {
                             scheduleNotifs = it
                             prefs.edit().putBoolean("schedule_notifs_enabled", it).apply()
+                            notifPrefs.edit().putBoolean("schedule_notifs_enabled", it).apply()
                         }
                     )
                 }

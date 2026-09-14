@@ -95,8 +95,7 @@ private fun ChatScreen() {
 
     // Live message listener
     DisposableEffect(Unit) {
-        val listener = db.collection("chat_messages")
-            .limit(200)
+        db.collection("chat_messages").limit(200)
             .addSnapshotListener { snapshots, e ->
                 if (e != null) {
                     Toast.makeText(context, "Chat load error: ${e.message}", Toast.LENGTH_SHORT).show()
@@ -132,10 +131,10 @@ private fun ChatScreen() {
     fun setTyping(active: Boolean) {
         if (userId == null || typingRef == null) return
         if (active && !typingSent.get()) {
-            typingRef!!.set(mapOf("userId" to userId, "timestamp" to System.currentTimeMillis()))
+            typingRef.set(mapOf("userId" to userId, "timestamp" to System.currentTimeMillis()))
             typingSent.set(true)
         } else if (!active && typingSent.get()) {
-            typingRef!!.delete()
+            typingRef.delete()
             typingSent.set(false)
         }
     }
@@ -177,32 +176,57 @@ private fun ChatScreen() {
         )
         if (mentions.isNotEmpty()) msg["mentions"] = mentions
 
-        db.collection("chat_messages").add(msg)
+                db.collection("chat_messages").add(msg)
             .addOnSuccessListener {
                 messageText = ""
                 setTyping(false)
-                if (mentions.isNotEmpty()) {
-                    db.collection("notifications").add(
+                // ---------- Targeted push notifications (no more spam) ----------
+                // Only the players actually involved get pushed: mentioned players
+                // and anyone whose recent message the sender is replying to.
+                // The Cloud Function (functions/index.js) only sends pushes for
+                // notifications docs that carry a "uid" field.
+                val notifs = db.collection("notifications")
+                val now = System.currentTimeMillis()
+
+                // 1) Mentioned players
+                val mentionedUids = players.filter { it.getString("name") in mentions }.map { it.id }
+                mentionedUids.filter { it != userId }.forEach { target ->
+                    notifs.add(
                         mapOf(
-                            "title" to "You were mentioned in chat!",
-                            "message" to "$userName mentioned ${mentions.joinToString(", ")}: $text",
+                            "uid" to target,
+                            "title" to "You were mentioned in chat",
+                            "message" to "$userName: $text",
                             "type" to "mention",
-                            "timestamp" to System.currentTimeMillis(),
-                            "mentions" to mentions,
+                            "timestamp" to now,
                             "senderId" to userId
                         )
                     )
                 }
-                db.collection("notifications").add(
-                    mapOf(
-                        "title" to "New Chat Message",
-                        "message" to "$userName: $text",
-                        "type" to "chat",
-                        "timestamp" to System.currentTimeMillis(),
-                        "sentBy" to userName,
-                        "senderId" to userId
+
+                // 2) Reply-to-me: notify each author whose message appears in the
+                //    last 10, and is being directly replied to (message references
+                //    their text) - plus, as a light heuristic, the previous speaker.
+                val last = messages.takeLast(10)
+                val replyTargets = last
+                    .filter { it.getString("senderId") != userId }
+                    .filter { prev ->
+                        val prevText = prev.getString("text") ?: ""
+                        prevText.isNotEmpty() && text.contains(prevText.take(24), ignoreCase = true)
+                    }
+                    .mapNotNull { it.getString("senderId") }
+                    .distinct()
+                replyTargets.filter { it != userId && it !in mentionedUids }.forEach { target ->
+                    notifs.add(
+                        mapOf(
+                            "uid" to target,
+                            "title" to "$userName replied to you",
+                            "message" to text,
+                            "type" to "chat",
+                            "timestamp" to now,
+                            "senderId" to userId
+                        )
                     )
-                )
+                }
             }
             .addOnFailureListener { e ->
                 Toast.makeText(context, "Send failed: ${e.message}", Toast.LENGTH_SHORT).show()

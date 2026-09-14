@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.Query
 import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSCard
@@ -56,12 +55,16 @@ private fun NotificationsScreen() {
     var notifications by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
 
     DisposableEffect(Unit) {
+        val uid = com.google.firebase.auth.FirebaseAuth.getInstance().uid
         val listener = db.collection("notifications")
-            .orderBy("timestamp", Query.Direction.DESCENDING)
+            .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .limit(50)
             .addSnapshotListener { snap, error ->
                 if (error != null) return@addSnapshotListener
-                notifications = snap?.documents.orEmpty()
+                // Show broadcasts (no uid) plus anything addressed to this user
+                notifications = snap?.documents.orEmpty().filter {
+                    it.getString("uid") == null || it.getString("uid") == uid
+                }
             }
         onDispose { listener.remove() }
     }

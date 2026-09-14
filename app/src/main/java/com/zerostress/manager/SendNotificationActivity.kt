@@ -61,6 +61,10 @@ private fun SendNotificationScreen() {
     var message by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
 
+    // Optional recipient: when opened for a specific player, the push goes
+    // only to that player's device (Cloud Function + client both honor "uid").
+    val targetUid = remember { (context as? android.app.Activity)?.intent?.getStringExtra("uid") }
+
     val quickAlerts = listOf(
         "Match starting in 5 minutes!",
         "Tournament begins now!",
@@ -79,20 +83,25 @@ private fun SendNotificationScreen() {
             return
         }
         loading = true
-        db.collection("notifications").add(
-            mapOf(
-                "title" to t.trim(),
-                "message" to m.trim(),
-                "type" to "admin",
-                "timestamp" to System.currentTimeMillis(),
-                "sentBy" to "Admin"
-            )
-        ).addOnSuccessListener { docRef ->
+        val target = targetUid?.trim()
+        val doc = mapOf(
+            "title" to t.trim(),
+            "message" to m.trim(),
+            "type" to "admin",
+            "timestamp" to System.currentTimeMillis(),
+            "sentBy" to "Admin",
+            // "uid" present = targeted push to one player; absent = broadcast
+            "uid" to target
+        )
+        db.collection("notifications").add(doc).addOnSuccessListener { docRef ->
             docRef.update("id", docRef.id)
             loading = false
             Toast.makeText(
                 context,
-                "Notification sent!\n\n• Foreground: instant in-app display\n• Background/Killed: FCM push via Cloud Function",
+                if (target != null && target.isNotEmpty())
+                    "Notification sent to the selected player!"
+                else
+                    "Notification sent to ALL players!",
                 Toast.LENGTH_LONG
             ).show()
             title = ""
@@ -146,7 +155,11 @@ private fun SendNotificationScreen() {
                             CircularProgressIndicator(color = ZsCyan)
                         }
                     } else {
-                        ZSButton(text = "SEND TO ALL PLAYERS", onClick = { sendNotification(title, message) }, container = ZsAccent)
+                        ZSButton(
+                            text = if (targetUid.isNullOrBlank()) "SEND TO ALL PLAYERS" else "SEND TO THIS PLAYER",
+                            onClick = { sendNotification(title, message) },
+                            container = ZsAccent
+                        )
                     }
                 }
 

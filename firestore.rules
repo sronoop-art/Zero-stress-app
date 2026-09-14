@@ -31,13 +31,20 @@ service cloud.firestore {
     // ---------------------------------------------------------------------
     match /players/{uid} {
       allow read: if isSignedIn();
-      allow create: if isSelf(uid);
-      allow update: if isSelf(uid)
-                    // allow online-status + fcmToken heartbeat writes
-                    || (isSignedIn()
-                        && request.resource.data.diff(resource.data).affectedKeys()
-                              .hasOnly(['online', 'lastSeen', 'fcmToken']));
-      allow delete: if isAdmin();
+      // New accounts always start as pending players - a client can never
+      // create itself as admin (privilege escalation fix).
+      allow create: if isSelf(uid)
+                    && request.resource.data.role == 'player'
+                    && request.resource.data.status == 'pending';
+      // Admins may edit any player (approve, role, name, game role, stats).
+      // Players may edit their own doc but can never change their own
+      // role or approval status.
+      allow update: if isAdmin()
+                    || (isSelf(uid)
+                        && !request.resource.data.diff(resource.data).affectedKeys()
+                              .hasAny(['role', 'status']));
+      // Admins moderate; players may delete their own account (Settings).
+      allow delete: if isAdmin() || isSelf(uid);
     }
 
     // ---------------------------------------------------------------------
@@ -98,7 +105,11 @@ service cloud.firestore {
     }
 
     match /notifications/{notificationId} {
-      allow read: if isSignedIn() && resource.data.to == request.auth.uid;
+      // A doc with "uid" belongs to one player; without it it is a broadcast
+      // every signed-in member can read (the client also filters by uid).
+      allow read: if isSignedIn()
+                  && (resource.data.uid == null
+                      || resource.data.uid == request.auth.uid);
       allow create: if isSignedIn();
       allow update, delete: if isAdmin();
     }
@@ -127,8 +138,11 @@ service cloud.firestore {
     // ---------------------------------------------------------------------
     match /daily_stats/{statId} {
       allow read: if isSignedIn();
+      // Players log their own stats; admins log on behalf of any player
+      // (the admin Daily Input player-picker writes stats.uid = player uid).
       allow create, update: if isSignedIn()
-                            && request.resource.data.uid == request.auth.uid;
+                            && (request.resource.data.uid == request.auth.uid
+                                || isAdmin());
       allow delete: if isAdmin();
     }
 

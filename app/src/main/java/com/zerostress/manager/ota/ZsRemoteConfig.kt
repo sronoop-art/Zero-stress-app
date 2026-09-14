@@ -55,7 +55,7 @@ object ZsRemoteConfig {
         put("title_grandmaster_score", 10000L)
     }
 
-    fun init(context: Context) {
+    fun init(@Suppress("UNUSED_PARAMETER") context: Context) {
         val remote = FirebaseRemoteConfig.getInstance()
         remote.setConfigSettingsAsync(
             FirebaseRemoteConfigSettings.Builder()

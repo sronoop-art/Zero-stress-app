@@ -38,8 +38,8 @@ android {
         applicationId = "com.zerostress.manager"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "3.0"
+        versionCode = 2
+        versionName = "3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -163,4 +163,7 @@ dependencies {
     // Agora official token builder - lets the app generate RTC tokens on-device
     // from AGORA_APP_CERTIFICATE (required when the App Certificate is enabled).
     implementation("io.agora:authentication:2.1.3")
+
+    // Unit tests (pure JVM - run with `gradlew :app:testDebugUnitTest`)
+    testImplementation("junit:junit:4.13.2")
 }

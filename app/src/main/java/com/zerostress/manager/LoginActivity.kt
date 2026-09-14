@@ -121,6 +121,8 @@ private fun LoginScreen() {
                                     loading = false
                                     val uid = result.user?.uid
                                     if (uid != null) {
+                                        // Push can't reach a fresh device without its token saved.
+                                        com.zerostress.manager.fcm.ZSFCMService.saveTokenToFirestore(context)
                                         fs.collection("players").document(uid).get()
                                             .addOnSuccessListener { doc ->
                                                 val target = if (doc.exists() && doc.getString("role") == "admin")

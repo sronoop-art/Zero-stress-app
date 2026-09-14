@@ -114,7 +114,8 @@ object FirebaseRepository {
         matchLogsRef.document(id).set(log)
             .addOnSuccessListener {
                 getPlayer(log.playerId ?: "", object : OnResultCallback<Player?> {
-                    override fun onSuccess(player: Player?) {
+                    override fun onSuccess(result: Player?) {
+                        val player = result
                         if (player == null) { callback.onSuccess(null); return }
                         val newKills = player.kills + log.kills
                         val newDamage = (player.damage + log.damage).toInt()

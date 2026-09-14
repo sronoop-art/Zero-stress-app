@@ -106,16 +106,16 @@ private fun SubmitMatchScreen() {
         ).addOnSuccessListener {
             // Update player stats
             db.collection("players").document(userId ?: "").get()
-                .addOnSuccessListener { doc ->
+                .addOnCompleteListener { task ->
+                    val doc = task.result
                     if (!doc.exists()) {
                         loading = false
-                        return@addOnSuccessListener
+                        return@addOnCompleteListener
                     }
                     val currentKills = doc.getLong("kills") ?: 0
                     val currentDamage = doc.getLong("damage") ?: 0
                     val currentWins = doc.getLong("wins") ?: 0
                     val currentMatches = doc.getLong("matches") ?: 0
-                    val currentScore = doc.getLong("score") ?: 0
                     var currentXp = (doc.getLong("xp") ?: 0).toInt()
                     var currentLevel = (doc.getLong("level") ?: 1).toInt()
                     val startLevel = currentLevel

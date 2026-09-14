@@ -16,9 +16,8 @@ object FCMConfig {
 
         try {
             val app = FirebaseApp.getInstance()
-            Log.d(TAG, "FirebaseApp initialized: ${app != null}")
-            Log.d(TAG, "FirebaseApp name: ${app?.name ?: "null"}")
-            Log.d(TAG, "FirebaseApp options: ${app?.options ?: "null"}")
+            Log.d(TAG, "FirebaseApp initialized: ${app.name}")
+            Log.d(TAG, "FirebaseApp options: ${app.options}")
         } catch (e: Exception) {
             Log.e(TAG, "FirebaseApp not initialized: ${e.message}")
         }

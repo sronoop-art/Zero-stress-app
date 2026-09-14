@@ -18,6 +18,8 @@ class Player {
     var coins: Int = 0
     var rank: String? = null
     var fcmToken: String? = null
+    var online: Boolean? = null
+    var lastSeen: Long? = null
 
     constructor()
 
@@ -56,7 +58,9 @@ class Player {
         "xp" to xp,
         "level" to level,
         "coins" to coins,
-        "rank" to rank
+        "rank" to rank,
+        "online" to online,
+        "lastSeen" to lastSeen
     )
 
     companion object {

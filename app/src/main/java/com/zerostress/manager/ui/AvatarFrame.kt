@@ -40,7 +40,6 @@ fun ZsAvatarFrame(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         content()
         when (frameSource) {

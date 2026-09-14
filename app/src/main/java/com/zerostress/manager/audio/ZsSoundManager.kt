@@ -4,180 +4,117 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.util.Log
+import com.zerostress.manager.fcm.NotificationPreferences
 
 /**
- * Small helper for UI sounds.
+ * Central sound player for the app's event audio.
  *
- * Two independent channels:
- *  1. One-shot sounds  - splash intro, login/register success (play once, auto-release)
- *  2. Loading loop     - res/raw/app_start.(mp3|ogg|wav) looping forever until auth
- *                        completes (login or register success) or a dashboard opens
+ * Files live in app/src/main/res/raw/ (see README-AUDIO.md):
+ *   app_start.mp3        - loading loop (splash + login + register)
+ *   login_success.mp3    - sign-in success
+ *   register_success.mp3 - account created
  *
- * Audio files live in `app/src/main/res/raw/`:
- *   - app_start.mp3      -> loops on the loading screen + login/register screens
- *   - login_success.mp3  -> played once after a successful sign-in (stops the loop)
- *   - register_success.mp3 -> played once after account creation (stops the loop)
- *
- * Missing files are skipped silently (logged, no crash), so the app builds and
- * runs even before you add the audio files.
- *
- * Keep the files SHORT (2-8 s) and use OGG or MP3 @ 96-128 kbps to stay kind to
- * the APK size. The loop is seamless: MediaPlayer restarts it automatically.
+ * All playback respects the in-app notification toggle stored by
+ * NotificationPreferences (Settings screen): when the user disables
+ * notifications there, in-app sounds are muted too. Push notifications are
+ * gated separately inside ZSFCMService.
  */
 object ZsSoundManager {
 
     private const val TAG = "ZsSoundManager"
 
-    /** One-shot player (intro jingles, success sounds). */
-    private var currentPlayer: MediaPlayer? = null
-
-    /** Looping loading-screen player. Plays until auth completes. */
     private var loopPlayer: MediaPlayer? = null
 
-    private val attrs: AudioAttributes = AudioAttributes.Builder()
-        .setUsage(AudioAttributes.USAGE_MEDIA)
-        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-        .build()
+    /** True when notifications (and in-app sounds) are switched on in Settings. */
+    fun notificationsEnabled(context: Context): Boolean =
+        NotificationPreferences.masterEnabled(context)
 
     // ---------------------------------------------------------------------
     // Loading loop
     // ---------------------------------------------------------------------
 
-    /**
-     * Starts (or resumes) the looping loading-screen audio.
-     * Safe to call from multiple screens: if the loop exists but is paused it
-     * resumes; it is only created once.
-     */
-    @JvmStatic
+    /** Starts the looping app_start.mp3 (no-op if missing or notifications off). */
     fun startLoadingLoop(context: Context) {
+        if (loopPlayer != null) return // already running - keep it seamless
+        if (!notificationsEnabled(context)) return
         try {
-            loopPlayer?.let { p ->
-                if (!p.isPlaying) {
-                    try {
-                        p.prepare()
-                    } catch (_: Exception) {
-                    }
-                    p.start()
-                }
-                return
-            }
-            val resId = findRawResource(context, "app_start") ?: run {
-                Log.w(TAG, "res/raw/app_start not found - add the audio file to enable the loading loop")
-                return
-            }
-            val player = MediaPlayer.create(context, resId)
-            if (player == null) {
-                Log.w(TAG, "MediaPlayer.create returned null for app_start")
-                return
-            }
-            player.setAudioAttributes(attrs)
+            val resId = context.resources.getIdentifier(
+                "app_start", "raw", context.packageName
+            )
+            if (resId == 0) return // asset not added yet - stay silent
+
+            val player = MediaPlayer.create(context, resId) ?: return
             player.isLooping = true
-            loopPlayer = player
+            player.setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                    .build()
+            )
             player.start()
+            loopPlayer = player
         } catch (e: Exception) {
             Log.w(TAG, "startLoadingLoop failed: ${e.message}")
+            loopPlayer = null
         }
     }
 
-    /** Pauses the loading loop (screen paused / app in background). */
-    @JvmStatic
-    fun pauseLoadingLoop() {
-        try {
-            loopPlayer?.takeIf { it.isPlaying }?.pause()
-        } catch (_: Exception) {
-        }
+    /** Keeps the loop alive across screen transitions (re-arms it if it died). */
+    fun ensureLoadingLoop(context: Context) {
+        val p = loopPlayer
+        if (p != null && p.isPlaying) return
+        loopPlayer = null
+        startLoadingLoop(context)
     }
 
-    /** Stops and releases the loading loop (login complete / entering dashboard). */
-    @JvmStatic
+    /** Stops the loop for good (login complete, dashboard opening, app leaving). */
     fun stopLoadingLoop() {
         try {
             loopPlayer?.let {
                 if (it.isPlaying) it.stop()
                 it.release()
             }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w(TAG, "stopLoadingLoop: ${e.message}")
         }
         loopPlayer = null
     }
 
-    /** True while the loading loop is playing. */
-    val isLoadingLoopRunning: Boolean
-        get() = loopPlayer != null
-
-    // ---------------------------------------------------------------------
-    // One-shot sounds
-    // ---------------------------------------------------------------------
-
-    /** Login complete - the loading loop must stop now, then the jingle plays. */
-    fun playLoginSuccess(context: Context) {
-        stopLoadingLoop()
-        play(context, "login_success")
-    }
-
-    /**
-     * Account created - the jingle plays over the loop. The loop keeps going
-     * because the player still has to sign in (login not complete yet).
-     */
-    fun playRegisterSuccess(context: Context) {
-        play(context, "register_success")
-    }
-
-    /** Plays `res/raw/<name>.(mp3|ogg|wav)` once at medium volume. Never throws. */
-    fun play(context: Context, name: String) {
+    /** Pauses without releasing - used by app onPause so it survives the back stack. */
+    fun pauseLoadingLoop() {
         try {
-            val resId = findRawResource(context, name) ?: run {
-                Log.w(TAG, "res/raw/$name not found - add the audio file to enable this sound")
-                return
-            }
+            loopPlayer?.let { if (it.isPlaying) it.pause() }
+        } catch (e: Exception) {
+            Log.w(TAG, "pauseLoadingLoop: ${e.message}")
+        }
+    }
 
-            // Stop whatever one-shot sound is still playing so they never overlap.
-            stop()
+    // ---------------------------------------------------------------------
+    // One-shot jingles
+    // ---------------------------------------------------------------------
 
-            val player = MediaPlayer.create(context, resId)
-            if (player == null) {
-                Log.w(TAG, "MediaPlayer.create returned null for $name")
-                return
-            }
-            currentPlayer = player
-            player.setAudioAttributes(attrs)
-            player.setOnCompletionListener {
-                it.release()
-                if (currentPlayer === it) currentPlayer = null
-            }
+    /** Plays a one-shot raw resource; silently does nothing when unavailable. */
+    private fun playOnce(context: Context, name: String) {
+        if (!notificationsEnabled(context)) return
+        try {
+            val resId = context.resources.getIdentifier(name, "raw", context.packageName)
+            if (resId == 0) return
+            val player = MediaPlayer.create(context, resId) ?: return
+            player.setOnCompletionListener { it.release() }
             player.start()
         } catch (e: Exception) {
-            Log.w(TAG, "play($name) failed: ${e.message}")
+            Log.w(TAG, "playOnce($name) failed: ${e.message}")
         }
     }
 
-    /** Stops the current one-shot sound (e.g. when leaving the screen early). */
-    @JvmStatic
-    fun stop() {
-        try {
-            currentPlayer?.let {
-                if (it.isPlaying) it.stop()
-                it.release()
-            }
-        } catch (_: Exception) {
-        }
-        currentPlayer = null
-    }
-
-    /** Stops everything - one-shots and the loading loop. */
-    @JvmStatic
-    fun stopAll() {
-        stop()
+    /** Login success - also stops the loading loop (login is now complete). */
+    fun playLoginSuccess(context: Context) {
         stopLoadingLoop()
+        playOnce(context, "login_success")
     }
 
-    /**
-     * res/raw cannot be queried by name with R.raw.* when the file may not
-     * exist yet, so resolve the id dynamically (also tolerates .ogg/.wav).
-     */
-    private fun findRawResource(context: Context, name: String): Int? {
-        val res = context.resources
-        val id = res.getIdentifier(name, "raw", context.packageName)
-        return if (id != 0) id else null
+    /** Register success - loop continues because login is not complete yet. */
+    fun playRegisterSuccess(context: Context) {
+        playOnce(context, "register_success")
     }
 }

@@ -90,14 +90,19 @@ private fun AdminDashboardScreen() {
     var showScheduleDialog by remember { mutableStateOf(false) }
 
     fun loadPlayers() {
-        db.collection("players").get()
+        // Targeted query: only players (excludes other admins' docs) - lighter
+        // read cost than a full-collection scan, and the admin never manages
+        // other admins from this list anyway.
+        db.collection("players")
+            .whereEqualTo("role", "player")
+            .get()
             .addOnSuccessListener { query ->
                 players = query.documents
+                totalPlayers = query.size()
                 loading = false
             }
-            .addOnFailureListener { e ->
+            .addOnFailureListener {
                 loading = false
-                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
             }
     }
 
@@ -107,10 +112,12 @@ private fun AdminDashboardScreen() {
             .addOnSuccessListener { doc ->
                 if (doc.exists()) adminName = doc.getString("name") ?: "Admin"
             }
-        db.collection("players").get()
-            .addOnSuccessListener { query -> totalPlayers = query.size() }
-        db.collection("match_logs").get()
-            .addOnSuccessListener { query -> totalMatches = query.size() }
+        // Count aggregation instead of downloading every match log doc -
+        // the old full get() transferred the whole collection just to show a number.
+        db.collection("match_logs").count()
+            .get(com.google.firebase.firestore.AggregateSource.SERVER)
+            .addOnSuccessListener { snap -> totalMatches = snap.count.toInt() }
+            .addOnFailureListener { totalMatches = 0 }
     }
 
     LaunchedEffect(Unit) {
@@ -126,7 +133,7 @@ private fun AdminDashboardScreen() {
             }
     }
 
-    fun deletePlayer(uid: String, name: String?) {
+    fun deletePlayer(uid: String, name: String? = null) {
         db.collection("players").document(uid).delete()
             .addOnSuccessListener {
                 Toast.makeText(context, "Player deleted!", Toast.LENGTH_SHORT).show()
