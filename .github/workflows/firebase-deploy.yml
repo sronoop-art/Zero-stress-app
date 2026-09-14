@@ -6,13 +6,22 @@ name: Deploy Firebase Backend
 #   FIREBASE_SERVICE_ACCOUNT - a service-account JSON key with the
 #   "Firebase Admin" role for project zerostress-manager.
 #
-# How to create it (one time, ~2 minutes):
+# How to create it (one time, ~3 minutes):
 #   1. https://console.firebase.google.com -> your project
 #   2. Project settings (gear) -> Service accounts
 #   3. "Generate new private key" -> downloads a JSON file
 #   4. GitHub repo -> Settings -> Secrets and variables -> Actions
 #      -> New repository secret -> Name: FIREBASE_SERVICE_ACCOUNT
 #      -> paste the WHOLE JSON file content as the value
+#   5. Grant the account deploy permissions (skip only if it already has
+#      the Editor role):
+#      https://console.cloud.google.com/iam-admin/iam?project=zerostress-manager
+#      -> find firebase-adminsdk-...@zerostress-manager.iam.gserviceaccount.com
+#      -> pencil (Edit) -> add BOTH roles:
+#           - Firebase Develop Admin        (functions + rules deploys)
+#           - Service Account User          (functions runtime actAs)
+#      Without these the deploy fails with:
+#      "firebaserules ... 403 The caller does not have permission"
 
 on:
   push:
