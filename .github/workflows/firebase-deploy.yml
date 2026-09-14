@@ -39,12 +39,34 @@ jobs:
       - name: Syntax-check functions
         run: node --check functions/index.js
 
+      - name: Validate service account secret
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT is NOT set (or is empty)."
+            echo "::error::Fix: GitHub repo -> Settings -> Secrets and variables -> Actions -> New repository secret."
+            echo "::error::The name must be exactly: FIREBASE_SERVICE_ACCOUNT (repository secret, not environment secret)."
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
+          node -e "
+            const fs = require('fs');
+            try {
+              const j = JSON.parse(fs.readFileSync('/tmp/sa.json', 'utf8'));
+              if (!j.client_email || !j.private_key) throw new Error('missing client_email/private_key fields');
+              console.log('Service account OK:', j.client_email);
+            } catch (e) {
+              console.log('::error::FIREBASE_SERVICE_ACCOUNT is not valid service-account JSON (' + e.message + ').');
+              console.log('::error::Re-create it: Firebase Console -> Project settings -> Service accounts -> Generate new private key, then paste the ENTIRE JSON file content.');
+              process.exit(1);
+            }
+          "
+
       - name: Deploy functions + Firestore rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > /tmp/sa.json
           npx --yes firebase-tools@13 deploy \
             --only functions,firestore:rules \
             --project zerostress-manager \
