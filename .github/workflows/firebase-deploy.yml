@@ -4,7 +4,7 @@ name: Deploy Firebase Backend
 # (or manually from the Actions tab). Requires ONE repository secret:
 #
 #   FIREBASE_SERVICE_ACCOUNT - a service-account JSON key with the
-#   "Firebase Admin" role for project zerostress-manager.
+#   "Firebase Admin" role for project zerostress-3a536.
 #
 # How to create it (one time, ~3 minutes):
 #   1. https://console.firebase.google.com -> your project
@@ -13,10 +13,12 @@ name: Deploy Firebase Backend
 #   4. GitHub repo -> Settings -> Secrets and variables -> Actions
 #      -> New repository secret -> Name: FIREBASE_SERVICE_ACCOUNT
 #      -> paste the WHOLE JSON file content as the value
-#   5. Grant the account deploy permissions (skip only if it already has
+#   5. Cloud Functions deploys require the Blaze plan (free tier included).
+#      Upgrade at: https://console.firebase.google.com/project/zerostress-3a536/usage/details
+#   6. Grant the account deploy permissions (skip only if it already has
 #      the Editor role):
-#      https://console.cloud.google.com/iam-admin/iam?project=zerostress-manager
-#      -> find firebase-adminsdk-...@zerostress-manager.iam.gserviceaccount.com
+#      https://console.cloud.google.com/iam-admin/iam?project=zerostress-3a536
+#      -> find firebase-adminsdk-...@zerostress-3a536.iam.gserviceaccount.com
 #      -> pencil (Edit) -> add BOTH roles:
 #           - Firebase Develop Admin        (functions + rules deploys)
 #           - Service Account User          (functions runtime actAs)
@@ -78,7 +80,7 @@ jobs:
         run: |
           npx --yes firebase-tools@13 deploy \
             --only functions \
-            --project zerostress-manager \
+            --project zerostress-3a536 \
             --force || {
               echo "::error::Functions deploy failed - the service account is missing IAM roles."
               echo "::error::Fix with Cloud Shell: grant roles/firebase.developAdmin, roles/iam.serviceAccountUser, roles/artifactregistry.writer to the firebase-adminsdk service account (see workflow header)."
@@ -91,7 +93,7 @@ jobs:
         run: |
           npx --yes firebase-tools@13 deploy \
             --only firestore:rules \
-            --project zerostress-manager \
+            --project zerostress-3a536 \
             --force || {
               echo "::error::Rules deploy failed with a permission error?"
               echo "::error::Grant roles/firebase.developAdmin to the firebase-adminsdk service account via Cloud Shell (see workflow header), then re-run."
