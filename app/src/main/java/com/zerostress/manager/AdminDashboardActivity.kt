@@ -40,6 +40,7 @@ import com.zerostress.manager.ui.ZSBadge
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSField
+import com.zerostress.manager.ui.ZSHeroHeader
 import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZSMenuTile
 import com.zerostress.manager.ui.ZsPngIcon
@@ -153,6 +154,12 @@ private fun AdminDashboardScreen() {
             ZSTopBar(title = "Admin Dashboard", right = {
                 ZsPngIcon(R.drawable.ic_menu_crown, size = 20.dp, tint = ZsGold, modifier = Modifier.padding(end = 8.dp))
             })
+
+            ZSHeroHeader(
+                title = "PIT WALL",
+                subtitle = "Race control · $adminName"
+            )
+            Spacer(Modifier.height(6.dp))
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),

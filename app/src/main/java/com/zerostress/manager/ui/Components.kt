@@ -1,8 +1,10 @@
 package com.zerostress.manager.ui
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -40,6 +42,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -60,6 +64,7 @@ import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsCard
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsPrimary
+import com.zerostress.manager.ui.theme.ZsPrimaryDark
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
@@ -94,6 +99,44 @@ fun ZSBackground(
             },
         content = content
     )
+}
+
+/**
+ * Racing hero header: slanted red gradient band with italic title.
+ * Used at the top of dashboard screens.
+ */
+@Composable
+fun ZSHeroHeader(
+    title: String,
+    subtitle: String? = null,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 0.dp))
+            .background(Brush.horizontalGradient(listOf(ZsPrimaryDark, ZsPrimary)))
+            .padding(horizontal = 18.dp, vertical = 16.dp)
+    ) {
+        Column {
+            Text(
+                title,
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                fontStyle = FontStyle.Italic
+            )
+            if (subtitle != null) {
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    subtitle,
+                    color = Color.White.copy(alpha = 0.85f),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
 }
 
 /** Scrollable column with the standard screen padding. */
@@ -340,7 +383,13 @@ fun ZSStat(
     ) {
         Text(label, color = ZsTextMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(4.dp))
-        Text(value, color = color, fontSize = 19.sp, fontWeight = FontWeight.ExtraBold)
+        Text(
+            value,
+            color = color,
+            fontSize = 23.sp,
+            fontWeight = FontWeight.ExtraBold,
+            fontStyle = FontStyle.Italic
+        )
     }
 }
 
@@ -393,12 +442,24 @@ fun ZSMenuTile(
     accent: Color = ZsPrimary,
     iconRes: Int? = null
 ) {
+    // Press-scale animation: tile shrinks slightly while touched.
+    var pressed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val tileScale by animateFloatAsState(if (pressed) 0.94f else 1f, label = "tileScale")
     Column(
         modifier = modifier
+            .scale(tileScale)
             .clip(RoundedCornerShape(10.dp))
             .background(ZsCard)
             .border(1.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
+            .pointerInput(onClick) {
+                detectTapGestures(
+                    onPress = {
+                        pressed = true
+                        try { awaitRelease() } finally { pressed = false }
+                    },
+                    onTap = { onClick() }
+                )
+            }
             .padding(vertical = 16.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center

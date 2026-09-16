@@ -37,6 +37,7 @@ import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
+import com.zerostress.manager.ui.ZSHeroHeader
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSMenuTile
 import com.zerostress.manager.ui.ZSProgress
@@ -123,23 +124,20 @@ private fun PlayerDashboardScreen() {
 
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
-            // Header
+            // Hero header - slanted red racing band
+            ZSHeroHeader(
+                title = "HEY $name",
+                subtitle = "Welcome back, racer"
+            )
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Welcome back,", color = ZsTextMuted, fontSize = 13.sp)
-                        Text(
-                            name,
-                            color = ZsTextPrimary,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.ExtraBold
-                        )
-                    }
-                    ZsPngIcon(R.drawable.ic_menu_bell, size = 20.dp, tint = ZsGold, modifier = Modifier.padding(end = 4.dp))                }
+                    Spacer(Modifier.weight(1f))
+                    ZsPngIcon(R.drawable.ic_menu_bell, size = 20.dp, tint = ZsGold, modifier = Modifier.padding(end = 4.dp))
+                }
                 Spacer(Modifier.height(12.dp))
 
                 // Stat cards
