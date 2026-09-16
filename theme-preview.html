@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zero Stress — UI Theme Picker</title>
+<style>
+  :root{
+    --bg:#0b0e1a; --panel:#131728; --line:#252a44; --txt:#e8ecf8; --dim:#8b93b8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+  body{background:var(--bg); color:var(--txt); font-family:'Segoe UI',Roboto,system-ui,sans-serif; padding:16px 12px 90px}
+  h1{font-size:20px; letter-spacing:1px; text-transform:uppercase}
+  .sub{color:var(--dim); font-size:13px; margin:6px 0 18px; line-height:1.5}
+  .grid{display:grid; grid-template-columns:1fr; gap:18px; max-width:480px; margin:0 auto}
+  @media(min-width:760px){ .grid{grid-template-columns:1fr 1fr} body{padding-bottom:110px} }
+
+  .card{background:var(--panel); border:2px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; position:relative; transition:transform .15s, border-color .15s}
+  .card:active{transform:scale(.98)}
+  .card.sel{border-color:#fff}
+  .badge{position:absolute; top:10px; right:10px; background:#fff; color:#000; font-size:10px; font-weight:800; padding:4px 8px; border-radius:99px; display:none; letter-spacing:1px}
+  .card.sel .badge{display:block}
+  .head{padding:12px 14px 8px}
+  .tname{font-size:16px; font-weight:800; letter-spacing:.5px}
+  .tdesc{color:var(--dim); font-size:11.5px; margin-top:2px}
+  .chips{display:flex; gap:5px; padding:0 14px 10px}
+  .chip{width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.15)}
+  .mock{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 12px 14px}
+  .phone{border-radius:12px; padding:10px 8px; min-height:150px; display:flex; flex-direction:column; gap:7px; border:1px solid rgba(255,255,255,.07)}
+  .login-mock{align-items:center; justify-content:center}
+  .lg-logo{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13px}
+  .lg-title{font-size:9px; font-weight:800; letter-spacing:2px}
+  .lg-field{width:85%; height:14px; border-radius:7px; opacity:.75}
+  .lg-btn{width:85%; height:18px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:#fff}
+  .dash-title{font-size:8px; letter-spacing:1.5px; font-weight:800; opacity:.8}
+  .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:5px}
+  .tile{border-radius:8px; height:34px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:7px; opacity:.95}
+  .tile .ic{font-size:11px}
+  .rank{align-self:center; transform:rotate(45deg); width:30px; height:30px; border-radius:7px; margin:6px 0; display:flex; align-items:center; justify-content:center}
+  .rank span{transform:rotate(-45deg); font-size:8px; font-weight:900}
+  .bub{max-width:88%; padding:6px 9px; border-radius:10px; font-size:8.5px; line-height:1.3}
+  .bub.me{align-self:flex-end; border-bottom-right-radius:3px}
+  .bub.them{align-self:flex-start; border-bottom-left-radius:3px; background:rgba(255,255,255,.06)}
+  .foot{position:fixed; bottom:0; left:0; right:0; background:#0d1120f2; border-top:1px solid var(--line); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; backdrop-filter:blur(6px)}
+  .foot .pick{font-size:12px; color:var(--dim)} .foot .pick b{color:#fff}
+  .foot button{background:#38bdf8; color:#001; border:0; font-weight:800; padding:10px 16px; border-radius:10px; font-size:12px}
+  .hint{max-width:480px; margin:14px auto 0; color:var(--dim); font-size:11.5px; line-height:1.5}
+</style>
+</head>
+<body>
+<h1>🎮 Zero Stress — Pick your UI theme</h1>
+<p class="sub">10 gaming styles, previewed on your real screens (login · dashboard · rank badge · chat). Tap a card to select — your pick is saved on this device. Tell me the winner's number and I'll apply it to the whole app.</p>
+
+<div class="grid" id="grid"></div>
+<p class="hint">ℹ️ The winner is applied by remapping the color tokens in <b>Theme.kt</b> (the single source of truth for the entire app) — backgrounds, cards, buttons, chat, accents all follow automatically.</p>
+
+<div class="foot">
+  <div class="pick">Selected: <b id="selName">none yet</b></div>
+  <button onclick="clearSel()">Reset</button>
+</div>
+
+<script>
+const THEMES = [
+ {n:1,name:"Cyber Neon",tag:"The current look — electric cyan on deep navy. Keeps brand continuity.",
+  bg:"#0b0e1a",card:"#131728",ac:"#38bdf8",ac2:"#22d3ee",tx:"#e8ecf8",btn:"#38bdf8",btnTx:"#001018",rank:"#38bdf8",rankTx:"#001018",rankLbl:"GM"},
+ {n:2,name:"Synthwave '84",tag:"Retro sunset — hot pink, purple, orange gradients. Bold arcade energy.",
+  bg:"#160e23",card:"#221536",ac:"#ff2fb3",ac2:"#ff9e3d",tx:"#ffe9f7",btn:"linear-gradient(90deg,#ff2fb3,#ff9e3d)",btnTx:"#fff",rank:"#ff2fb3",rankTx:"#fff",rankLbl:"GM"},
+ {n:3,name:"Toxic Strike",tag:"Esports aggression — acid green on near-black. Sharp, competitive, hated by noobs.",
+  bg:"#0a0f0a",card:"#101a10",ac:"#7dff3f",ac2:"#c8ff3f",tx:"#eaffe4",btn:"#7dff3f",btnTx:"#0a0f0a",rank:"#7dff3f",rankTx:"#0a0f0a",rankLbl:"GM"},
+ {n:4,name:"Blood Razor",tag:"Crimson warrior — deep blacks with blood red. For the squad that never surrenders.",
+  bg:"#0d0708",card:"#1a0d10",ac:"#ff2e4d",ac2:"#ff7a3d",tx:"#ffe8ec",btn:"#ff2e4d",btnTx:"#fff",rank:"#ff2e4d",rankTx:"#fff",rankLbl:"GM"},
+ {n:5,name:"Golden Royale",tag:"Premium prestige — gold on obsidian. Makes every rank badge feel legendary.",
+  bg:"#0c0b07",card:"#171408",ac:"#f5c542",ac2:"#e8a820",tx:"#fdf6e0",btn:"linear-gradient(90deg,#f5c542,#e8a820)",btnTx:"#1a1400",rank:"#f5c542",rankTx:"#1a1400",rankLbl:"GM"},
+ {n:6,name:"Vaporwave Dream",tag:"Aesthetic pastel — pink, teal and lavender on dusk. Chill but unmistakably gaming.",
+  bg:"#181526",card:"#241f38",ac:"#f77fd3",ac2:"#4de3d1",tx:"#fdeafd",btn:"linear-gradient(90deg,#f77fd3,#4de3d1)",btnTx:"#20142c",rank:"#f77fd3",rankTx:"#20142c",rankLbl:"GM"},
+ {n:7,name:"Arctic Frost",tag:"Ice-cold clarity — frost blue and silver whites. Clean, sharp, pro-team feel.",
+  bg:"#0a1220",card:"#122238",ac:"#8fd8ff",ac2:"#cfe9ff",tx:"#f2faff",btn:"#8fd8ff",btnTx:"#06263c",rank:"#8fd8ff",rankTx:"#06263c",rankLbl:"GM"},
+ {n:8,name:"Inferno Core",tag:"Molten power — ember orange with fire-red accents. High heat, high stakes.",
+  bg:"#120b06",card:"#1e130a",ac:"#ff7a1a",ac2:"#ffb43d",tx:"#fff1e4",btn:"linear-gradient(90deg,#ff7a1a,#ffb43d)",btnTx:"#1d0d00",rank:"#ff7a1a",rankTx:"#1d0d00",rankLbl:"GM"},
+ {n:9,name:"Matrix Terminal",tag:"Hacker classic — phosphor green terminal on true black. Monospace vibes included.",
+  bg:"#020a04",card:"#051408",ac:"#00ff66",ac2:"#7dffb0",tx:"#d8ffe8",btn:"#00ff66",btnTx:"#01140a",rank:"#00ff66",rankTx:"#01140a",rankLbl:"GM"},
+ {n:10,name:"Royal Indigo",tag:"Deep indigo with gold trims — tournament-final gravitas. Sophisticated but gaming.",
+  bg:"#0d0d21",card:"#151538",ac:"#8c9bff",ac2:"#f0c750",tx:"#eef0ff",btn:"#8c9bff",btnTx:"#0d0d2b",rank:"#f0c750",rankTx:"#201a02",rankLbl:"GM"}
+];
+
+const grid=document.getElementById('grid');
+THEMES.forEach(t=>{
+  const el=document.createElement('div');
+  el.className='card'; el.id='t'+t.n;
+  el.innerHTML=`
+   <div class="badge">✓ SELECTED</div>
+   <div class="head"><div class="tname">#${t.n} · ${t.name}</div><div class="tdesc">${t.tag}</div></div>
+   <div class="chips">
+     <div class="chip" style="background:${t.bg}"></div>
+     <div class="chip" style="background:${t.card}"></div>
+     <div class="chip" style="background:${t.ac}"></div>
+     <div class="chip" style="background:${t.ac2}"></div>
+     <div class="chip" style="background:${t.tx}"></div>
+   </div>
+   <div class="mock">
+     <div class="phone login-mock" style="background:linear-gradient(180deg,${t.bg},${t.card})">
+       <div class="lg-logo" style="background:${t.ac};color:${t.btnTx}">ZS</div>
+       <div class="lg-title" style="color:${t.ac}">ZERO STRESS</div>
+       <div class="lg-field" style="background:${t.card};border:1px solid ${t.ac}33"></div>
+       <div class="lg-field" style="background:${t.card};border:1px solid ${t.ac}33"></div>
+       <div class="lg-btn" style="background:${t.btn};color:${t.btnTx}">SIGN IN</div>
+     </div>
+     <div class="phone" style="background:linear-gradient(180deg,${t.bg},${t.card})">
+       <div class="dash-title" style="color:${t.ac}">QUICK ACTIONS</div>
+       <div class="tiles">
+         ${[['🏆','RANK'],['🎮','MATCH'],['💬','CHAT'],['📅','SCHED'],['🔔','ALERT'],['⚙️','SET']].map(([i,l])=>
+           `<div class="tile" style="background:${t.card};color:${t.tx};border:1px solid ${t.ac}22"><span class="ic">${i}</span>${l}</div>`).join('')}
+       </div>
+     </div>
+     <div class="phone" style="background:linear-gradient(180deg,${t.bg},${t.card});align-items:center;justify-content:center">
+       <div class="rank" style="background:${t.rank};color:${t.rankTx};box-shadow:0 0 14px ${t.rank}66"><span>${t.rankLbl}</span></div>
+       <div style="font-size:8px;font-weight:800;color:${t.ac};letter-spacing:1px">GRANDMASTER</div>
+       <div style="font-size:7.5px;color:${t.tx}88">2,847 pts · #1</div>
+     </div>
+     <div class="phone" style="background:linear-gradient(180deg,${t.bg},${t.card})">
+       <div class="bub them" style="color:${t.tx}">gg everyone 🔥</div>
+       <div class="bub me" style="background:${t.btn};color:${t.btnTx}">match at 8? @Ravi</div>
+       <div class="bub them" style="color:${t.tx}">ready <b style="color:${t.ac}">@you</b></div>
+     </div>
+   </div>`;
+  el.onclick=()=>select(t.n);
+  grid.appendChild(el);
+});
+
+function select(n){
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+  const t=THEMES.find(x=>x.n===n);
+  document.getElementById('t'+n).classList.add('sel');
+  document.getElementById('selName').textContent='#'+n+' · '+t.name;
+  try{localStorage.setItem('zs_theme_pick',n)}catch(e){}
+}
+function clearSel(){
+  document.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
+  document.getElementById('selName').textContent='none yet';
+  try{localStorage.removeItem('zs_theme_pick')}catch(e){}
+}
+try{const s=localStorage.getItem('zs_theme_pick'); if(s)select(+s)}catch(e){}
+</script>
+</body>
+</html>
