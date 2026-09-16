@@ -8,6 +8,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -30,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -200,27 +203,18 @@ private fun SplashScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Logo mark
-        Column(
+        // Logo mark - replace res/drawable/app_logo.png with your own PNG
+        // (fits the 96dp slot; the scale/alpha animation still applies).
+        Image(
+            painter = painterResource(R.drawable.app_logo),
+            contentDescription = "Zero Stress logo",
             modifier = Modifier
+                .width(96.dp)
+                .height(96.dp)
                 .scale(logoScale.value)
                 .alpha(logoAlpha.value),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Column(
-                modifier = Modifier
-                    .width(96.dp)
-                    .height(96.dp)
-                    .background(
-                        Brush.linearGradient(listOf(ZsCyan, Color(0xFF0EA5E9), Color(0xFF2563EB))),
-                        RoundedCornerShape(24.dp)
-                    ),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text("ZS", color = Color(0xFF090D16), fontSize = 34.sp, fontWeight = FontWeight.Black)
-            }
-        }
+            contentScale = ContentScale.Fit
+        )
         Spacer(Modifier.height(24.dp))
         Text(
             "ZERO STRESS",
