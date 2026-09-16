@@ -76,6 +76,7 @@ class IntroVideoActivity : ComponentActivity() {
         }
     }
 
+    @Deprecated("Back is treated as Skip on the intro screen")
     override fun onBackPressed() {
         // Back = skip (same as the Skip button).
         finishToTarget()

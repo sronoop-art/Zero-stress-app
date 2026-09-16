@@ -63,7 +63,7 @@ fun ZsRemoteAvatar(
 
     produceState(initialValue = bitmap, key) {
         if (key == null || ZsAvatarCache.get(key) != null) return@produceState
-        val bmp = download(url!!)
+        val bmp = download(url)
         if (bmp != null) {
             ZsAvatarCache.put(key, bmp)
             value = bmp
