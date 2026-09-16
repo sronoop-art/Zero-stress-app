@@ -100,7 +100,7 @@ private fun ChatScreen() {
     // Live message listener - newest `chatLimit` messages, re-attached when
     // the limit grows so older history loads on demand (pagination).
     DisposableEffect(chatLimit) {
-        db.collection("chat_messages")
+        val listener = db.collection("chat_messages")
             .orderBy("timestamp", com.google.firebase.firestore.Query.Direction.DESCENDING)
             .limit(chatLimit.toLong())
             .addSnapshotListener { snapshots, e ->
