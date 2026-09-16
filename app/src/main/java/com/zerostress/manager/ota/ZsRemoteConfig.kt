@@ -32,6 +32,9 @@ object ZsRemoteConfig {
     private const val CONTENT_PACK_VERSION = "content_pack_version"
     private const val INTRO_VIDEO_URL = "intro_video_url"
     private const val INTRO_VIDEO_VERSION = "intro_video_version"
+    private const val AUDIO_APP_START_URL = "audio_app_start_url"
+    private const val AUDIO_LOGIN_URL = "audio_login_success_url"
+    private const val AUDIO_REGISTER_URL = "audio_register_success_url"
     private const val PREFIX_TITLE = "title_"
     private const val SUFFIX_SCORE = "_score"
 
@@ -53,6 +56,11 @@ object ZsRemoteConfig {
         // to make every device play the new video once again.
         put(INTRO_VIDEO_URL, "")
         put(INTRO_VIDEO_VERSION, 1L)
+        // Remote audio (blank URL = use the bundled res/raw sound). Changing
+        // a URL makes devices download the new MP3 once, then use it.
+        put(AUDIO_APP_START_URL, "")
+        put(AUDIO_LOGIN_URL, "")
+        put(AUDIO_REGISTER_URL, "")
         // Defaults must mirror ZsRankTitles.ALL thresholds
         put("title_bronze_score", 600L)
         put("title_silver_score", 1200L)
@@ -119,6 +127,11 @@ object ZsRemoteConfig {
 
     /** Bump this in the console to make devices play the new intro once. */
     fun introVideoVersion(): Long = safeLong(INTRO_VIDEO_VERSION, 1L)
+
+    /** Direct MP3 URLs for the app sounds ("" = use bundled res/raw audio). */
+    fun audioAppStartUrl(): String = safeString(AUDIO_APP_START_URL, "")
+    fun audioLoginSuccessUrl(): String = safeString(AUDIO_LOGIN_URL, "")
+    fun audioRegisterSuccessUrl(): String = safeString(AUDIO_REGISTER_URL, "")
 
     /** True when this installed build is below the console-set minimum version. */
     fun updateRequired(): Boolean =
