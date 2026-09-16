@@ -71,6 +71,7 @@ private fun ManageSeasonsScreen() {
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<DocumentSnapshot?>(null) }
     var resetTarget by remember { mutableStateOf<DocumentSnapshot?>(null) }
+    var showResetBoards by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
 
     fun loadSeasons() {
@@ -88,8 +89,13 @@ private fun ManageSeasonsScreen() {
                 title = "Manage Seasons",
                 onBack = { (context as? android.app.Activity)?.finish() },
                 right = {
-                    TextButton(onClick = { showAddDialog = true }) {
-                        Text("+ Add", color = ZsCyan, fontWeight = FontWeight.Bold)
+                    Row {
+                        TextButton(onClick = { showResetBoards = true }) {
+                            Text("Reset Boards", color = ZsDanger, fontWeight = FontWeight.Bold)
+                        }
+                        TextButton(onClick = { showAddDialog = true }) {
+                            Text("+ Add", color = ZsCyan, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             )
@@ -319,6 +325,64 @@ private fun ManageSeasonsScreen() {
             },
             dismissButton = {
                 TextButton(enabled = !busy, onClick = { resetTarget = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Standalone leaderboard reset - clears daily/weekly/monthly boards
+    // WITHOUT ending the season (replaces the reset Cloud Function).
+    fun runBoardsReset() {
+        busy = true
+        db.collection("players")
+            .whereEqualTo("status", "approved")
+            .get()
+            .addOnFailureListener {
+                busy = false
+                showResetBoards = false
+                Toast.makeText(context, "Reset failed: ${it.message}", Toast.LENGTH_LONG).show()
+            }
+            .addOnSuccessListener { approved ->
+                val tiers = listOf(
+                    listOf("dailyScore", "dailyWins", "dailyKills"),
+                    listOf("weeklyScore", "weeklyWins", "weeklyKills"),
+                    listOf("monthlyScore", "monthlyWins", "monthlyKills")
+                )
+                fun commitTier(i: Int) {
+                    if (i >= tiers.size) {
+                        busy = false
+                        showResetBoards = false
+                        Toast.makeText(context, "Leaderboards reset", Toast.LENGTH_LONG).show()
+                        return
+                    }
+                    val f = tiers[i]
+                    val rb = db.batch()
+                    for (p in approved.documents) {
+                        rb.update(p.reference, mapOf(f[0] to 0L, f[1] to 0L, f[2] to 0L))
+                    }
+                    rb.commit().addOnCompleteListener { commitTier(i + 1) }
+                }
+                commitTier(0)
+            }
+    }
+
+    if (showResetBoards) {
+        AlertDialog(
+            onDismissRequest = { if (!busy) showResetBoards = false },
+            title = { Text("Reset Leaderboards") },
+            text = {
+                Text(
+                    "Zero the daily, weekly and monthly leaderboards for all " +
+                        "approved players?\n\nAll-time scores and coins are kept.",
+                    color = ZsTextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = { runBoardsReset() }) {
+                    Text(if (busy) "Resetting…" else "Reset", color = ZsDanger, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { showResetBoards = false }) { Text("Cancel") }
             }
         )
     }

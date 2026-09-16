@@ -90,6 +90,7 @@ private fun ChatScreen() {
     var messageText by remember { mutableStateOf("") }
     var typingCount by remember { mutableStateOf(0) }
     var isAdmin by remember { mutableStateOf(false) }
+    var isModerator by remember { mutableStateOf(false) }
     var showMentionDialog by remember { mutableStateOf(false) }
     var showClearChatDialog by remember { mutableStateOf(false) }
 
@@ -153,6 +154,7 @@ private fun ChatScreen() {
                     if (doc.exists()) {
                         userName = doc.getString("name") ?: "Unknown"
                         isAdmin = doc.getString("role") == "admin"
+                        isModerator = doc.getString("role") == "moderator"
                     }
                 }
         }
@@ -285,7 +287,7 @@ private fun ChatScreen() {
                 title = "Team Chat",
                 onBack = { (context as? android.app.Activity)?.finish() },
                 right = {
-                    if (isAdmin) {
+                    if (isAdmin || isModerator) {
                         TextButton(onClick = { showClearChatDialog = true }) {
                             ZsPngIcon(R.drawable.ic_action_delete, size = 20.dp, tint = ZsDanger)
                         }
@@ -413,7 +415,9 @@ private fun ChatScreen() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(
-                                if (role == "admin") "$name (admin)" else name,
+                                if (role == "admin") "$name (admin)"
+                                else if (role == "moderator") "$name (mod)"
+                                else name,
                                 modifier = Modifier.fillMaxWidth()
                             )
                         }

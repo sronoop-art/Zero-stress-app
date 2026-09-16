@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.ui.PasswordField
 import com.zerostress.manager.ui.SectionTitle
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
@@ -72,6 +73,7 @@ private fun SettingsScreen() {
     var showAbout by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showDeleteFinal by remember { mutableStateOf(false) }
+    var showChangePassword by remember { mutableStateOf(false) }
 
     // Ask for POST_NOTIFICATIONS on Android 13+ the first time Settings opens.
     // Without it the system silently drops every push on modern devices.
@@ -170,6 +172,12 @@ private fun SettingsScreen() {
 
                 SectionTitle("ACCOUNT")
                 ZSButton(
+                    text = "Change Password",
+                    onClick = { showChangePassword = true },
+                    container = ZsPrimary
+                )
+                Spacer(Modifier.height(12.dp))
+                ZSButton(
                     text = "Logout",
                     onClick = {
                         FirebaseAuth.getInstance().signOut()
@@ -187,6 +195,76 @@ private fun SettingsScreen() {
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showChangePassword) {
+        var current by remember { mutableStateOf("") }
+        var next by remember { mutableStateOf("") }
+        var confirm by remember { mutableStateOf("") }
+        var changing by remember { mutableStateOf(false) }
+        fun doChange() {
+            val auth = FirebaseAuth.getInstance()
+            if (current.isEmpty() || next.length < 6 || confirm != next) {
+                Toast.makeText(
+                    context,
+                    when {
+                        next.length < 6 -> "New password must be at least 6 characters"
+                        confirm != next -> "New passwords do not match"
+                        else -> "Enter your current password"
+                    },
+                    Toast.LENGTH_SHORT
+                ).show()
+                return
+            }
+            changing = true
+            val email = auth.currentUser?.email ?: ""
+            val cred = com.google.firebase.auth.EmailAuthProvider.getCredential(email, current)
+            auth.currentUser?.reauthenticate(cred)
+                ?.addOnSuccessListener {
+                    auth.currentUser?.updatePassword(next)
+                        ?.addOnSuccessListener {
+                            changing = false
+                            showChangePassword = false
+                            Toast.makeText(context, "Password changed", Toast.LENGTH_LONG).show()
+                        }
+                        ?.addOnFailureListener { e ->
+                            changing = false
+                            Toast.makeText(context, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                }
+                ?.addOnFailureListener { e ->
+                    changing = false
+                    Toast.makeText(
+                        context,
+                        if (e.message?.contains("password", true) == true ||
+                            e.message?.contains("credential", true) == true
+                        ) "Current password is incorrect"
+                        else "Failed: ${e.message}",
+                        Toast.LENGTH_LONG
+                    ).show()
+                }
+        }
+        AlertDialog(
+            onDismissRequest = { if (!changing) showChangePassword = false },
+            title = { Text("Change Password") },
+            text = {
+                Column {
+                    PasswordField(value = current, onValueChange = { current = it }, label = "Current password")
+                    Spacer(Modifier.height(8.dp))
+                    PasswordField(value = next, onValueChange = { next = it }, label = "New password (6+ characters)")
+                    Spacer(Modifier.height(8.dp))
+                    PasswordField(value = confirm, onValueChange = { confirm = it }, label = "Confirm new password")
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !changing, onClick = { doChange() }) {
+                    Text(if (changing) "Changing…" else "Change", color = ZsAccent, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !changing, onClick = { showChangePassword = false }) { Text("Cancel") }
+            }
+        )
     }
 
     if (showAbout) {

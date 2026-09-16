@@ -23,6 +23,16 @@ service cloud.firestore {
       return isSignedIn() && callerRole() == "admin";
     }
 
+    // Moderators: trusted helpers between player and admin. They may clean
+    // up chat but cannot manage players, seasons, or other admin data.
+    function isModerator() {
+      return isSignedIn() && callerRole() == "moderator";
+    }
+
+    function isStaff() {
+      return isAdmin() || isModerator();
+    }
+
     // ---------------------------------------------------------------------
     // players — profile / role / stats
     // Anyone signed in can read the roster (leaderboards, friend search).
@@ -54,8 +64,8 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
                     && request.resource.data.senderId == request.auth.uid;
-      // No edits; admins can clean up.
-      allow delete: if isAdmin();
+      // No edits; admins and moderators can clean up.
+      allow delete: if isStaff();
     }
 
     match /chat_typing/{uid} {
@@ -76,7 +86,7 @@ service cloud.firestore {
         allow read: if isSignedIn();
         allow create: if isSignedIn()
                       && request.resource.data.senderId == request.auth.uid;
-        allow delete: if isAdmin();
+        allow delete: if isStaff();
       }
     }
 
