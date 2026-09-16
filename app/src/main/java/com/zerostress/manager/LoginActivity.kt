@@ -181,21 +181,13 @@ private fun LoginScreen() {
                                                     AdminDashboardActivity::class.java
                                                 else
                                                     PlayerDashboardActivity::class.java
-                                                val intent = android.content.Intent(context, target).apply {
-                                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                            android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                                }
-                                                context.startActivity(intent)
+                                                IntroVideoActivity.launch(context, target)
                                                 (context as? android.app.Activity)?.finish()
                                             }
                                             .addOnFailureListener {
                                                 // No profile (or Firestore failed): still enter the app
-                                                // as a player — splash login path behaves the same way.
-                                                val intent = android.content.Intent(context, PlayerDashboardActivity::class.java).apply {
-                                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
-                                                            android.content.Intent.FLAG_ACTIVITY_CLEAR_TASK
-                                                }
-                                                context.startActivity(intent)
+                                                // as a player - same behavior as the splash login path.
+                                                IntroVideoActivity.launch(context, PlayerDashboardActivity::class.java)
                                                 (context as? android.app.Activity)?.finish()
                                             }
                                     }

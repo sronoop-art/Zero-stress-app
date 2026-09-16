@@ -150,15 +150,19 @@ private fun SplashScreen() {
 
             db.collection("players").document(userId).get()
                 .addOnSuccessListener { doc ->
-                    val intent = if (doc.exists() && doc.getString("role") == "admin") {
-                        Intent(context, AdminDashboardActivity::class.java)
+                    // Logged-in users get the (once-per-version) intro video
+                    // before their dashboard; guests go straight to login.
+                    if (doc.exists() && doc.getString("role") == "admin") {
+                        IntroVideoActivity.launch(context, AdminDashboardActivity::class.java)
                     } else if (doc.exists()) {
-                        Intent(context, PlayerDashboardActivity::class.java)
+                        IntroVideoActivity.launch(context, PlayerDashboardActivity::class.java)
                     } else {
-                        Intent(context, LoginActivity::class.java)
+                        context.startActivity(
+                            Intent(context, LoginActivity::class.java).apply {
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                            }
+                        )
                     }
-                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    context.startActivity(intent)
                     (context as? android.app.Activity)?.finish()
                 }
                 .addOnFailureListener {

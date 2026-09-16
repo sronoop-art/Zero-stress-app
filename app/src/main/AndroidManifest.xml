@@ -37,6 +37,7 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".IntroVideoActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".LoginActivity" android:theme="@style/Theme.ZeroStress" />
 
         <activity android:name=".RegisterActivity" android:theme="@style/Theme.ZeroStress" />

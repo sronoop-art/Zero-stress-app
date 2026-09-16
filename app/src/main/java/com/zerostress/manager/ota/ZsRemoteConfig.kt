@@ -30,6 +30,8 @@ object ZsRemoteConfig {
     private const val UPDATE_MESSAGE = "update_message"
     private const val CONTENT_PACK_URL = "content_pack_url"
     private const val CONTENT_PACK_VERSION = "content_pack_version"
+    private const val INTRO_VIDEO_URL = "intro_video_url"
+    private const val INTRO_VIDEO_VERSION = "intro_video_version"
     private const val PREFIX_TITLE = "title_"
     private const val SUFFIX_SCORE = "_score"
 
@@ -47,6 +49,10 @@ object ZsRemoteConfig {
         // Cloudinary profile-picture hosting (both blank = feature disabled)
         put("cloudinary_cloud_name", "")
         put("cloudinary_upload_preset", "")
+        // Intro video (blank URL = feature disabled). Bump the version key
+        // to make every device play the new video once again.
+        put(INTRO_VIDEO_URL, "")
+        put(INTRO_VIDEO_VERSION, 1L)
         // Defaults must mirror ZsRankTitles.ALL thresholds
         put("title_bronze_score", 600L)
         put("title_silver_score", 1200L)
@@ -107,6 +113,12 @@ object ZsRemoteConfig {
     fun contentPackUrl(): String = safeString(CONTENT_PACK_URL, "")
 
     fun contentPackVersion(): Long = safeLong(CONTENT_PACK_VERSION, 0L)
+
+    /** Intro video URL ("" = disabled). Set in Remote Config. */
+    fun introVideoUrl(): String = safeString(INTRO_VIDEO_URL, "")
+
+    /** Bump this in the console to make devices play the new intro once. */
+    fun introVideoVersion(): Long = safeLong(INTRO_VIDEO_VERSION, 1L)
 
     /** True when this installed build is below the console-set minimum version. */
     fun updateRequired(): Boolean =
