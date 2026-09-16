@@ -65,7 +65,8 @@ import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 
 /**
- * Full-screen dark gradient used as the base of every screen.
+ * Full-screen dark gradient with a subtle carbon-fiber weave texture,
+ * used as the base of every screen (Carbon GT Racing theme).
  */
 @Composable
 fun ZSBackground(
@@ -75,7 +76,22 @@ fun ZSBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(ZsBgStart, ZsBgMid, ZsBgStart))),
+            .background(Brush.verticalGradient(listOf(ZsBgStart, ZsBgMid, ZsBgStart)))
+            .drawBehind {
+                // Fine diagonal weave - reads as carbon fiber at low alpha.
+                val step = 14.dp.toPx()
+                val stroke = 3.dp.toPx()
+                var x = -size.height
+                while (x < size.width) {
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.025f),
+                        start = Offset(x, 0f),
+                        end = Offset(x + size.height, size.height),
+                        strokeWidth = stroke
+                    )
+                    x += step
+                }
+            },
         content = content
     )
 }
