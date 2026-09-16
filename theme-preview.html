@@ -3,56 +3,152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Zero Stress — UI Theme Picker</title>
+<title>Zero Stress — UI Design Styles</title>
 <style>
-  :root{
-    --bg:#0b0e1a; --panel:#131728; --line:#252a44; --txt:#e8ecf8; --dim:#8b93b8;
-  }
+  :root{ --bg:#0b0e1a; --panel:#131728; --line:#252a44; --txt:#e8ecf8; --dim:#8b93b8; }
   *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
   body{background:var(--bg); color:var(--txt); font-family:'Segoe UI',Roboto,system-ui,sans-serif; padding:16px 12px 90px}
   h1{font-size:20px; letter-spacing:1px; text-transform:uppercase}
   .sub{color:var(--dim); font-size:13px; margin:6px 0 18px; line-height:1.5}
   .grid{display:grid; grid-template-columns:1fr; gap:18px; max-width:480px; margin:0 auto}
-  @media(min-width:760px){ .grid{grid-template-columns:1fr 1fr} body{padding-bottom:110px} }
+  @media(min-width:760px){ .grid{grid-template-columns:1fr 1fr} }
 
   .card{background:var(--panel); border:2px solid var(--line); border-radius:16px; overflow:hidden; cursor:pointer; position:relative; transition:transform .15s, border-color .15s}
   .card:active{transform:scale(.98)}
   .card.sel{border-color:#fff}
-  .badge{position:absolute; top:10px; right:10px; background:#fff; color:#000; font-size:10px; font-weight:800; padding:4px 8px; border-radius:99px; display:none; letter-spacing:1px}
+  .badge{position:absolute; top:10px; right:10px; background:#fff; color:#000; font-size:10px; font-weight:800; padding:4px 8px; border-radius:99px; display:none; z-index:5}
   .card.sel .badge{display:block}
   .head{padding:12px 14px 8px}
   .tname{font-size:16px; font-weight:800; letter-spacing:.5px}
   .tdesc{color:var(--dim); font-size:11.5px; margin-top:2px}
-  .chips{display:flex; gap:5px; padding:0 14px 10px}
-  .chip{width:22px; height:22px; border-radius:6px; border:1px solid rgba(255,255,255,.15)}
   .mock{display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 12px 14px}
-  .phone{border-radius:12px; padding:10px 8px; min-height:150px; display:flex; flex-direction:column; gap:7px; border:1px solid rgba(255,255,255,.07)}
+  .phone{border-radius:12px; padding:10px 8px; min-height:150px; display:flex; flex-direction:column; gap:7px; overflow:hidden; position:relative}
   .login-mock{align-items:center; justify-content:center}
-  .lg-logo{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13px}
+  .lg-logo{width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:13px}
   .lg-title{font-size:9px; font-weight:800; letter-spacing:2px}
-  .lg-field{width:85%; height:14px; border-radius:7px; opacity:.75}
-  .lg-btn{width:85%; height:18px; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800; color:#fff}
-  .dash-title{font-size:8px; letter-spacing:1.5px; font-weight:800; opacity:.8}
+  .lg-field{width:85%; height:15px}
+  .lg-btn{width:85%; height:19px; display:flex; align-items:center; justify-content:center; font-size:8px; font-weight:800}
+  .dash-title{font-size:8px; letter-spacing:1.5px; font-weight:800}
   .tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:5px}
-  .tile{border-radius:8px; height:34px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:7px; opacity:.95}
+  .tile{display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:7px}
   .tile .ic{font-size:11px}
-  .rank{align-self:center; transform:rotate(45deg); width:30px; height:30px; border-radius:7px; margin:6px 0; display:flex; align-items:center; justify-content:center}
-  .rank span{transform:rotate(-45deg); font-size:8px; font-weight:900}
-  .bub{max-width:88%; padding:6px 9px; border-radius:10px; font-size:8.5px; line-height:1.3}
-  .bub.me{align-self:flex-end; border-bottom-right-radius:3px}
-  .bub.them{align-self:flex-start; border-bottom-left-radius:3px; background:rgba(255,255,255,.06)}
+  .rank{align-self:center; width:32px; height:32px; margin:5px 0; display:flex; align-items:center; justify-content:center}
+  .rank span{font-size:8px; font-weight:900}
+  .rank-row{display:flex; flex-direction:column; align-items:center; justify-content:center; flex:1}
+  .rank-name{font-size:8px; font-weight:800; letter-spacing:1px}
+  .rank-pts{font-size:7.5px; opacity:.75}
+  .bub{max-width:88%; padding:6px 9px; font-size:8.5px; line-height:1.3; align-self:flex-start}
+  .bub.me{align-self:flex-end}
   .foot{position:fixed; bottom:0; left:0; right:0; background:#0d1120f2; border-top:1px solid var(--line); padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; backdrop-filter:blur(6px)}
   .foot .pick{font-size:12px; color:var(--dim)} .foot .pick b{color:#fff}
   .foot button{background:#38bdf8; color:#001; border:0; font-weight:800; padding:10px 16px; border-radius:10px; font-size:12px}
   .hint{max-width:480px; margin:14px auto 0; color:var(--dim); font-size:11.5px; line-height:1.5}
+
+  /* ============ 1. GLASSMORPHISM ============ */
+  .st1{border-radius:20px}
+  .st1 .lg-logo{background:rgba(255,255,255,.18); border:1px solid rgba(255,255,255,.4); border-radius:12px; backdrop-filter:blur(6px)}
+  .st1 .lg-field{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.35); border-radius:14px}
+  .st1 .lg-btn{background:rgba(255,255,255,.2); border:1px solid rgba(255,255,255,.5); border-radius:14px; backdrop-filter:blur(6px)}
+  .st1 .tile{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.3); border-radius:16px; backdrop-filter:blur(4px)}
+  .st1 .rank{border-radius:50%; background:rgba(255,255,255,.15); border:2px solid rgba(255,255,255,.5); backdrop-filter:blur(4px)}
+  .st1 .bub{background:rgba(255,255,255,.13); border:1px solid rgba(255,255,255,.3); border-radius:14px}
+  .st1 .bub.me{background:rgba(255,255,255,.28)}
+
+  /* ============ 2. NEUMORPHIC DARK ============ */
+  .st2 .lg-logo{background:#1e2128; border-radius:12px; box-shadow:-4px -4px 8px rgba(255,255,255,.05), 4px 4px 10px rgba(0,0,0,.65); color:#5eead4}
+  .st2 .lg-field{background:#1e2128; border-radius:12px; box-shadow:inset 3px 3px 6px rgba(0,0,0,.6), inset -3px -3px 6px rgba(255,255,255,.04)}
+  .st2 .lg-btn{background:#1e2128; border-radius:12px; box-shadow:-4px -4px 8px rgba(255,255,255,.05), 4px 4px 10px rgba(0,0,0,.65); color:#5eead4}
+  .st2 .tile{background:#1e2128; border-radius:14px; box-shadow:-3px -3px 7px rgba(255,255,255,.05), 3px 3px 8px rgba(0,0,0,.6)}
+  .st2 .rank{border-radius:50%; background:#1e2128; box-shadow:-4px -4px 9px rgba(255,255,255,.05), 4px 4px 9px rgba(0,0,0,.65)}
+  .st2 .bub{background:#1e2128; border-radius:14px; box-shadow:3px 3px 7px rgba(0,0,0,.55), -2px -2px 5px rgba(255,255,255,.04)}
+
+  /* ============ 3. CYBERPUNK HUD ============ */
+  .st3{background-image:repeating-linear-gradient(0deg, transparent 0 2px, rgba(0,229,255,.03) 2px 3px)}
+  .st3 .lg-logo{clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px); background:rgba(0,229,255,.12); border:1px solid #00e5ff}
+  .st3 .lg-field{clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px); background:rgba(0,229,255,.05); border:1px solid rgba(0,229,255,.5)}
+  .st3 .lg-btn{clip-path:polygon(7px 0,100% 0,100% calc(100% - 7px),calc(100% - 7px) 100%,0 100%,0 7px); background:#00e5ff; color:#02090f}
+  .st3 .tile{clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px); background:rgba(0,229,255,.07); border:1px solid rgba(0,229,255,.4)}
+  .st3 .rank{clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); background:rgba(255,43,214,.15); border:1px solid #ff2bd6}
+  .st3 .bub{clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px); background:rgba(0,229,255,.06); border:1px solid rgba(0,229,255,.4)}
+  .st3 .bub.me{background:rgba(255,43,214,.12); border-color:#ff2bd6}
+
+  /* ============ 4. NEON GRID / TRON ============ */
+  .st4{background-image:linear-gradient(rgba(0,240,255,.07) 1px, transparent 1px), linear-gradient(90deg, rgba(0,240,255,.07) 1px, transparent 1px); background-size:14px 14px}
+  .st4 .lg-logo{background:transparent; border:2px solid #00f0ff; border-radius:4px; color:#00f0ff; box-shadow:0 0 8px rgba(0,240,255,.6)}
+  .st4 .lg-field{background:rgba(0,0,0,.4); border:1.5px solid rgba(0,240,255,.7); border-radius:3px; box-shadow:0 0 6px rgba(0,240,255,.25)}
+  .st4 .lg-btn{background:transparent; border:2px solid #00f0ff; border-radius:3px; color:#00f0ff; box-shadow:0 0 10px rgba(0,240,255,.5)}
+  .st4 .tile{background:rgba(0,0,0,.5); border:1.5px solid rgba(255,102,255,.7); border-radius:3px; box-shadow:0 0 6px rgba(255,102,255,.3)}
+  .st4 .rank{transform:rotate(45deg); border:2px solid #00f0ff; border-radius:2px; background:rgba(0,0,0,.6); box-shadow:0 0 12px rgba(0,240,255,.7)}
+  .st4 .rank span{transform:rotate(-45deg)}
+  .st4 .bub{background:rgba(0,0,0,.55); border:1.5px solid rgba(0,240,255,.6); border-radius:3px}
+  .st4 .bub.me{border-color:#ff66ff; box-shadow:0 0 8px rgba(255,102,255,.4)}
+
+  /* ============ 5. BRUTAL ESPORTS ============ */
+  .st5 .lg-logo{background:#ffe600; color:#000; border:3px solid #000; border-radius:0; box-shadow:4px 4px 0 #000}
+  .st5 .lg-field{background:#1c1c22; border:2px solid #555; border-radius:0}
+  .st5 .lg-btn{background:#ff3b3b; border:3px solid #000; border-radius:0; box-shadow:4px 4px 0 #000; color:#fff; text-transform:uppercase}
+  .st5 .tile{background:#1c1c22; border:2px solid #444; border-radius:0}
+  .st5 .rank{border-radius:0; background:#ffe600; border:3px solid #000; box-shadow:4px 4px 0 #000; transform:none}
+  .st5 .bub{background:#1c1c22; border:2px solid #444; border-radius:0}
+  .st5 .bub.me{background:#ff3b3b; border-color:#000}
+
+  /* ============ 6. SOFT ARCADE ============ */
+  .st6 .lg-logo{background:#ffd166; border:3px solid #0b1526; border-radius:14px; box-shadow:0 5px 0 #0b1526; color:#0b1526}
+  .st6 .lg-field{background:#fff; border:3px solid #0b1526; border-radius:14px; box-shadow:0 4px 0 #0b1526}
+  .st6 .lg-btn{background:#ef476f; border:3px solid #0b1526; border-radius:14px; box-shadow:0 5px 0 #0b1526; color:#fff}
+  .st6 .tile{background:#2b4a7d; border:2.5px solid #0b1526; border-radius:14px; box-shadow:0 4px 0 #0b1526}
+  .st6 .rank{border-radius:12px; background:#ffd166; border:3px solid #0b1526; box-shadow:0 5px 0 #0b1526; transform:rotate(-6deg)}
+  .st6 .bub{background:#fff; border:2.5px solid #0b1526; border-radius:14px; box-shadow:0 3px 0 #0b1526}
+  .st6 .bub.me{background:#06d6a0}
+
+  /* ============ 7. MINIMAL FLAT PRO ============ */
+  .st7{gap:9px}
+  .st7 .lg-logo{background:#4c8dff; border-radius:10px; color:#fff}
+  .st7 .lg-field{background:#161b22; border-radius:8px; border:none}
+  .st7 .lg-btn{background:#4c8dff; border-radius:8px; color:#fff}
+  .st7 .tile{background:#161b22; border-radius:9px; border:none}
+  .st7 .rank{border-radius:50%; background:#161b22; border:2px solid #4c8dff}
+  .st7 .bub{background:#161b22; border-radius:10px}
+  .st7 .bub.me{background:#4c8dff; color:#fff}
+
+  /* ============ 8. RETRO PIXEL ============ */
+  .st8{font-family:'Courier New',monospace}
+  .st8 .lg-logo{background:#52ff7a; color:#05140a; border:3px solid #05140a; border-radius:0; box-shadow:3px 3px 0 #52ff7a66; image-rendering:pixelated}
+  .st8 .lg-field{background:#0a0a16; border:3px double #52ff7a; border-radius:0}
+  .st8 .lg-btn{background:#52ff7a; color:#05140a; border:3px solid #05140a; border-radius:0; box-shadow:3px 3px 0 #000}
+  .st8 .tile{background:#141428; border:2px solid #52ff7a55; border-radius:0}
+  .st8 .rank{border-radius:0; background:#ff5cc8; border:3px solid #05140a; box-shadow:3px 3px 0 #000; transform:none}
+  .st8 .bub{background:#141428; border:2px solid #52ff7a66; border-radius:0}
+  .st8 .bub.me{border-color:#ff5cc8}
+
+  /* ============ 9. TACTICAL OPS ============ */
+  .st9{font-family:'Courier New',monospace}
+  .st9 .lg-title{letter-spacing:4px}
+  .st9 .lg-logo{background:transparent; border:2px solid #d4a017; border-radius:2px; color:#d4a017}
+  .st9 .lg-field{background:rgba(212,160,23,.06); border:1.5px dashed rgba(212,160,23,.6); border-radius:2px}
+  .st9 .lg-btn{background:#d4a017; color:#14140a; border-radius:2px; letter-spacing:3px}
+  .st9 .tile{background:#1c1c15; border:1px solid rgba(212,160,23,.35); border-radius:2px}
+  .st9 .rank{clip-path:polygon(50% 0,100% 15%,100% 70%,50% 100%,0 70%,0 15%); background:#2a2a1c; border:1.5px solid #d4a017; transform:none}
+  .st9 .bub{background:#1c1c15; border-left:3px solid #d4a017; border-radius:2px}
+  .st9 .bub.me{border-left:none; border-right:3px solid #8a9a5b}
+
+  /* ============ 10. AURORA FLOW ============ */
+  .st10 .lg-logo{background:linear-gradient(135deg,#7c4dff,#00e0c7); border-radius:50%; color:#fff; box-shadow:0 0 14px rgba(124,77,255,.5)}
+  .st10 .lg-field{background:linear-gradient(90deg,rgba(124,77,255,.12),rgba(0,224,199,.08)); border:1px solid rgba(124,77,255,.4); border-radius:18px}
+  .st10 .lg-btn{background:linear-gradient(90deg,#7c4dff,#00e0c7); border-radius:18px; color:#fff; box-shadow:0 4px 14px rgba(124,77,255,.45)}
+  .st10 .tile{background:linear-gradient(135deg,rgba(124,77,255,.16),rgba(0,224,199,.08)); border:1px solid rgba(124,77,255,.3); border-radius:16px}
+  .st10 .rank{border-radius:50%; background:conic-gradient(#7c4dff,#00e0c7,#7c4dff); padding:2px}
+  .st10 .rank span{background:#0b0a1c; border-radius:50%; width:100%; height:100%; display:flex; align-items:center; justify-content:center}
+  .st10 .bub{background:linear-gradient(135deg,rgba(124,77,255,.18),rgba(0,224,199,.1)); border-radius:16px}
+  .st10 .bub.me{background:linear-gradient(90deg,#7c4dff,#00e0c7); color:#fff}
 </style>
 </head>
 <body>
-<h1>🎮 Zero Stress — Pick your UI theme</h1>
-<p class="sub">10 gaming styles, previewed on your real screens (login · dashboard · rank badge · chat). Tap a card to select — your pick is saved on this device. Tell me the winner's number and I'll apply it to the whole app.</p>
+<h1>🎮 Zero Stress — Pick a UI design</h1>
+<p class="sub">10 full <b>design languages</b> — different shapes, borders, shadows, typography and colors — previewed on your login · dashboard · rank badge · chat screens. Tap to select, then tell me the number.</p>
 
 <div class="grid" id="grid"></div>
-<p class="hint">ℹ️ The winner is applied by remapping the color tokens in <b>Theme.kt</b> (the single source of truth for the entire app) — backgrounds, cards, buttons, chat, accents all follow automatically.</p>
+<p class="hint">ℹ️ Applying a winner = color tokens in <b>Theme.kt</b> + card/button/badge shape treatments in <b>Components.kt</b>. Every screen follows automatically.</p>
 
 <div class="foot">
   <div class="pick">Selected: <b id="selName">none yet</b></div>
@@ -60,86 +156,81 @@
 </div>
 
 <script>
-const THEMES = [
- {n:1,name:"Cyber Neon",tag:"The current look — electric cyan on deep navy. Keeps brand continuity.",
-  bg:"#0b0e1a",card:"#131728",ac:"#38bdf8",ac2:"#22d3ee",tx:"#e8ecf8",btn:"#38bdf8",btnTx:"#001018",rank:"#38bdf8",rankTx:"#001018",rankLbl:"GM"},
- {n:2,name:"Synthwave '84",tag:"Retro sunset — hot pink, purple, orange gradients. Bold arcade energy.",
-  bg:"#160e23",card:"#221536",ac:"#ff2fb3",ac2:"#ff9e3d",tx:"#ffe9f7",btn:"linear-gradient(90deg,#ff2fb3,#ff9e3d)",btnTx:"#fff",rank:"#ff2fb3",rankTx:"#fff",rankLbl:"GM"},
- {n:3,name:"Toxic Strike",tag:"Esports aggression — acid green on near-black. Sharp, competitive, hated by noobs.",
-  bg:"#0a0f0a",card:"#101a10",ac:"#7dff3f",ac2:"#c8ff3f",tx:"#eaffe4",btn:"#7dff3f",btnTx:"#0a0f0a",rank:"#7dff3f",rankTx:"#0a0f0a",rankLbl:"GM"},
- {n:4,name:"Blood Razor",tag:"Crimson warrior — deep blacks with blood red. For the squad that never surrenders.",
-  bg:"#0d0708",card:"#1a0d10",ac:"#ff2e4d",ac2:"#ff7a3d",tx:"#ffe8ec",btn:"#ff2e4d",btnTx:"#fff",rank:"#ff2e4d",rankTx:"#fff",rankLbl:"GM"},
- {n:5,name:"Golden Royale",tag:"Premium prestige — gold on obsidian. Makes every rank badge feel legendary.",
-  bg:"#0c0b07",card:"#171408",ac:"#f5c542",ac2:"#e8a820",tx:"#fdf6e0",btn:"linear-gradient(90deg,#f5c542,#e8a820)",btnTx:"#1a1400",rank:"#f5c542",rankTx:"#1a1400",rankLbl:"GM"},
- {n:6,name:"Vaporwave Dream",tag:"Aesthetic pastel — pink, teal and lavender on dusk. Chill but unmistakably gaming.",
-  bg:"#181526",card:"#241f38",ac:"#f77fd3",ac2:"#4de3d1",tx:"#fdeafd",btn:"linear-gradient(90deg,#f77fd3,#4de3d1)",btnTx:"#20142c",rank:"#f77fd3",rankTx:"#20142c",rankLbl:"GM"},
- {n:7,name:"Arctic Frost",tag:"Ice-cold clarity — frost blue and silver whites. Clean, sharp, pro-team feel.",
-  bg:"#0a1220",card:"#122238",ac:"#8fd8ff",ac2:"#cfe9ff",tx:"#f2faff",btn:"#8fd8ff",btnTx:"#06263c",rank:"#8fd8ff",rankTx:"#06263c",rankLbl:"GM"},
- {n:8,name:"Inferno Core",tag:"Molten power — ember orange with fire-red accents. High heat, high stakes.",
-  bg:"#120b06",card:"#1e130a",ac:"#ff7a1a",ac2:"#ffb43d",tx:"#fff1e4",btn:"linear-gradient(90deg,#ff7a1a,#ffb43d)",btnTx:"#1d0d00",rank:"#ff7a1a",rankTx:"#1d0d00",rankLbl:"GM"},
- {n:9,name:"Matrix Terminal",tag:"Hacker classic — phosphor green terminal on true black. Monospace vibes included.",
-  bg:"#020a04",card:"#051408",ac:"#00ff66",ac2:"#7dffb0",tx:"#d8ffe8",btn:"#00ff66",btnTx:"#01140a",rank:"#00ff66",rankTx:"#01140a",rankLbl:"GM"},
- {n:10,name:"Royal Indigo",tag:"Deep indigo with gold trims — tournament-final gravitas. Sophisticated but gaming.",
-  bg:"#0d0d21",card:"#151538",ac:"#8c9bff",ac2:"#f0c750",tx:"#eef0ff",btn:"#8c9bff",btnTx:"#0d0d2b",rank:"#f0c750",rankTx:"#201a02",rankLbl:"GM"}
+const STYLES = [
+ {n:1,name:"Glassmorphism",tag:"Frosted translucent panels over a vivid violet gradient — modern, premium, iOS-like.",
+  bg:"linear-gradient(160deg,#4f46e5,#7c3aed 55%,#a855f7)",tx:"#ffffff",ac:"#f0eaff",cls:"st1"},
+ {n:2,name:"Neumorphic Dark",tag:"Soft extruded surfaces carved from one graphite tone — subtle, tactile, calm.",
+  bg:"#181b21",tx:"#cbd5e1",ac:"#5eead4",cls:"st2"},
+ {n:3,name:"Cyberpunk HUD",tag:"Angled cut-corner panels, scanlines, cyan/magenta — a military targeting interface.",
+  bg:"#05070d",tx:"#d8faff",ac:"#00e5ff",cls:"st3"},
+ {n:4,name:"Neon Grid (Tron)",tag:"Glowing outlines over a wireframe grid — retro-futuristic light-cycle energy.",
+  bg:"#030308",tx:"#d9f7ff",ac:"#00f0ff",cls:"st4"},
+ {n:5,name:"Brutal Esports",tag:"Hard shadows, thick black borders, zero rounding — loud tournament poster style.",
+  bg:"#101014",tx:"#f2f2f2",ac:"#ffe600",cls:"st5"},
+ {n:6,name:"Soft Arcade",tag:"Chunky cartoon badges with thick outlines and drop-block shadows — playful squad energy.",
+  bg:"#12203a",tx:"#eaf2ff",ac:"#ffd166",cls:"st6"},
+ {n:7,name:"Minimal Flat Pro",tag:"Borderless flat cards, one disciplined accent — clean pro-team dashboard.",
+  bg:"#0e1116",tx:"#e6edf3",ac:"#4c8dff",cls:"st7"},
+ {n:8,name:"Retro Pixel 8-bit",tag:"Monospace type, double borders, stepped shadows — classic arcade cabinet.",
+  bg:"#0b0b14",tx:"#d8ffe8",ac:"#52ff7a",cls:"st8"},
+ {n:9,name:"Tactical Ops",tag:"Olive-black, stencil lettering, dashed field borders — squad-mission briefing.",
+  bg:"#131310",tx:"#e8e4d8",ac:"#d4a017",cls:"st9"},
+ {n:10,name:"Aurora Flow",tag:"Soft gradient washes and glow rings — dreamy, futuristic, streamer-overlay vibes.",
+  bg:"radial-gradient(circle at 20% 20%,rgba(124,77,255,.25),transparent 50%),radial-gradient(circle at 80% 75%,rgba(0,224,199,.2),transparent 50%),#0b0a1c",tx:"#efeaff",ac:"#9d7bff",cls:"st10"}
 ];
 
+const ICONS=[["🏆","RANK"],["🎮","MATCH"],["💬","CHAT"],["📅","SCHED"],["🔔","ALERT"],["⚙️","SET"]];
 const grid=document.getElementById('grid');
-THEMES.forEach(t=>{
+STYLES.forEach(s=>{
   const el=document.createElement('div');
-  el.className='card'; el.id='t'+t.n;
+  el.className='card'; el.id='t'+s.n;
   el.innerHTML=`
    <div class="badge">✓ SELECTED</div>
-   <div class="head"><div class="tname">#${t.n} · ${t.name}</div><div class="tdesc">${t.tag}</div></div>
-   <div class="chips">
-     <div class="chip" style="background:${t.bg}"></div>
-     <div class="chip" style="background:${t.card}"></div>
-     <div class="chip" style="background:${t.ac}"></div>
-     <div class="chip" style="background:${t.ac2}"></div>
-     <div class="chip" style="background:${t.tx}"></div>
-   </div>
+   <div class="head"><div class="tname">#${s.n} · ${s.name}</div><div class="tdesc">${s.tag}</div></div>
    <div class="mock">
-     <div class="phone login-mock" style="background:linear-gradient(180deg,${t.bg},${t.card})">
-       <div class="lg-logo" style="background:${t.ac};color:${t.btnTx}">ZS</div>
-       <div class="lg-title" style="color:${t.ac}">ZERO STRESS</div>
-       <div class="lg-field" style="background:${t.card};border:1px solid ${t.ac}33"></div>
-       <div class="lg-field" style="background:${t.card};border:1px solid ${t.ac}33"></div>
-       <div class="lg-btn" style="background:${t.btn};color:${t.btnTx}">SIGN IN</div>
+     <div class="phone login-mock ${s.cls}" style="background:${s.bg}">
+       <div class="lg-logo">ZS</div>
+       <div class="lg-title" style="color:${s.ac}">ZERO STRESS</div>
+       <div class="lg-field"></div>
+       <div class="lg-field"></div>
+       <div class="lg-btn">SIGN IN</div>
      </div>
-     <div class="phone" style="background:linear-gradient(180deg,${t.bg},${t.card})">
-       <div class="dash-title" style="color:${t.ac}">QUICK ACTIONS</div>
+     <div class="phone ${s.cls}" style="background:${s.bg}">
+       <div class="dash-title" style="color:${s.ac}">QUICK ACTIONS</div>
        <div class="tiles">
-         ${[['🏆','RANK'],['🎮','MATCH'],['💬','CHAT'],['📅','SCHED'],['🔔','ALERT'],['⚙️','SET']].map(([i,l])=>
-           `<div class="tile" style="background:${t.card};color:${t.tx};border:1px solid ${t.ac}22"><span class="ic">${i}</span>${l}</div>`).join('')}
+         ${ICONS.map(([i,l])=>`<div class="tile" style="color:${s.tx}"><span class="ic">${i}</span>${l}</div>`).join('')}
        </div>
      </div>
-     <div class="phone" style="background:linear-gradient(180deg,${t.bg},${t.card});align-items:center;justify-content:center">
-       <div class="rank" style="background:${t.rank};color:${t.rankTx};box-shadow:0 0 14px ${t.rank}66"><span>${t.rankLbl}</span></div>
-       <div style="font-size:8px;font-weight:800;color:${t.ac};letter-spacing:1px">GRANDMASTER</div>
-       <div style="font-size:7.5px;color:${t.tx}88">2,847 pts · #1</div>
+     <div class="phone ${s.cls}" style="background:${s.bg}">
+       <div class="rank-row">
+         <div class="rank" style="color:${s.ac}"><span>GM</span></div>
+         <div class="rank-name" style="color:${s.ac}">GRANDMASTER</div>
+         <div class="rank-pts" style="color:${s.tx}">2,847 pts · #1</div>
+       </div>
      </div>
-     <div class="phone" style="background:linear-gradient(180deg,${t.bg},${t.card})">
-       <div class="bub them" style="color:${t.tx}">gg everyone 🔥</div>
-       <div class="bub me" style="background:${t.btn};color:${t.btnTx}">match at 8? @Ravi</div>
-       <div class="bub them" style="color:${t.tx}">ready <b style="color:${t.ac}">@you</b></div>
+     <div class="phone ${s.cls}" style="background:${s.bg}">
+       <div class="bub" style="color:${s.tx}">gg everyone 🔥</div>
+       <div class="bub me" style="color:${s.tx}">match at 8? <b>@Ravi</b></div>
+       <div class="bub" style="color:${s.tx}">ready <b style="color:${s.ac}">@you</b></div>
      </div>
    </div>`;
-  el.onclick=()=>select(t.n);
+  el.onclick=()=>select(s.n);
   grid.appendChild(el);
 });
 
 function select(n){
   document.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
-  const t=THEMES.find(x=>x.n===n);
+  const s=STYLES.find(x=>x.n===n);
   document.getElementById('t'+n).classList.add('sel');
-  document.getElementById('selName').textContent='#'+n+' · '+t.name;
-  try{localStorage.setItem('zs_theme_pick',n)}catch(e){}
+  document.getElementById('selName').textContent='#'+n+' · '+s.name;
+  try{localStorage.setItem('zs_style_pick',n)}catch(e){}
 }
 function clearSel(){
   document.querySelectorAll('.card').forEach(c=>c.classList.remove('sel'));
   document.getElementById('selName').textContent='none yet';
-  try{localStorage.removeItem('zs_theme_pick')}catch(e){}
+  try{localStorage.removeItem('zs_style_pick')}catch(e){}
 }
-try{const s=localStorage.getItem('zs_theme_pick'); if(s)select(+s)}catch(e){}
+try{const p=localStorage.getItem('zs_style_pick'); if(p)select(+p)}catch(e){}
 </script>
 </body>
 </html>
