@@ -39,8 +39,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -94,13 +98,14 @@ fun ZSScreenColumn(
 }
 
 /**
- * Shared card with the Zero Stress look (dark surface, rounded corners, subtle border).
+ * Shared card with the Carbon GT look: sharp-ish corners, thin steel border
+ * and a short racing-red speed stripe along the top edge.
  * Pass [onClick] to make it tappable.
  */
 @Composable
 fun ZSCard(
     modifier: Modifier = Modifier,
-    corner: Dp = 14.dp,
+    corner: Dp = 8.dp,
     highlight: Color? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
@@ -109,6 +114,14 @@ fun ZSCard(
         .fillMaxWidth()
         .clip(RoundedCornerShape(corner))
         .background(ZsCard)
+        .drawBehind {
+            // Speed stripe along the top edge (racing accent).
+            drawRect(
+                color = highlight ?: ZsPrimary,
+                topLeft = Offset(0f, 0f),
+                size = Size(size.width * 0.34f, 3.dp.toPx())
+            )
+        }
         .border(
             width = if (highlight != null) 1.5.dp else 1.dp,
             color = highlight ?: ZsBorder.copy(alpha = 0.6f),
@@ -133,7 +146,7 @@ fun ZSButton(
         onClick = onClick,
         modifier = modifier.fillMaxWidth().height(height),
         enabled = enabled,
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(6.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = container,
             contentColor = textColor,
@@ -141,7 +154,7 @@ fun ZSButton(
             disabledContentColor = ZsTextMuted
         )
     ) {
-        Text(text, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text(text, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, fontSize = 15.sp)
     }
 }
 
@@ -170,7 +183,7 @@ fun ZSField(
         singleLine = singleLine,
         minLines = minLines,
         trailingIcon = trailing,
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(6.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = ZsPrimary,
             unfocusedBorderColor = ZsBorder,
@@ -213,7 +226,8 @@ fun ZSTopBar(
             modifier = Modifier.weight(1f).padding(start = if (onBack != null) 0.dp else 12.dp),
             color = ZsTextPrimary,
             fontSize = 20.sp,
-            fontWeight = FontWeight.ExtraBold
+            fontWeight = FontWeight.ExtraBold,
+            fontStyle = FontStyle.Italic
         )
         right?.invoke(this)
     }
@@ -225,9 +239,9 @@ fun ZSBadge(text: String, color: Color, modifier: Modifier = Modifier) {
     Text(
         text = text,
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(4.dp))
             .background(color.copy(alpha = 0.18f))
-            .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(50))
+            .border(1.dp, color.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         color = color,
         fontSize = 12.sp,
@@ -301,9 +315,9 @@ fun ZSStat(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(ZsCard)
-            .border(1.dp, ZsBorder.copy(alpha = 0.6f), RoundedCornerShape(14.dp))
+            .border(1.dp, ZsBorder.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
             .padding(vertical = 12.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -365,9 +379,9 @@ fun ZSMenuTile(
 ) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(10.dp))
             .background(ZsCard)
-            .border(1.dp, accent.copy(alpha = 0.45f), RoundedCornerShape(16.dp))
+            .border(1.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
             .padding(vertical = 16.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,

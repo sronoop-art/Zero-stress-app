@@ -181,7 +181,7 @@ private fun PlayerDashboardScreen() {
                             0 -> ZsCyan
                             1 -> ZsGold
                             2 -> ZsAccent
-                            else -> androidx.compose.ui.graphics.Color(0xFF667EEA)
+                            else -> com.zerostress.manager.ui.theme.ZsPrimary
                         },
                         iconRes = item.iconRes,
                         onClick = { context.startActivity(Intent(context, item.target)) }

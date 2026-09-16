@@ -6,44 +6,46 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// ---- Brand palette (ported from res/values/colors.xml) ----
-val ZsBgStart = Color(0xFF0F0C29)
-val ZsBgMid = Color(0xFF302B63)
-val ZsBgEnd = Color(0xFF24243E)
-val ZsCard = Color(0xFF1A1A2E)
-val ZsCardAlt = Color(0xFF16213E)
+// ---- Brand palette: CARBON GT RACING (theme #11) ----
+// Carbon-fiber charcoal + racing red + silver-white, italic motorsport type.
+val ZsBgStart = Color(0xFF1A1D24)
+val ZsBgMid = Color(0xFF12141A)
+val ZsBgEnd = Color(0xFF0C0E12)
+val ZsCard = Color(0xFF14161C)
+val ZsCardAlt = Color(0xFF1A1D24)
 
-val ZsPrimary = Color(0xFF667EEA)
-val ZsPrimaryDark = Color(0xFF5A67D8)
-val ZsPurple = Color(0xFF764BA2)
+val ZsPrimary = Color(0xFFFF1E3C)      // racing red
+val ZsPrimaryDark = Color(0xFFD91633)
+val ZsPurple = Color(0xFF2A2E38)       // carbon slate (legacy slot)
 
-val ZsAccent = Color(0xFF38EF7D)
-val ZsAccentDark = Color(0xFF11998E)
+val ZsAccent = Color(0xFFFF1E3C)       // hero red accent
+val ZsAccentDark = Color(0xFFD91633)
 
-val ZsTextPrimary = Color(0xFFFFFFFF)
-val ZsTextSecondary = Color(0xFFA0AEC0)
-val ZsTextMuted = Color(0xFF718096)
-val ZsBorder = Color(0xFF4A5568)
-val ZsBorderLight = Color(0xFF718096)
+val ZsTextPrimary = Color(0xFFE8EAF0)
+val ZsTextSecondary = Color(0xFF9AA3B2)
+val ZsTextMuted = Color(0xFF6B7280)
+val ZsBorder = Color(0xFF333A46)
+val ZsBorderLight = Color(0xFF4A5160)
 
-val ZsDanger = Color(0xFFFC4A1A)
-val ZsSuccess = Color(0xFF11998E)
-val ZsGreen = Color(0xFF10B981)
-val ZsCyan = Color(0xFF38BDF8)
-val ZsGold = Color(0xFFFFD200)
-val ZsSilver = Color(0xFFC0C0C0)
+val ZsDanger = Color(0xFFFF1E3C)
+val ZsSuccess = Color(0xFF30D158)
+val ZsGreen = Color(0xFF30D158)
+val ZsCyan = Color(0xFFD7DCE6)         // silver-white secondary accent (legacy slot)
+val ZsGold = Color(0xFFFFD60A)         // rank gold
+val ZsSilver = Color(0xFFC0C7D1)
 val ZsBronze = Color(0xFFCD7F32)
-val ZsWarning = Color(0xFFF7971E)
-val ZsInfo = Color(0xFF00D2FF)
+val ZsWarning = Color(0xFFFFB020)
+val ZsInfo = Color(0xFF6EC1FF)
 val ZsGrey = Color(0xFF8B949E)
 
-val ZsChatSentStart = Color(0xFF667EEA)
-val ZsChatSentEnd = Color(0xFF764BA2)
-val ZsChatReceived = Color(0xFF1A1A2E)
+val ZsChatSentStart = Color(0xFFFF1E3C)
+val ZsChatSentEnd = Color(0xFFD91633)
+val ZsChatReceived = Color(0xFF14161C)
 
 private val ZsColorScheme = darkColorScheme(
     primary = ZsPrimary,
@@ -68,25 +70,30 @@ private val ZsColorScheme = darkColorScheme(
 )
 
 private val ZsTypography = Typography(
+    // Racing type: bold italic headings, like a motorsport HUD.
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
+        fontStyle = FontStyle.Italic,
         fontSize = 32.sp,
         letterSpacing = (-0.5).sp
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
+        fontStyle = FontStyle.Italic,
         fontSize = 24.sp
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
+        fontStyle = FontStyle.Italic,
         fontSize = 20.sp
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
+        fontStyle = FontStyle.Italic,
         fontSize = 16.sp
     ),
     bodyLarge = TextStyle(
