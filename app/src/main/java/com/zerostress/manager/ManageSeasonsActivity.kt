@@ -30,7 +30,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.zerostress.manager.R
 import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.ZsPngIcon
@@ -68,6 +70,8 @@ private fun ManageSeasonsScreen() {
     var seasons by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var deleteTarget by remember { mutableStateOf<DocumentSnapshot?>(null) }
+    var resetTarget by remember { mutableStateOf<DocumentSnapshot?>(null) }
+    var busy by remember { mutableStateOf(false) }
 
     fun loadSeasons() {
         db.collection("seasons").orderBy("createdAt").get()
@@ -134,6 +138,12 @@ private fun ManageSeasonsScreen() {
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(Modifier.height(6.dp))
+                                    TextButton(
+                                        enabled = active && !busy,
+                                        onClick = { resetTarget = doc }
+                                    ) {
+                                        Text("End & Reset", color = ZsDanger, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
                                     TextButton(onClick = { deleteTarget = doc }) {
                                         ZsPngIcon(R.drawable.ic_action_delete, size = 18.dp, tint = ZsDanger)
                                     }
@@ -206,6 +216,109 @@ private fun ManageSeasonsScreen() {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Manual "End Season & Reset" (replaces the auto-reset Cloud Function,
+    // which requires the paid Blaze plan): rewards the top 3, ends the
+    // season and zeroes the daily/weekly/monthly leaderboards.
+    // Callback-style Firestore chaining - no coroutines needed.
+    fun failReset(e: Exception) {
+        busy = false
+        resetTarget = null
+        Toast.makeText(context, "Reset failed: ${e.message}", Toast.LENGTH_LONG).show()
+    }
+
+    fun runSeasonReset(doc: DocumentSnapshot) {
+        busy = true
+        val now = System.currentTimeMillis()
+        val seasonName = doc.getString("name") ?: "the season"
+        val rewards = listOf(doc.getLong("topRewardCoins") ?: 500L, 300L, 150L)
+
+        // 1) Reward the top-3 approved players by all-time score.
+        db.collection("players")
+            .whereEqualTo("status", "approved")
+            .orderBy("score", Query.Direction.DESCENDING)
+            .limit(3)
+            .get()
+            .addOnFailureListener { failReset(it) }
+            .addOnSuccessListener { top ->
+                val batch = db.batch()
+                top.documents.forEachIndexed { index, p ->
+                    val reward = rewards.getOrElse(index) { 0L }
+                    batch.update(p.reference, "coins", FieldValue.increment(reward))
+                    batch.set(
+                        db.collection("notifications").document(),
+                        mapOf(
+                            "uid" to p.id,
+                            "title" to "Season ended - you placed #${index + 1}!",
+                            "message" to "You earned $reward coins in $seasonName.",
+                            "type" to "achievement",
+                            "timestamp" to now
+                        )
+                    )
+                }
+                // 2) End the season.
+                batch.update(doc.reference, mapOf("active" to false, "endedAt" to now))
+                batch.commit()
+                    .addOnFailureListener { failReset(it) }
+                    .addOnSuccessListener {
+                        // 3) Zero every leaderboard tier, one batch at a time.
+                        db.collection("players")
+                            .whereEqualTo("status", "approved")
+                            .get()
+                            .addOnFailureListener { failReset(it) }
+                            .addOnSuccessListener { approved ->
+                                val tiers = listOf(
+                                    listOf("dailyScore", "dailyWins", "dailyKills"),
+                                    listOf("weeklyScore", "weeklyWins", "weeklyKills"),
+                                    listOf("monthlyScore", "monthlyWins", "monthlyKills")
+                                )
+                                fun commitTier(i: Int) {
+                                    if (i >= tiers.size) {
+                                        busy = false
+                                        resetTarget = null
+                                        Toast.makeText(context, "Season ended & leaderboards reset", Toast.LENGTH_LONG).show()
+                                        loadSeasons()
+                                        return
+                                    }
+                                    val f = tiers[i]
+                                    val rb = db.batch()
+                                    for (p in approved.documents) {
+                                        rb.update(p.reference, mapOf(f[0] to 0L, f[1] to 0L, f[2] to 0L))
+                                    }
+                                    rb.commit().addOnCompleteListener { commitTier(i + 1) }
+                                }
+                                commitTier(0)
+                            }
+                    }
+            }
+    }
+
+    resetTarget?.let { doc ->
+        AlertDialog(
+            onDismissRequest = { if (!busy) resetTarget = null },
+            title = { Text("End Season & Reset") },
+            text = {
+                Text(
+                    "End \"${doc.getString("name")}\"?\n\n" +
+                        "• Top 3 players get coin rewards\n" +
+                        "• Daily, weekly & monthly leaderboards reset to 0\n" +
+                        "• The season becomes inactive\n\n" +
+                        "All-time scores are kept.",
+                    color = ZsTextSecondary
+                )
+            },
+            confirmButton = {
+                TextButton(enabled = !busy, onClick = {
+                    runSeasonReset(doc)
+                }) {
+                    Text(if (busy) "Resetting…" else "End & Reset", color = ZsDanger, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(enabled = !busy, onClick = { resetTarget = null }) { Text("Cancel") }
             }
         )
     }
