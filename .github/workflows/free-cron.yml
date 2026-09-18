@@ -1,11 +1,8 @@
 name: Free-plan cron (push relay + resets + reminders)
 
 # Runs WITHOUT the paid Blaze plan. Requires GitHub secrets:
-#   FIREBASE_SERVICE_ACCOUNT - already configured
-#   FCM_SERVER_KEY           - legacy server key (Firebase Console ->
-#                              Project settings -> Cloud Messaging ->
-#                              Server key). Optional: without it, pushes are
-#                              skipped but reminders/resets still run.
+#   FIREBASE_SERVICE_ACCOUNT - already configured (drives Firestore AND push
+#                              delivery via FCM HTTP v1 - no server key needed)
 #
 # Schedule: every 30 minutes (UTC; GitHub may drift a few minutes).
 # Match reminders use a 15-minute pre-start window, so the worst-case
@@ -43,7 +40,6 @@ jobs:
       - name: Validate secrets
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FCM_SERVER_KEY: ${{ secrets.FCM_SERVER_KEY }}
         run: |
           if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
             echo "::error::Secret FIREBASE_SERVICE_ACCOUNT is not set."
@@ -53,13 +49,9 @@ jobs:
             echo "::error::FIREBASE_SERVICE_ACCOUNT is not valid JSON."
             exit 1
           }
-          if [ -z "$FCM_SERVER_KEY" ]; then
-            echo "::warning::FCM_SERVER_KEY not set - pushes skipped, resets/reminders still run."
-          fi
 
       - name: Run cron jobs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FCM_SERVER_KEY: ${{ secrets.FCM_SERVER_KEY }}
           CRON_JOB: ${{ inputs.job || 'all' }}
         run: node functions/cron.js

@@ -1,16 +1,16 @@
 // Free-plan replacement for Cloud Functions: runs as a scheduled GitHub Action.
-// Uses the legacy FCM HTTP API (one server key env var, no OAuth for FCM) and
-// Firestore via the firebase-admin SDK with the existing service-account secret.
+// Sends pushes via the modern FCM HTTP v1 API through the firebase-admin SDK —
+// OAuth tokens are minted automatically from the service account, so NO
+// legacy FCM_SERVER_KEY is needed (that API is being retired by Google).
 //
 // Required GitHub secrets:
-//   FIREBASE_SERVICE_ACCOUNT - full service-account JSON (already configured)
-//   FCM_SERVER_KEY           - legacy server key (Firebase Console -> Project
-//                              settings -> Cloud Messaging -> Server key).
-//                              If missing, pushes are skipped (in-app
-//                              notifications and resets still run).
+//   FIREBASE_SERVICE_ACCOUNT - full service-account JSON (already configured).
+//                              Used for BOTH Firestore access and push sends.
+//
+// Optional env override: FCM_V1_ENABLED=false disables pushes (in-app
+// notifications and resets still run).
 
 const admin = require("firebase-admin");
-const https = require("https");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -26,58 +26,43 @@ function getDb() {
   return db;
 }
 
-// ------------------------------------------------------------- FCM (legacy)
-function fcmSend(key, payload) {
-  return new Promise((resolve, reject) => {
-    const data = JSON.stringify(payload);
-    const req = https.request(
-      {
-        hostname: "fcm.googleapis.com",
-        path: "/fcm/send",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Content-Length": Buffer.byteLength(data),
-          Authorization: "key=" + key,
-        },
-      },
-      (res) => {
-        let buf = "";
-        res.on("data", (c) => (buf += c));
-        res.on("end", () => resolve({ status: res.statusCode, body: buf }));
-      }
-    );
-    req.on("error", reject);
-    req.write(data);
-    req.end();
-  });
-}
-
+// ------------------------------------------------------------- FCM (HTTP v1)
+// firebase-admin mints the OAuth token from the service account and posts to
+// the v1 endpoint — same free FCM delivery, no legacy server key involved.
 async function sendToUid(uid, title, message, type, extraData) {
-  const key = process.env.FCM_SERVER_KEY;
-  if (!key) {
-    console.log("FCM_SERVER_KEY not set - push skipped (in-app notification only).");
+  if ((process.env.FCM_V1_ENABLED || "true").toLowerCase() === "false") {
+    console.log("FCM_V1_ENABLED=false - push skipped (in-app notification only).");
     return;
   }
-  const d = getDb();
+  const d = getDb(); // also initializes the app for admin.messaging()
   const player = await d.collection("players").doc(uid).get();
   const token = player.exists ? player.data().fcmToken : null;
   if (!token) return; // no device token / disabled
+  // v1 requires all data payload values to be strings.
+  const raw = Object.assign({ type: type || "general", uid: uid }, extraData || {});
+  const data = {};
+  for (const k of Object.keys(raw)) data[k] = String(raw[k]);
   try {
-    const res = await fcmSend(key, {
-      to: token,
-      priority: "high",
+    await admin.messaging().send({
+      token: token,
       notification: { title: title, body: message },
-      data: Object.assign({ type: type || "general", uid: uid }, extraData || {}),
+      data: data,
+      android: { priority: "high" },
     });
-    if (res.status === 404 || res.status === 410) {
+    console.log(`Push to ${uid}: sent`);
+  } catch (err) {
+    const code = err && err.code ? String(err.code) : "";
+    if (
+      code === "messaging/registration-token-not-registered" ||
+      code === "messaging/invalid-registration-token"
+    ) {
       // Token no longer valid - clean it up.
       d.collection("players").doc(uid)
         .update({ fcmToken: admin.firestore.FieldValue.delete() }).catch(() => {});
+      console.log(`Push to ${uid}: token invalid, removed`);
+    } else {
+      console.log(`Push to ${uid} failed: ${err.message || code}`);
     }
-    console.log(`Push to ${uid}: HTTP ${res.status}`);
-  } catch (err) {
-    console.log(`Push to ${uid} failed: ${err.message}`);
   }
 }
 
