@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -25,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -50,6 +52,7 @@ import com.zerostress.manager.ui.theme.ZsGold
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
+import com.zerostress.manager.ui.theme.ZsPrimary
 
 class PlayerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -78,6 +81,12 @@ private fun PlayerDashboardScreen() {
     var coins by remember { mutableStateOf(0L) }
     var xp by remember { mutableStateOf(0L) }
     var loaded by remember { mutableStateOf(false) }
+
+    // Next-match countdown (soonest upcoming scheduled match)
+    var nextMatchTitle by remember { mutableStateOf<String?>(null) }
+    var nextMatchTime by remember { mutableStateOf(0L) }
+    var nextMatchId by remember { mutableStateOf<String?>(null) }
+    var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
 
     val menuItems = remember {
         listOf(
@@ -114,6 +123,29 @@ private fun PlayerDashboardScreen() {
                     loaded = true
                 }
             }
+    }
+
+    // Live subscription to the soonest upcoming match.
+    DisposableEffect(Unit) {
+        val listener = db.collection("match_schedules")
+            .whereEqualTo("status", "Upcoming")
+            .orderBy("matchTime")
+            .limit(1)
+            .addSnapshotListener { snap, _ ->
+                val doc = snap?.documents?.firstOrNull()
+                nextMatchTitle = doc?.getString("title")
+                nextMatchTime = doc?.getLong("matchTime") ?: 0L
+                nextMatchId = doc?.id
+            }
+        onDispose { listener.remove() }
+    }
+
+    // 1-second tick drives the countdown text.
+    LaunchedEffect(Unit) {
+        while (true) {
+            nowMs = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -162,6 +194,49 @@ private fun PlayerDashboardScreen() {
                     fraction = xp.toFloat() / (level * 500).toFloat(),
                     label = "XP progress to level ${level + 1}"
                 )
+
+                // Next-match countdown card
+                if (nextMatchTitle != null) {
+                    Spacer(Modifier.height(12.dp))
+                    val remain = nextMatchTime - nowMs
+                    val countdown = when {
+                        remain <= 0 -> "STARTING NOW"
+                        remain < 60_000 -> "starts in ${remain / 1000}s"
+                        remain < 3_600_000 -> "starts in ${remain / 60_000}m ${(remain % 60_000) / 1000}s"
+                        remain < 86_400_000 -> "starts in ${remain / 3_600_000}h ${(remain % 3_600_000) / 60_000}m"
+                        else -> "starts in ${remain / 86_400_000}d ${(remain % 86_400_000) / 3_600_000}h"
+                    }
+                    ZSCard(highlight = ZsPrimary, onClick = {
+                        context.startActivity(Intent(context, ScheduleActivity::class.java))
+                    }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    "NEXT MATCH",
+                                    color = ZsPrimary,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontStyle = FontStyle.Italic,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    nextMatchTitle ?: "",
+                                    color = ZsTextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Text(
+                                countdown,
+                                color = if (remain <= 60_000) ZsPrimary else ZsCyan,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = FontStyle.Italic
+                            )
+                        }
+                    }
+                }
             }
 
             // Menu grid
