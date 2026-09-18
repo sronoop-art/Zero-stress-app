@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,10 +37,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -52,13 +55,13 @@ import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.formatTime
 import com.zerostress.manager.ui.theme.ZeroStressTheme
-import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCard
-import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.theme.ZsPrimary
+import com.zerostress.manager.ui.theme.ZsPrimaryDark
+import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
@@ -307,7 +310,6 @@ private fun ChatScreen() {
                     val sender = doc.getString("senderName") ?: "Unknown"
                     val text = doc.getString("text") ?: ""
                     val ts = doc.getLong("timestamp") ?: 0L
-                    val bubbleColor = if (isSent) com.zerostress.manager.ui.theme.ZsChatSentEnd else ZsCard
 
                     Row(
                         Modifier.fillMaxWidth(),
@@ -316,22 +318,45 @@ private fun ChatScreen() {
                         Column(
                             Modifier
                                 .widthIn(max = 320.dp)
-                                .background(
-                                    color = bubbleColor,
-                                    shape = RoundedCornerShape(
-                                        topStart = 14.dp, topEnd = 14.dp,
-                                        bottomStart = if (isSent) 14.dp else 4.dp,
-                                        bottomEnd = if (isSent) 4.dp else 14.dp
-                                    )
+                                .then(
+                                    if (isSent) {
+                                        // Sent: racing-red gradient bubble
+                                        Modifier.background(
+                                            brush = Brush.horizontalGradient(listOf(ZsPrimaryDark, ZsPrimary)),
+                                            shape = RoundedCornerShape(
+                                                topStart = 4.dp, topEnd = 12.dp,
+                                                bottomStart = 12.dp, bottomEnd = 12.dp
+                                            )
+                                        )
+                                    } else {
+                                        // Received: steel card with angular left tab
+                                        Modifier
+                                            .background(
+                                                color = ZsCard,
+                                                shape = RoundedCornerShape(
+                                                    topStart = 4.dp, topEnd = 12.dp,
+                                                    bottomStart = 12.dp, bottomEnd = 12.dp
+                                                )
+                                            )
+                                            .border(
+                                                1.dp,
+                                                ZsBorder.copy(alpha = 0.6f),
+                                                RoundedCornerShape(
+                                                    topStart = 4.dp, topEnd = 12.dp,
+                                                    bottomStart = 12.dp, bottomEnd = 12.dp
+                                                )
+                                            )
+                                    }
                                 )
                                 .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             if (!isSent) {
                                 Text(
                                     sender,
-                                    color = ZsCyan,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
+                                    color = ZsPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontStyle = FontStyle.Italic
                                 )
                                 Spacer(Modifier.height(2.dp))
                             }
@@ -377,7 +402,7 @@ private fun ChatScreen() {
                         showMentionDialog = true
                     }
                 }) {
-                    Text("@", color = ZsCyan, fontSize = 22.sp, fontWeight = FontWeight.Black)
+                    Text("@", color = ZsPrimary, fontSize = 22.sp, fontWeight = FontWeight.Black)
                 }
                 ZSField(
                     value = messageText,
@@ -391,7 +416,7 @@ private fun ChatScreen() {
                 )
                 Spacer(Modifier.width(8.dp))
                 TextButton(onClick = { sendMessage() }) {
-                    ZsPngIcon(R.drawable.ic_action_send, size = 22.dp, tint = ZsAccent)
+                    ZsPngIcon(R.drawable.ic_action_send, size = 22.dp, tint = ZsPrimary)
                 }
             }
         }
@@ -462,7 +487,7 @@ private fun highlightMentions(
     players: List<DocumentSnapshot>,
     isSent: Boolean
 ): androidx.compose.ui.text.AnnotatedString {
-    val mentionColor = if (isSent) Color(0xFF0B1220) else ZsCyan
+    val mentionColor = if (isSent) Color.White else ZsPrimary
     return buildAnnotatedString {
         var remaining = text
         var offset = 0

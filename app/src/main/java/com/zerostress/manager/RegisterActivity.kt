@@ -6,7 +6,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -15,7 +17,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Button
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -26,6 +28,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,12 +36,14 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.ui.PasswordField
 import com.zerostress.manager.ui.ZSBackground
+import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
+import com.zerostress.manager.ui.theme.ZsPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 
 class RegisterActivity : ComponentActivity() {
@@ -72,17 +77,35 @@ private fun RegisterScreen() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(
-                text = "ZERO STRESS",
-                color = ZsAccent,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Black
-            )
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text(
+                    text = "ZERO ",
+                    color = ZsTextPrimary,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontStyle = FontStyle.Italic
+                )
+                Text(
+                    text = "STRESS",
+                    color = ZsPrimary,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontStyle = FontStyle.Italic
+                )
+            }
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "Create your account",
                 color = ZsTextSecondary,
-                fontSize = 14.sp
+                fontSize = 12.sp,
+                letterSpacing = 2.sp
+            )
+            Spacer(Modifier.height(8.dp))
+            Box(
+                Modifier
+                    .width(56.dp)
+                    .height(4.dp)
+                    .background(ZsPrimary, RoundedCornerShape(2.dp))
             )
             Spacer(Modifier.height(24.dp))
 
@@ -113,21 +136,22 @@ private fun RegisterScreen() {
                     )
                     Spacer(Modifier.height(20.dp))
 
-                    Button(
+                    ZSButton(
+                        text = if (loading) "Creating account..." else "Register",
                         onClick = {
                             val nameT = name.trim()
                             val phoneT = phone.trim()
                             if (nameT.isEmpty() || phoneT.isEmpty() || password.isEmpty() || confirm.isEmpty()) {
                                 Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
-                                return@Button
+                                return@ZSButton
                             }
                             if (password.length < 6) {
                                 Toast.makeText(context, "Password must be at least 6 characters", Toast.LENGTH_SHORT).show()
-                                return@Button
+                                return@ZSButton
                             }
                             if (password != confirm) {
                                 Toast.makeText(context, "Passwords do not match", Toast.LENGTH_SHORT).show()
-                                return@Button
+                                return@ZSButton
                             }
                             // Firebase Auth is email/password internally; phones are
                             // mapped to <phone>@zerostress.local unless an email was typed.
@@ -185,14 +209,7 @@ private fun RegisterScreen() {
                         },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !loading
-                    ) {
-                        Text(
-                            if (loading) "Creating account..." else "Register",
-                            color = ZsTextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                    }
+                    )
                 }
             }
 
