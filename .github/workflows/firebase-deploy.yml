@@ -74,19 +74,9 @@ jobs:
             }
           "
 
-      - name: Deploy Cloud Functions
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
-        run: |
-          npx --yes firebase-tools@13 deploy \
-            --only functions \
-            --project zerostress-3a536 \
-            --force || {
-              echo "::error::Functions deploy failed - the service account is missing IAM roles."
-              echo "::error::Fix with Cloud Shell: grant roles/firebase.developAdmin, roles/iam.serviceAccountUser, roles/artifactregistry.writer to the firebase-adminsdk service account (see workflow header)."
-              exit 1
-            }
-
+      # Rules deploy FIRST and must succeed: Security Rules are free on the
+      # Spark plan. This is the step that ships App Check enforcement, chat
+      # reports/blocks, and the daily_stats fix to production.
       - name: Deploy Firestore rules
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
@@ -99,4 +89,23 @@ jobs:
               echo "::error::Grant roles/firebase.developAdmin to the firebase-adminsdk service account via Cloud Shell (see workflow header), then re-run."
               exit 1
             }
-          rm -f /tmp/sa.json
+
+      # Cloud Functions require the Blaze plan, which this project deliberately
+      # does not use (pushes are delivered by the free-cron workflow instead).
+      # Kept here for a future Blaze upgrade; cannot fail the run.
+      - name: Deploy Cloud Functions (Blaze only - skipped on Spark)
+        continue-on-error: true
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          npx --yes firebase-tools@13 deploy \
+            --only functions \
+            --project zerostress-3a536 \
+            --force || {
+              echo "::warning::Functions deploy skipped - Cloud Functions require the Blaze plan. Pushes are delivered by the free-cron workflow, so nothing is lost."
+              exit 1
+            }
+
+      - name: Cleanup
+        if: always()
+        run: rm -f /tmp/sa.json
