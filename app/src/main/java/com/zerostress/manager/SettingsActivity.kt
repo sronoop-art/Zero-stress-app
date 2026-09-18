@@ -66,6 +66,7 @@ private fun SettingsScreen() {
     val notifPrefs = remember {
         com.zerostress.manager.fcm.NotificationPreferences.prefs(context)
     }
+    val db = remember { FirebaseFirestore.getInstance() }
 
     var notifEnabled by remember { mutableStateOf(prefs.getBoolean("notifications_enabled", true)) }
     var chatNotifs by remember { mutableStateOf(prefs.getBoolean("chat_notifs_enabled", true)) }
@@ -74,6 +75,7 @@ private fun SettingsScreen() {
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var showDeleteFinal by remember { mutableStateOf(false) }
     var showChangePassword by remember { mutableStateOf(false) }
+    var showBlocked by remember { mutableStateOf(false) }
 
     // Ask for POST_NOTIFICATIONS on Android 13+ the first time Settings opens.
     // Without it the system silently drops every push on modern devices.
@@ -164,6 +166,17 @@ private fun SettingsScreen() {
 
                 SectionTitle("GENERAL")
                 ZSCard {
+                    SettingAction("Blocked Users") { showBlocked = true }
+                    SettingAction("Privacy Policy") {
+                        context.startActivity(
+                            Intent(context, LegalActivity::class.java).putExtra(LegalActivity.EXTRA_TAB, "privacy")
+                        )
+                    }
+                    SettingAction("Terms of Service") {
+                        context.startActivity(
+                            Intent(context, LegalActivity::class.java).putExtra(LegalActivity.EXTRA_TAB, "terms")
+                        )
+                    }
                     SettingAction("Clear Cache") {
                         Toast.makeText(context, "Cache cleared!", Toast.LENGTH_SHORT).show()
                     }
@@ -195,6 +208,61 @@ private fun SettingsScreen() {
                 Spacer(Modifier.height(24.dp))
             }
         }
+    }
+
+    if (showBlocked) {
+        val uid = FirebaseAuth.getInstance().uid
+        var blockedList by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) }
+        var loaded by remember { mutableStateOf(false) }
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            val reg = uid?.let {
+                db.collection("players").document(it).collection("blocked_users")
+                    .addSnapshotListener { snap, _ ->
+                        if (snap != null) {
+                            blockedList = snap.documents.map { d ->
+                                d.id to (d.getString("name") ?: "Unknown")
+                            }
+                        }
+                        loaded = true
+                    }
+            }
+            onDispose { reg?.remove() }
+        }
+        AlertDialog(
+            onDismissRequest = { showBlocked = false },
+            title = { Text("Blocked Users") },
+            text = {
+                Column {
+                    if (!loaded) {
+                        Text("Loading…", color = ZsTextMuted, fontSize = 14.sp)
+                    } else if (blockedList.isEmpty()) {
+                        Text(
+                            "You haven't blocked anyone.\n\nLong-press a chat message to report or block a player.",
+                            color = ZsTextSecondary,
+                            fontSize = 14.sp
+                        )
+                    } else {
+                        blockedList.forEach { (id, name) ->
+                            Row(
+                                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(name, Modifier.weight(1f), color = ZsTextPrimary, fontSize = 15.sp)
+                                TextButton(onClick = {
+                                    uid?.let {
+                                        db.collection("players").document(it)
+                                            .collection("blocked_users").document(id).delete()
+                                    }
+                                }) { Text("Unblock", color = ZsAccent) }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBlocked = false }) { Text("Done") }
+            }
+        )
     }
 
     if (showChangePassword) {

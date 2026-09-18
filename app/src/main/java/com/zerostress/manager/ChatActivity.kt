@@ -1,11 +1,13 @@
 package com.zerostress.manager
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -37,6 +39,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -95,6 +98,8 @@ private fun ChatScreen() {
     var isModerator by remember { mutableStateOf(false) }
     var showMentionDialog by remember { mutableStateOf(false) }
     var showClearChatDialog by remember { mutableStateOf(false) }
+    var blockedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var msgAction by remember { mutableStateOf<DocumentSnapshot?>(null) }
 
     val typingRef = if (userId != null) db.collection("chat_typing").document(TYPING_PREFIX + userId) else null
     val typingSent = remember { AtomicBoolean(false) }
@@ -112,6 +117,8 @@ private fun ChatScreen() {
                 }
                 val list = snapshots?.documents.orEmpty()
                     .filter { it.getBoolean("deleted") != true }
+                    // Hide messages from players this user has blocked
+                    .filter { (it.getString("senderId")) !in blockedIds }
                     .sortedBy { it.getLong("timestamp") ?: 0L }
                 messages = list
             }
@@ -149,6 +156,13 @@ private fun ChatScreen() {
     }
 
     LaunchedEffect(Unit) {
+        // Load this user's blocked list (kept in a personal subcollection)
+        if (userId != null) {
+            db.collection("players").document(userId).collection("blocked_users").get()
+                .addOnSuccessListener { q ->
+                    blockedIds = q.documents.map { it.id }.toSet()
+                }
+        }
         // Load user name + admin status
         if (userId != null) {
             db.collection("players").document(userId).get()
@@ -317,6 +331,12 @@ private fun ChatScreen() {
                         Column(
                             Modifier
                                 .widthIn(max = 320.dp)
+                                // Long-press any message (not your own) to report or block
+                                .pointerInput(doc.id, isSent) {
+                                    if (!isSent) {
+                                        detectTapGestures(onLongPress = { msgAction = doc })
+                                    }
+                                }
                                 .then(
                                     if (isSent) {
                                         // Sent: racing-red gradient pill
@@ -436,6 +456,81 @@ private fun ChatScreen() {
             confirmButton = {},
             dismissButton = {
                 TextButton(onClick = { showMentionDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    // Report / Block dialog (long-press a received message)
+    msgAction?.let { target ->
+        val senderId = target.getString("senderId") ?: ""
+        val senderName = target.getString("senderName") ?: "Unknown"
+        val isBlocked = senderId in blockedIds
+        AlertDialog(
+            onDismissRequest = { msgAction = null },
+            title = { Text("$senderName's message") },
+            text = {
+                Text(
+                    target.getString("text") ?: "",
+                    color = ZsTextSecondary,
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    msgAction = null
+                    db.collection("chat_reports").add(
+                        mapOf(
+                            "reporterId" to userId,
+                            "reporterName" to userName,
+                            "messageId" to target.id,
+                            "senderId" to senderId,
+                            "senderName" to senderName,
+                            "text" to (target.getString("text") ?: ""),
+                            "timestamp" to System.currentTimeMillis(),
+                            "status" to "open"
+                        )
+                    ).addOnSuccessListener {
+                        Toast.makeText(
+                            context,
+                            "Reported — moderators will review it",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }.addOnFailureListener { e ->
+                        Toast.makeText(context, "Report failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }) { Text("🚩 Report", color = ZsPrimary, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                if (isBlocked) {
+                    TextButton(onClick = {
+                        msgAction = null
+                        userId?.let { uid ->
+                            db.collection("players").document(uid)
+                                .collection("blocked_users").document(senderId).delete()
+                                .addOnSuccessListener {
+                                    blockedIds = blockedIds - senderId
+                                    Toast.makeText(context, "$senderName unblocked", Toast.LENGTH_SHORT).show()
+                                }
+                        }
+                    }) { Text("Unblock", color = ZsTextMuted) }
+                } else {
+                    TextButton(onClick = {
+                        msgAction = null
+                        userId?.let { uid ->
+                            db.collection("players").document(uid)
+                                .collection("blocked_users").document(senderId)
+                                .set(mapOf("name" to senderName, "blockedAt" to System.currentTimeMillis()))
+                                .addOnSuccessListener {
+                                    blockedIds = blockedIds + senderId
+                                    Toast.makeText(
+                                        context,
+                                        "$senderName blocked — their messages are hidden",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                        }
+                    }) { Text("⛔ Block $senderName", color = ZsDanger, fontWeight = FontWeight.Bold) }
+                }
             }
         )
     }

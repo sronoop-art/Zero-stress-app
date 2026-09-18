@@ -213,7 +213,31 @@ private fun RegisterScreen() {
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "By registering you agree to our ",
+                    color = ZsTextMuted,
+                    fontSize = 11.sp
+                )
+                TextButton(onClick = {
+                    context.startActivity(
+                        Intent(context, LegalActivity::class.java).putExtra(LegalActivity.EXTRA_TAB, "terms")
+                    )
+                }) {
+                    Text("Terms", color = ZsAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+                Text(" & ", color = ZsTextMuted, fontSize = 11.sp)
+                TextButton(onClick = {
+                    context.startActivity(
+                        Intent(context, LegalActivity::class.java).putExtra(LegalActivity.EXTRA_TAB, "privacy")
+                    )
+                }) {
+                    Text("Privacy Policy", color = ZsAccent, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(Modifier.height(6.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Already have an account?", color = ZsTextMuted, fontSize = 14.sp)
                 Spacer(Modifier.width(6.dp))

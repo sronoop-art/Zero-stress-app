@@ -210,7 +210,7 @@ private fun AdminDashboardScreen() {
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         ZSMenuTile("", "All Stats", { context.startActivity(Intent(context, ViewAllPlayersStatsActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_people)
-                        ZSMenuTile("", "Notify", { context.startActivity(Intent(context, SendNotificationActivity::class.java)) }, Modifier.weight(1f), ZsGold, iconRes = R.drawable.ic_menu_bell)
+                        ZSMenuTile("", "Reports", { context.startActivity(Intent(context, ReportsActivity::class.java)) }, Modifier.weight(1f), ZsDanger, iconRes = R.drawable.ic_menu_bell)
                         ZSMenuTile("", "Voice Channels", { context.startActivity(Intent(context, ManageVoiceChannelsActivity::class.java)) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_channels)
                     }
                     Spacer(Modifier.height(10.dp))
