@@ -2,9 +2,13 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Kill switch for App Check enforcement: flip to false + redeploy to
-    // relax instantly if a device ever gets locked out.
-    APPCHECK_ENABLED = true;
+    // Kill switch for App Check enforcement: flip the return value to false
+    // and redeploy to relax instantly if a device ever gets locked out.
+    // (Rules language has no variables - a function is the supported way
+    // to hold this flag.)
+    function appcheckEnabled() {
+      return true;
+    }
 
     // ---------------------------------------------------------------------
     // Helpers
@@ -41,11 +45,11 @@ service cloud.firestore {
     // App Check enforcement (production hardening).
     // Verified installs present a Play Integrity attestation; scripts hitting
     // Firestore directly with the public config do not.
-    // KILL SWITCH: set APPCHECK_ENABLED to false and redeploy if a device
+    // KILL SWITCH: set appcheckEnabled() to false and redeploy if a device
     // without Play services is ever locked out.
     // ---------------------------------------------------------------------
     function hasAppCheck() {
-      return APPCHECK_ENABLED && request.app != null;
+      return appcheckEnabled() && request.app != null;
     }
 
     // ---------------------------------------------------------------------
