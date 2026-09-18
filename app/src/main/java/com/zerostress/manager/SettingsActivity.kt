@@ -97,7 +97,6 @@ private fun SettingsScreen() {
             Toast.makeText(context, "Not logged in", Toast.LENGTH_SHORT).show()
             return
         }
-        val db = FirebaseFirestore.getInstance()
         db.collection("players").document(uid).delete()
             .addOnSuccessListener {
                 db.collection("friend_requests").whereEqualTo("fromUserId", uid).get()
