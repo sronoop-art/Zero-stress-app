@@ -121,7 +121,11 @@ service cloud.firestore {
                   && (resource.data.uid == null
                       || resource.data.uid == request.auth.uid);
       allow create: if isSignedIn();
-      allow update, delete: if isAdmin();
+      // Recipients can manage their own copies (delete/clear); broadcasts
+      // (no uid) stay admin-only so one player can't wipe everyone's feed.
+      allow update, delete: if isAdmin()
+                            || (resource.data.uid != null
+                                && resource.data.uid == request.auth.uid);
     }
 
     // ---------------------------------------------------------------------
@@ -148,10 +152,11 @@ service cloud.firestore {
     // ---------------------------------------------------------------------
     match /daily_stats/{statId} {
       allow read: if isSignedIn();
-      // Players log their own stats; admins log on behalf of any player
-      // (the admin Daily Input player-picker writes stats.uid = player uid).
+      // The app writes the subject's uid in "playerId" (signed-in player by
+      // default, or a team-trust pick from the player selector). Admins may
+      // also log for anyone.
       allow create, update: if isSignedIn()
-                            && (request.resource.data.uid == request.auth.uid
+                            && (request.resource.data.playerId == request.auth.uid
                                 || isAdmin());
       allow delete: if isAdmin();
     }

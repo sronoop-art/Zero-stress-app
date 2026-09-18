@@ -48,9 +48,10 @@ import com.zerostress.manager.ui.ZSTopBar
 /**
  * Daily stats input.
  *
- * - Opened from the PLAYER dashboard: logs stats for the signed-in player.
- * - Opened from the ADMIN dashboard: passes "playerId" + "playerName" extras,
- *   shows a PLAYER picker at the top and the stats are saved for that player.
+ * Everyone gets the PLAYER picker at the top - defaults to the signed-in
+ * player, but any member can select another player to log for (team-trust
+ * model, same as match logs). Admins opening from player management arrive
+ * with "playerId" + "playerName" extras preselecting that player.
  */
 class DailyInputActivity : ComponentActivity() {
     companion object {
@@ -77,10 +78,9 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
     val uid = com.google.firebase.auth.FirebaseAuth.getInstance().uid
 
     // Which player the entry belongs to. Defaults to the signed-in user;
-    // admins get a picker (preselected with the player they tapped).
+    // the picker lets anyone re-target (admins arrive preset via extras).
     var targetPlayerId by remember { mutableStateOf(presetPlayerId ?: uid ?: "") }
     var targetPlayerName by remember { mutableStateOf(presetPlayerName ?: "") }
-    var isAdminMode by remember { mutableStateOf(presetPlayerId != null) }
 
     var roster by remember { mutableStateOf<List<Pair<String, String>>>(emptyList()) } // uid to name
     var showPlayerPicker by remember { mutableStateOf(false) }
@@ -205,37 +205,35 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
                 Text("TODAY'S PERFORMANCE", color = com.zerostress.manager.ui.theme.ZsTextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(14.dp))
 
-                // Player picker (admin mode only)
-                if (isAdminMode) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { openPlayerPicker() }
-                            .background(
-                                color = com.zerostress.manager.ui.theme.ZsBgMid,
-                                shape = RoundedCornerShape(12.dp)
-                            )
-                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                "PLAYER",
-                                color = com.zerostress.manager.ui.theme.ZsTextMuted,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                targetPlayerName.ifEmpty { "Tap to select player" },
-                                color = if (targetPlayerName.isNotEmpty()) com.zerostress.manager.ui.theme.ZsTextPrimary else com.zerostress.manager.ui.theme.ZsTextMuted,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Text("CHANGE", color = com.zerostress.manager.ui.theme.ZsCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                // Player picker (available to everyone; defaults to self)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { openPlayerPicker() }
+                        .background(
+                            color = com.zerostress.manager.ui.theme.ZsBgMid,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            "PLAYER",
+                            color = com.zerostress.manager.ui.theme.ZsTextMuted,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Text(
+                            targetPlayerName.ifEmpty { "Tap to select player" },
+                            color = if (targetPlayerName.isNotEmpty()) com.zerostress.manager.ui.theme.ZsTextPrimary else com.zerostress.manager.ui.theme.ZsTextMuted,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold
+                        )
                     }
-                    Spacer(Modifier.height(14.dp))
+                    Text("CHANGE", color = com.zerostress.manager.ui.theme.ZsCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
+                Spacer(Modifier.height(14.dp))
 
                 Row(horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(10.dp)) {
                     Box(Modifier.weight(1f)) { ZSField(value = kills, onValueChange = { kills = it }, label = "Kills", keyboardType = KeyboardType.Number) }
