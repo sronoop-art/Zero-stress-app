@@ -61,7 +61,6 @@ import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.theme.ZsPrimary
 import com.zerostress.manager.ui.theme.ZsPrimaryDark
-import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
@@ -320,35 +319,20 @@ private fun ChatScreen() {
                                 .widthIn(max = 320.dp)
                                 .then(
                                     if (isSent) {
-                                        // Sent: racing-red gradient bubble
+                                        // Sent: racing-red gradient pill
                                         Modifier.background(
                                             brush = Brush.horizontalGradient(listOf(ZsPrimaryDark, ZsPrimary)),
-                                            shape = RoundedCornerShape(
-                                                topStart = 4.dp, topEnd = 12.dp,
-                                                bottomStart = 12.dp, bottomEnd = 12.dp
-                                            )
+                                            shape = RoundedCornerShape(20.dp)
                                         )
                                     } else {
-                                        // Received: steel card with angular left tab
-                                        Modifier
-                                            .background(
-                                                color = ZsCard,
-                                                shape = RoundedCornerShape(
-                                                    topStart = 4.dp, topEnd = 12.dp,
-                                                    bottomStart = 12.dp, bottomEnd = 12.dp
-                                                )
-                                            )
-                                            .border(
-                                                1.dp,
-                                                ZsBorder.copy(alpha = 0.6f),
-                                                RoundedCornerShape(
-                                                    topStart = 4.dp, topEnd = 12.dp,
-                                                    bottomStart = 12.dp, bottomEnd = 12.dp
-                                                )
-                                            )
+                                        // Received: dark steel pill
+                                        Modifier.background(
+                                            color = ZsCard,
+                                            shape = RoundedCornerShape(20.dp)
+                                        )
                                     }
                                 )
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                                .padding(horizontal = 14.dp, vertical = 9.dp)
                         ) {
                             if (!isSent) {
                                 Text(
@@ -362,13 +346,13 @@ private fun ChatScreen() {
                             }
                             Text(
                                 text = highlightMentions(text, players, isSent),
-                                color = ZsTextPrimary,
+                                color = if (isSent) Color.White else ZsTextPrimary,
                                 fontSize = 14.sp
                             )
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 formatTime(ts),
-                                color = ZsTextMuted,
+                                color = if (isSent) Color.White.copy(alpha = 0.7f) else ZsTextMuted,
                                 fontSize = 10.sp,
                                 modifier = Modifier.align(Alignment.End)
                             )

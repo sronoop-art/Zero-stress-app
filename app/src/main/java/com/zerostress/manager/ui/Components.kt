@@ -25,8 +25,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -44,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -201,19 +200,36 @@ fun ZSButton(
     enabled: Boolean = true,
     height: Dp = 50.dp
 ) {
-    Button(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth().height(height),
-        enabled = enabled,
-        shape = RoundedCornerShape(6.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = container,
-            contentColor = textColor,
-            disabledContainerColor = ZsBorder.copy(alpha = 0.5f),
-            disabledContentColor = ZsTextMuted
+    // Carbon GT signature: the default action button is a red-to-white speed
+    // gradient. Callers passing a custom container color keep a solid fill
+    // (danger/secondary actions).
+    val useGradient = container == ZsPrimary
+    val shape = RoundedCornerShape(6.dp)
+    val bg: Modifier = when {
+        enabled && useGradient -> Modifier.background(
+            brush = Brush.horizontalGradient(listOf(ZsPrimary, Color(0xFFFFC9D1))),
+            shape = shape
         )
+        !enabled -> Modifier.background(color = ZsBorder.copy(alpha = 0.5f), shape = shape)
+        else -> Modifier.background(color = container, shape = shape)
+    }
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(height)
+            .then(bg)
+            .clip(shape)
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Text(text, fontWeight = FontWeight.Bold, fontStyle = FontStyle.Italic, fontSize = 15.sp)
+        Text(
+            text.uppercase(),
+            color = if (enabled) textColor else ZsTextMuted,
+            fontWeight = FontWeight.Bold,
+            fontStyle = FontStyle.Italic,
+            fontSize = 15.sp,
+            letterSpacing = 1.sp
+        )
     }
 }
 
@@ -234,7 +250,19 @@ fun ZSField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .drawBehind {
+                // Red speed stripe on the left edge (racing input style).
+                val stripeW = 3.5.dp.toPx()
+                val stripeH = size.height * 0.42f
+                drawRoundRect(
+                    color = ZsPrimary.copy(alpha = 0.9f),
+                    topLeft = Offset(0f, (size.height - stripeH) / 2f),
+                    size = Size(stripeW, stripeH),
+                    cornerRadius = CornerRadius(stripeW, stripeW)
+                )
+            },
         label = { Text(label) },
         placeholder = { Text(placeholder, color = ZsTextMuted) },
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
@@ -242,15 +270,15 @@ fun ZSField(
         singleLine = singleLine,
         minLines = minLines,
         trailingIcon = trailing,
-        shape = RoundedCornerShape(6.dp),
+        shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = ZsPrimary,
-            unfocusedBorderColor = ZsBorder,
-            focusedLabelColor = ZsCyan,
+            focusedBorderColor = ZsPrimary.copy(alpha = 0.8f),
+            unfocusedBorderColor = ZsBorder.copy(alpha = 0.7f),
+            focusedLabelColor = ZsPrimary,
             unfocusedLabelColor = ZsTextMuted,
             focusedTextColor = ZsTextPrimary,
             unfocusedTextColor = ZsTextPrimary,
-            cursorColor = ZsCyan,
+            cursorColor = ZsPrimary,
             focusedContainerColor = ZsCard,
             unfocusedContainerColor = ZsCard
         )
@@ -450,7 +478,15 @@ fun ZSMenuTile(
             .scale(tileScale)
             .clip(RoundedCornerShape(10.dp))
             .background(ZsCard)
-            .border(1.dp, accent.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
+            .drawBehind {
+                // Accent speed stripe across the top edge (mockup tile style).
+                drawRect(
+                    color = accent,
+                    topLeft = Offset.Zero,
+                    size = Size(size.width, 3.dp.toPx())
+                )
+            }
+            .border(1.dp, ZsBorder.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
             .pointerInput(onClick) {
                 detectTapGestures(
                     onPress = {
