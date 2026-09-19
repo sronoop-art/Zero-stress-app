@@ -129,12 +129,17 @@ async function matchReminders(now) {
         );
       }
     } else {
+      // No per-player list on the match: write an in-app-only notification
+      // (push:false). Without the flag, the event-triggered Cloud Function
+      // treats a uid-less doc as a broadcast and status-bar-pushes EVERY
+      // player for matches they are not in.
       await d.collection("notifications").add({
         title: "Match starting soon: " + (data.title || "Match"),
         message: `${data.type || "Match"} starts at ${data.dateTime || "soon"}. Get ready!`,
         type: "schedule",
         timestamp: now,
         scheduleId: doc.id,
+        push: false,
       });
     }
     await doc.ref.update({ reminderSent: true });

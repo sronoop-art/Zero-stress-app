@@ -80,8 +80,19 @@ android {
     buildTypes {
         release {
             // Sign only when app/zerostress.jks exists next to this file.
-            if (file("zerostress.jks").exists()) {
+            // This block runs in the configuration phase of EVERY build
+            // invocation, so a keystore added later is picked up on the next
+            // build without any sync. The loud warning replaces the silent
+            // unsigned build that used to surprise people.
+            val keystoreFile = file("zerostress.jks")
+            if (keystoreFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
+                logger.lifecycle("Release signing: app/zerostress.jks found")
+            } else {
+                logger.warn("==============================================================")
+                logger.warn("  app/zerostress.jks NOT FOUND - release APK will be UNSIGNED")
+                logger.warn("  Add the keystore and re-run (no sync needed) to sign it.")
+                logger.warn("==============================================================")
             }
 
             // ---- APK SIZE: R8 code shrinking + resource shrinking + obfuscation ----

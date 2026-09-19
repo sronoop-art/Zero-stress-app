@@ -80,7 +80,9 @@ object FirebaseRepository {
     }
 
     fun getAllPlayers(callback: OnResultCallback<List<Player>>) {
-        playersRef.orderBy("score", Query.Direction.DESCENDING)
+        // status filter keeps pending/banned players out of rosters; sorting is
+        // done client-side by callers that need a specific order.
+        playersRef.whereEqualTo("status", "approved")
             .addSnapshotListener { snap, e ->
                 if (e != null || snap == null) { callback.onFailure(e); return@addSnapshotListener }
                 val list = snap.documents.mapNotNull { it.toObject(Player::class.java) }
