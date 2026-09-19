@@ -1,6 +1,6 @@
 // App module build script.
 // NOTE: kept intentionally conservative (no exotic DSL, ASCII only) because this
-// project is built on-device with AndroidIDE, whose embedded Kotlin script
+// project is built on-device with Code On The Go, whose embedded Kotlin script
 // compiler is fragile with unusual constructs or non-ASCII characters.
 
 // ---- Agora credentials ------------------------------------------------------
@@ -25,22 +25,24 @@ if (agoraAppId.isNotBlank() && agoraAppCertificate.isBlank()) {
 }
 
 plugins {
+    // AGP 9.x: Kotlin is BUILT IN - do NOT re-add org.jetbrains.kotlin.android.
+    // The Kotlin 2.3.21 compiler is provided via the buildscript classpath in the
+    // root build.gradle.kts (Code On The Go Gradle 9.6.1 / AGP 9.3.1 / Kotlin 2.3.21 stack).
     id("com.android.application")
-    id("org.jetbrains.kotlin.android")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
 }
 
 android {
     namespace = "com.zerostress.manager"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.zerostress.manager"
         minSdk = 26
-        targetSdk = 34
-        versionCode = 2
-        versionName = "3.1"
+        targetSdk = 36
+        versionCode = 3
+        versionName = "3.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -61,18 +63,26 @@ android {
     signingConfigs {
         // Optional: used only when building a signed release APK.
         // Place app/zerostress.jks next to this file (see README).
+        // The keystore is NOT committed on purpose - when it is missing the
+        // release build continues and just produces an unsigned APK instead of
+        // failing on checkDebugAarMetadata-style file lookups.
         create("release") {
-            storeFile = file("zerostress.jks")
-            storePassword = "zerostress123"
-            keyAlias = "zerostress"
-            keyPassword = "zerostress123"
+            val keystore = file("zerostress.jks")
+            if (keystore.exists()) {
+                storeFile = keystore
+                storePassword = "zerostress123"
+                keyAlias = "zerostress"
+                keyPassword = "zerostress123"
+            }
         }
     }
 
     buildTypes {
         release {
-            // Comment out the line below if you build release APKs without app/zerostress.jks
-            signingConfig = signingConfigs.getByName("release")
+            // Sign only when app/zerostress.jks exists next to this file.
+            if (file("zerostress.jks").exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
 
             // ---- APK SIZE: R8 code shrinking + resource shrinking + obfuscation ----
             isMinifyEnabled = true
@@ -100,11 +110,11 @@ android {
         buildConfig = true
     }
 
-    // Compose compiler matched to Kotlin 1.9.24 (classic composeOptions setup -
-    // the kotlin.plugin.compose helper only exists for Kotlin 2.x)
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.14"
-    }
+    // AGP 9 built-in Kotlin:
+    // - composeOptions { kotlinCompilerExtensionVersion } is REMOVED - the Compose
+    //   compiler now ships with the Kotlin toolchain (2.3.21) and is applied automatically.
+    // - kotlinOptions { jvmTarget } is REMOVED - jvmTarget defaults to
+    //   compileOptions.targetCompatibility (17) under built-in Kotlin.
 
     packaging {
         resources {
@@ -116,34 +126,30 @@ android {
             useLegacyPackaging = false
         }
     }
-
-    kotlinOptions {
-        jvmTarget = "17"
-    }
 }
 
 dependencies {
     // Core Android
-    implementation("androidx.core:core-ktx:1.13.1")
+    implementation("androidx.core:core-ktx:1.17.0")
 
-    // Jetpack Compose
-    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    // Jetpack Compose - BOM pins every androidx.compose artifact. Tested against
+    // Kotlin 2.3.21 built-in Kotlin (Compose compiler ships with the toolchain).
+    implementation(platform("androidx.compose:compose-bom:2026.08.00"))
     implementation("androidx.compose.ui:ui")
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
-    implementation("androidx.activity:activity-compose:1.9.0")
+    implementation("androidx.activity:activity-compose:1.12.4")
 
     // Lifecycle / ViewModel
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.2")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.2")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.2")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
 
-    // Firebase BOM - 33.1.2 is the newest line whose artifacts are compiled with
-    // Kotlin 1.8/1.9 metadata (readable by the Kotlin 1.9.24 compiler AndroidIDE uses).
-    // Do NOT jump to BOM 34.x: those artifacts carry Kotlin 2.2+ metadata and fail on-device.
-    implementation(platform("com.google.firebase:firebase-bom:33.1.2"))
+    // Firebase BOM 34.x - built for the modern (Kotlin 2.x) toolchain; safe now that
+    // the project compiles with Kotlin 2.3.21. Do NOT go back to BOM 33.x.
+    implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-messaging")

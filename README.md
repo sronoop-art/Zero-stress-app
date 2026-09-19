@@ -15,8 +15,8 @@ all backed by **Firebase** (Auth + Firestore + Messaging + App Check).
 | Language | 100% Kotlin (was Java) |
 | UI | 100% Jetpack Compose (was XML layouts + RecyclerViews) |
 | Build files | Kotlin DSL — `settings.gradle.kts`, `build.gradle.kts`, `app/build.gradle.kts` |
-| Gradle | Wrapper pinned to **8.4** (works with AndroidIDE's bundled Gradle) |
-| AGP / Kotlin | AGP 8.2.2, Kotlin 1.9.24 + Compose compiler 1.5.14 (AndroidIDE-compatible) |
+| Gradle | Wrapper pinned to **9.6.1** |
+| AGP / Kotlin | **AGP 9.3.1 with built-in Kotlin 2.3.21** (Code On The Go build stack; no `kotlin("android")` plugin line — Kotlin is compiled by AGP itself) |
 | Backend | Firebase Auth, Firestore, Messaging (FCM), App Check (debug provider) |
 | Cloud | `functions/` — Firebase Cloud Functions that push FCM notifications |
 
@@ -40,8 +40,8 @@ AndroidIDE builds this project directly on your Android phone.
 
 1. **Open the project**: AndroidIDE → Open Project → select the repository root
    (the folder containing `settings.gradle.kts`).
-2. **Wait for sync** — the Gradle wrapper (8.4) will be used automatically.
-   If AndroidIDE asks for a Gradle version, pick **8.4** or "from wrapper".
+2. **Wait for sync** — the Gradle wrapper (**9.6.1**) will be used automatically.
+   If AndroidIDE asks for a Gradle version, pick **9.6.1** or "from wrapper".
 3. **Add your Firebase config**: copy your `google-services.json` from the Firebase
    console (project `zerostress-manager`) into **`app/`**.
    > The build **fails without this file** — it is gitignored on purpose.
@@ -50,10 +50,32 @@ AndroidIDE builds this project directly on your Android phone.
 
 Requirements:
 
-- AndroidIDE **2.6+** (bundles Gradle 8.4).
+- AndroidIDE / Code On The Go with the **Gradle 9.6.1 / AGP 9.3.1 / Kotlin 2.3.21**
+  build stack (see the
+  [CoGo upgrade wiki](https://github.com/appdevforall/CodeOnTheGo/wiki/IMPORTANT:-Fix-project-breaking-changes-after-the-Gradle-AGP-Kotlin-toolchain-upgrade)).
 - ~1–2 GB of free RAM on the device for the Gradle daemon
   (`org.gradle.jvmargs=-Xmx1536m` is already tuned in `gradle.properties`).
 - Internet on the device (first build downloads dependencies).
+
+#### Upgrading from the old Gradle 8.4 / AGP 8.x project version?
+
+The build files in this repo are already migrated (`buildscript` with
+`kotlin-gradle-plugin:2.3.21`, AGP `9.3.1`, no Kotlin plugin line, no
+`kotlinOptions` block). If a build fails with:
+
+```
+Could not find customview-1.0.0.aar (androidx.customview:customview:1.0.0)
+Searched in: .../maven/localMvnRepository/androidx/customview/...
+```
+
+that is a stale artifact in AndroidIDE's on-device Maven cache from the old
+dependency graph — the current dependencies don't use `customview` at all.
+Clear it and let Gradle re-download what it actually needs:
+
+```bash
+rm -rf ~/maven/localMvnRepository/androidx/customview
+gradlew :app:assembleDebug --refresh-dependencies
+```
 
 ### Release builds (optional)
 
@@ -84,7 +106,7 @@ Requirements:
 ./gradlew :app:assembleDebug
 ```
 
-The Gradle wrapper downloads Gradle 8.4 on first run.
+The Gradle wrapper downloads Gradle 9.6.1 on first run.
 
 ---
 
