@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Home: rounded house -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,3.2c0.4,0 0.8,0.15 1.1,0.44l6.4,5.7c0.31,0.28 0.5,0.69 0.5,1.11V19c0,0.83 -0.67,1.5 -1.5,1.5h-4c-0.55,0 -1,-0.45 -1,-1v-4.2h-3V19.5c0,0.55 -0.45,1 -1,1h-4c-0.83,0 -1.5,-0.67 -1.5,-1.5v-8.55c0,-0.42 0.19,-0.83 0.5,-1.11l6.4,-5.7C11.2,3.35 11.6,3.2 12,3.2z" />
+</vector>

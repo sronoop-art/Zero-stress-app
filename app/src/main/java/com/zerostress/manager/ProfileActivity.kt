@@ -8,6 +8,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -43,6 +45,8 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.R
 import com.zerostress.manager.ui.ZSBackground
+import com.zerostress.manager.ui.ZSBottomNav
+import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.ZsPngIcon
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSField
@@ -208,6 +212,8 @@ private fun ProfileScreen() {
                 Modifier
                     .fillMaxSize()
                     .padding(horizontal = 16.dp)
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
             ) {
                 // Avatar + name
                 Box(
@@ -321,6 +327,9 @@ private fun ProfileScreen() {
                 )
                 Spacer(Modifier.height(24.dp))
             }
+
+            // Neon Glass bottom navigation shell
+            ZSBottomNav(zsNavItems(4, context))
         }
     }
 }

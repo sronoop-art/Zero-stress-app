@@ -498,7 +498,7 @@ private fun ChatScreen() {
                     }.addOnFailureListener { e ->
                         Toast.makeText(context, "Report failed: ${e.message}", Toast.LENGTH_SHORT).show()
                     }
-                }) { Text("🚩 Report", color = ZsPrimary, fontWeight = FontWeight.Bold) }
+                }) { Text("Report", color = ZsPrimary, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
                 if (isBlocked) {
@@ -529,7 +529,7 @@ private fun ChatScreen() {
                                     ).show()
                                 }
                         }
-                    }) { Text("⛔ Block $senderName", color = ZsDanger, fontWeight = FontWeight.Bold) }
+                    }) { Text("Block $senderName", color = ZsDanger, fontWeight = FontWeight.Bold) }
                 }
             }
         )

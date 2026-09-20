@@ -48,11 +48,13 @@ import com.zerostress.manager.ui.ZSStat
 import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
+import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsGold
 import com.zerostress.manager.ui.theme.ZsGreen
 import com.zerostress.manager.ui.theme.ZsPrimary
+import com.zerostress.manager.ui.theme.ZsPurple
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
@@ -83,6 +85,8 @@ private fun AdminDashboardScreen() {
     var totalMatches by remember { mutableStateOf(0) }
     var players by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+    var scorePlayer by remember { mutableStateOf<DocumentSnapshot?>(null) }
 
     // Dialog states
     var targetPlayer by remember { mutableStateOf<DocumentSnapshot?>(null) }
@@ -200,9 +204,9 @@ private fun AdminDashboardScreen() {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        ZSMenuTile("", "Tournaments", { context.startActivity(Intent(context, TournamentActivity::class.java)) }, Modifier.weight(1f), ZsPurple, iconRes = R.drawable.ic_nav_tournament)
                         ZSMenuTile("", "Chat", { context.startActivity(Intent(context, ChatActivity::class.java)) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_chat)
                         ZSMenuTile("", "Voice Call", { context.startActivity(Intent(context, VoiceActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_call)
-                        ZSMenuTile("", "Seasons", { context.startActivity(Intent(context, ManageSeasonsActivity::class.java)) }, Modifier.weight(1f), ZsPrimary, iconRes = R.drawable.ic_menu_calendar)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
@@ -228,14 +232,71 @@ private fun AdminDashboardScreen() {
                     }
                 }
 
-                item { SectionTitle("PLAYER MANAGEMENT") }
+                item { SectionTitle("PLAYERS (${players.size})") }
+                item {
+                    ZSField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = "Search players",
+                        placeholder = "Name, phone or status..."
+                    )
+                }
+                item {
+                    ZSButton(
+                        "Export players CSV",
+                        {
+                            try {
+                                val buf = StringBuilder("name,phone,status,role,gameRole,score,level,matches,wins,kills\n")
+                                players.forEach { d ->
+                                    fun csv(v: String?) = "\"" + (v ?: "").replace("\"", "\"\"") + "\""
+                                    buf.append(
+                                        listOf(
+                                            csv(d.getString("name")),
+                                            csv(d.getString("phone")),
+                                            csv(d.getString("status")),
+                                            csv(d.getString("role")),
+                                            csv(d.getString("gameRole")),
+                                            "${d.getLong("score") ?: 0}",
+                                            "${d.getLong("level") ?: 0}",
+                                            "${d.getLong("matches") ?: 0}",
+                                            "${d.getLong("wins") ?: 0}",
+                                            "${d.getLong("kills") ?: 0}"
+                                        ).joinToString(",")
+                                    ).append("\n")
+                                }
+                                val dir = java.io.File(context.getExternalFilesDir(null), "exports")
+                                dir.mkdirs()
+                                val f = java.io.File(dir, "players_export.csv")
+                                f.writeText(buf.toString())
+                                Toast.makeText(context, "Saved to ${f.absolutePath}", Toast.LENGTH_LONG).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Export failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        Modifier.fillMaxWidth(),
+                        container = ZsBorder,
+                        textColor = ZsTextPrimary,
+                        height = 44.dp
+                    )
+                }
 
                 if (loading) {
                     item { EmptyState("Loading players...") }
                 } else if (players.isEmpty()) {
                     item { EmptyState("No players found") }
                 } else {
-                    items(players, key = { it.id }) { doc ->
+                    val q = searchQuery.trim().lowercase()
+                    val visible = if (q.isEmpty()) players else players.filter { doc ->
+                        listOfNotNull(
+                            doc.getString("name"),
+                            doc.getString("phone"),
+                            doc.getString("status"),
+                            doc.getString("gameRole")
+                        ).any { it.lowercase().contains(q) }
+                    }
+                    if (visible.isEmpty()) {
+                        item { EmptyState("No players match \"$searchQuery\"") }
+                    } else items(visible, key = { it.id }) { doc ->
                         val role = doc.getString("role") ?: "player"
                         val status = doc.getString("status") ?: "pending"
                         val gameRole = doc.getString("gameRole")
@@ -296,6 +357,7 @@ private fun AdminDashboardScreen() {
                             "Change Admin Role" to 1,
                             "Set Game Role" to 2,
                             "Log Daily Stats" to 3,
+                            "Adjust Score" to 8,
                             "Approve" to 4,
                             "Reject" to 5,
                             "Ban" to 6,
@@ -342,6 +404,11 @@ private fun AdminDashboardScreen() {
                 loadPlayers()
             })
             2 -> GameRoleDialog(player = player, onDone = {
+                selectedAction = null
+                targetPlayer = null
+                loadPlayers()
+            })
+            8 -> AdjustScoreDialog(player = player, onDone = {
                 selectedAction = null
                 targetPlayer = null
                 loadPlayers()
@@ -587,6 +654,55 @@ private fun GameRoleDialog(player: DocumentSnapshot, onDone: () -> Unit) {
             }
         },
         confirmButton = {},
+        dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
+    )
+}
+
+@Composable
+private fun AdjustScoreDialog(player: DocumentSnapshot, onDone: () -> Unit) {
+    val context = LocalContext.current
+    val db = remember { FirebaseFirestore.getInstance() }
+    var deltaText by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = { Text("Adjust Score for ${player.getString("name")}") },
+        text = {
+            Column {
+                Text(
+                    "Current: ${player.getLong("score") ?: 0} pts",
+                    color = com.zerostress.manager.ui.theme.ZsTextSecondary
+                )
+                Spacer(Modifier.height(10.dp))
+                ZSField(
+                    value = deltaText,
+                    onValueChange = { deltaText = it },
+                    label = "Score delta",
+                    placeholder = "e.g. 250 or -100",
+                    keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val delta = deltaText.trim().toLongOrNull()
+                if (delta == null || delta == 0L) {
+                    Toast.makeText(context, "Enter a non-zero number", Toast.LENGTH_SHORT).show()
+                    return@TextButton
+                }
+                db.collection("players").document(player.id)
+                    .update("score", com.google.firebase.firestore.FieldValue.increment(delta))
+                    .addOnSuccessListener {
+                        Toast.makeText(context, "Score adjusted by $delta", Toast.LENGTH_SHORT).show()
+                        com.zerostress.manager.ui.ZsAuditLog.playerAction(
+                            "adjust_score", player.id, player.getString("name"), "$delta"
+                        )
+                        onDone()
+                    }
+                    .addOnFailureListener { e ->
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+            }) { Text("Apply", color = ZsAccent) }
+        },
         dismissButton = { TextButton(onClick = onDone) { Text("Cancel") } }
     )
 }

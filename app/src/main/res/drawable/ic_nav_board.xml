@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Leaderboard: trophy cup -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M6,3h12c0.55,0 1,0.45 1,1v2.5c0,0.5 -0.37,0.92 -0.86,0.99C17.79,9.53 16.1,11.1 14,11.61V14.5c1.44,0.23 2.7,0.96 3.55,2.03C17.83,16.21 18,16.83 18,17.5V20c0,0.55 -0.45,1 -1,1H7c-0.55,0 -1,-0.45 -1,-1v-2.5c0,-0.67 0.17,-1.29 0.45,-1.47C7.3,15.46 8.56,14.73 10,14.5v-2.89C7.9,11.1 6.21,9.53 5.86,7.49C5.37,7.42 5,7 5,6.5V4C5,3.45 5.45,3 6,3zM6.5,5v1.2c0.02,0.13 0.04,0.26 0.07,0.39C6.98,7.98 8.42,9.45 11,9.94V5H6.5zM17.5,5H13v4.94c2.58,-0.49 4.02,-1.96 4.43,-3.35c0.03,-0.13 0.05,-0.26 0.07,-0.39V5z" />
+</vector>

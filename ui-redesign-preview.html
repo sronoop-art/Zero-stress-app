@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ZERO STRESS — Neon Glass Redesign (v4)</title>
+<style>
+  :root{
+    --a1:#22d3ee;            /* neon cyan   */
+    --a2:#a855f7;            /* neon violet */
+    --a1g:rgba(34,211,238,.55);
+    --a2g:rgba(168,85,247,.45);
+    --bg0:#070810; --bg1:#0b0d1a; --bg2:#0e1122;
+    --glass:rgba(255,255,255,.045);
+    --glass2:rgba(255,255,255,.07);
+    --stroke:rgba(255,255,255,.09);
+    --stroke2:rgba(255,255,255,.16);
+    --txt:#eef1fb; --dim:#8b93b8; --mut:#5b6280;
+    --win:#34d399; --loss:#fb7185; --gold:#fbbf24;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{
+    background:
+      radial-gradient(1200px 600px at 15% -10%, rgba(168,85,247,.10), transparent 60%),
+      radial-gradient(1000px 600px at 90% 110%, rgba(34,211,238,.08), transparent 60%),
+      var(--bg0);
+    color:var(--txt);
+    font-family:'Segoe UI',Roboto,system-ui,sans-serif;
+    padding:26px 14px 60px;
+  }
+  h1{font-size:22px;letter-spacing:2.5px;font-weight:900;text-transform:uppercase}
+  h1 .z{color:var(--a1);text-shadow:0 0 18px var(--a1g)}
+  .sub{color:var(--dim);font-size:13px;margin:8px 0 6px;line-height:1.6;max-width:760px}
+  .bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:16px 0 8px}
+  .bar .lbl{color:var(--mut);font-size:11px;letter-spacing:2px;font-weight:800}
+  .acc{border:1px solid var(--stroke2);background:var(--glass);color:var(--txt);
+       font-size:11px;font-weight:800;letter-spacing:1px;padding:8px 14px;border-radius:99px;cursor:pointer}
+  .acc.on{border-color:var(--a1);box-shadow:0 0 14px var(--a1g) inset,0 0 10px var(--a1g)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,360px);gap:26px;justify-content:center;margin-top:18px}
+  .shot{text-align:center}
+  .shot .cap{margin-bottom:9px;font-size:11px;letter-spacing:2.5px;color:var(--dim);font-weight:800}
+  .shot .cap b{color:var(--a1)}
+
+  /* ---------- PHONE FRAME 9:16 ---------- */
+  .phone{
+    width:340px;height:604px;margin:0 auto;border-radius:30px;position:relative;overflow:hidden;
+    background:linear-gradient(160deg,var(--bg2) 0%,var(--bg1) 45%,#080a14 100%);
+    border:1px solid var(--stroke2);
+    box-shadow:0 24px 70px rgba(0,0,0,.6), 0 0 0 1px rgba(0,0,0,.6), 0 0 42px -14px var(--a2g);
+    text-align:left;
+  }
+  .phone::before{ /* ambient neon wash */
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      radial-gradient(320px 190px at 85% -6%, var(--a2g), transparent 65%),
+      radial-gradient(300px 180px at -8% 12%, var(--a1g), transparent 60%);
+    opacity:.5;
+  }
+  .status{display:flex;justify-content:space-between;padding:9px 16px 4px;font-size:10px;color:var(--dim);position:relative;z-index:3}
+  .notch{position:absolute;top:7px;left:50%;transform:translateX(-50%);width:86px;height:16px;border-radius:99px;background:#05060c;border:1px solid var(--stroke);z-index:4}
+  .screen{position:absolute;inset:26px 0 54px;overflow:hidden;z-index:2;padding:2px 14px 0}
+  .bnav{
+    position:absolute;left:0;right:0;bottom:0;height:54px;z-index:5;display:flex;
+    background:rgba(10,12,22,.86);backdrop-filter:blur(14px);
+    border-top:1px solid var(--stroke);
+  }
+  .bnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+          font-size:8.5px;letter-spacing:.6px;color:var(--mut);font-weight:800;text-decoration:none}
+  .bnav a.on{color:var(--a1);text-shadow:0 0 12px var(--a1g)}
+  .bnav a.on::before{content:"";width:18px;height:2px;border-radius:2px;background:var(--a1);box-shadow:0 0 8px var(--a1g);margin-bottom:1px}
+  .bnav .ic{font-size:15px;line-height:1}
+
+  /* ---------- shared kit ---------- */
+  .glass{background:var(--glass);border:1px solid var(--stroke);border-radius:18px;
+         backdrop-filter:blur(10px);padding:12px;position:relative}
+  .glass.hi{border-color:rgba(34,211,238,.35);box-shadow:0 0 22px -6px var(--a1g), inset 0 0 24px -18px var(--a1)}
+  .glow-you{border-color:rgba(168,85,247,.55)!important;
+     box-shadow:0 0 26px -6px var(--a2g), inset 0 0 30px -20px var(--a2)!important}
+  .row{display:flex;align-items:center;gap:10px}
+  .sp{flex:1}
+  .k{font-size:8.5px;letter-spacing:1.6px;color:var(--mut);font-weight:800;text-transform:uppercase}
+  .v{font-size:17px;font-weight:900;letter-spacing:.3px}
+  .mono{font-family:'JetBrains Mono','Cascadia Code',Consolas,monospace}
+  .chip{font-size:9px;font-weight:800;letter-spacing:.8px;padding:5px 11px;border-radius:99px;
+        border:1px solid var(--stroke);color:var(--dim);background:var(--glass)}
+  .chip.on{color:#031018;background:linear-gradient(90deg,var(--a1),var(--a2));border-color:transparent;
+           box-shadow:0 0 14px -2px var(--a1g)}
+  .chips{display:flex;gap:6px;flex-wrap:wrap}
+  .tag{font-size:8px;font-weight:900;letter-spacing:1px;padding:3px 7px;border-radius:6px}
+  .up{color:var(--win);background:rgba(52,211,153,.12)}
+  .dn{color:var(--loss);background:rgba(251,113,133,.12)}
+  .cta{display:flex;align-items:center;justify-content:center;gap:7px;border-radius:14px;padding:11px;
+       font-size:11px;font-weight:900;letter-spacing:1.2px}
+  .cta.p{background:linear-gradient(90deg,var(--a1),var(--a2));color:#04101a;
+         box-shadow:0 8px 24px -8px var(--a1g)}
+  .cta.g{border:1px solid var(--stroke2);color:var(--txt);background:var(--glass)}
+  .av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;
+      background:linear-gradient(135deg,#1c2033,#11131f);border:1px solid var(--stroke2);color:var(--dim)}
+  .lvl-ring{position:relative;display:flex;align-items:center;justify-content:center}
+  .lvl-ring .n{position:absolute;font-size:10px;font-weight:900;color:var(--a1)}
+  .xpbar{height:6px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden;position:relative}
+  .xpbar i{position:absolute;inset:0;width:68%;border-radius:6px;
+    background:linear-gradient(90deg,var(--a1),var(--a2));box-shadow:0 0 10px var(--a1g)}
+  .h{font-size:10px;font-weight:900;letter-spacing:2px;color:var(--txt);text-transform:uppercase}
+  .h small{color:var(--mut);letter-spacing:1.4px;font-weight:800}
+  .stat{background:var(--glass);border:1px solid var(--stroke);border-radius:14px;padding:9px 10px}
+  .stat .v{font-size:14.5px}
+  .num{font-variant-numeric:tabular-nums}
+  .sec{margin-top:10px}
+  .arrow{font-size:9px;font-weight:900}
+  .rankb{width:22px;height:22px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+         font-size:9.5px;font-weight:900;font-family:Consolas,monospace}
+  .r1{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#231a00;box-shadow:0 0 12px rgba(251,191,36,.4)}
+  .r2{background:linear-gradient(135deg,#d7dce6,#9aa3b8);color:#1a1d26}
+  .r3{background:linear-gradient(135deg,#e0955c,#b0703a);color:#26130a}
+  .rn{background:var(--glass2);color:var(--dim);border:1px solid var(--stroke)}
+  .av.sm{width:26px;height:26px;font-size:9px}
+  .tr-list{display:flex;flex-direction:column;gap:6px}
+  .tr{display:flex;align-items:center;gap:8px;background:var(--glass);border:1px solid var(--stroke);
+      border-radius:12px;padding:8px 10px;font-size:10px}
+  .donut{transform:rotate(-90deg)}
+  .donut .bgc{stroke:rgba(255,255,255,.07)}
+  .donut .fg{stroke:url(#gA);stroke-linecap:round;filter:drop-shadow(0 0 6px var(--a1g))}
+  .legend{display:flex;gap:12px;font-size:9px;color:var(--dim)}
+  .legend b{color:var(--txt)}
+  .dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:4px}
+  .adm-btn{display:flex;flex-direction:column;gap:4px;align-items:center;background:var(--glass);
+           border:1px solid var(--stroke);border-radius:13px;padding:10px 4px;font-size:8.5px;
+           font-weight:800;color:var(--dim);letter-spacing:.4px}
+  .adm-btn .ic{font-size:15px;color:var(--a1)}
+  .search{display:flex;align-items:center;gap:8px;background:var(--glass);border:1px solid var(--stroke);
+          border-radius:12px;padding:9px 12px;color:var(--mut);font-size:10.5px}
+  .cd{font-family:Consolas,monospace;font-weight:900;color:var(--a1);text-shadow:0 0 10px var(--a1g)}
+  .timerbox{display:flex;gap:5px}
+  .timerbox div{background:var(--glass2);border:1px solid var(--stroke);border-radius:8px;padding:5px 7px;
+                text-align:center;font-family:Consolas,monospace;font-weight:900;font-size:12px}
+  .timerbox span{display:block;font-size:7px;color:var(--mut);font-weight:800;letter-spacing:1px}
+</style>
+</head>
+<body>
+
+<h1><span class="z">ZERO</span> STRESS · NEON GLASS v4</h1>
+<p class="sub">Premium esports redesign preview — dark-first, glassmorphism cards, neon cyan/violet lighting,
+9:16 Android layout with bottom navigation. Pick an accent preset, review each screen, then select what to implement.</p>
+
+<div class="bar">
+  <span class="lbl">ACCENT</span>
+  <button class="acc on" onclick="setAccent(this,'cyan')">Cyan + Violet</button>
+  <button class="acc" onclick="setAccent(this,'ice')">Ice + Teal</button>
+  <button class="acc" onclick="setAccent(this,'mag')">Magenta + Violet</button>
+  <button class="acc" onclick="setAccent(this,'red')">Cyber Red + Cyan</button>
+</div>
+
+<svg width="0" height="0"><defs>
+  <linearGradient id="gA" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="var(--a1)"/><stop offset="100%" stop-color="var(--a2)"/>
+  </linearGradient>
+</defs></svg>
+
+<div class="grid">
+
+  <!-- ================= DASHBOARD ================= -->
+  <div class="shot"><div class="cap"><b>1 · MAIN DASHBOARD</b> — HOME TAB</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status"><span>21:46</span><span>LTE ▮▮▮</span></div>
+    <div class="screen">
+      <div class="glass hi row" style="padding:12px">
+        <div class="lvl-ring">
+          <svg width="46" height="46" class="donut"><circle cx="23" cy="23" r="19" fill="none" class="bgc" stroke-width="4"/>
+          <circle cx="23" cy="23" r="19" fill="none" class="fg" stroke-width="4" stroke-dasharray="80 40"/></svg>
+          <span class="n">42</span>
+        </div>
+        <div style="flex:1">
+          <div class="row" style="gap:6px"><b style="font-size:14px">NEONSHADE_VT</b>
+            <span class="tag" style="background:rgba(168,85,247,.15);color:#c9a5ff">DIAMOND III</span></div>
+          <div class="k" style="margin:3px 0 5px">XP 13,600 / 20,000</div>
+          <div class="xpbar"><i></i></div>
+        </div>
+        <div class="av" style="width:34px;height:34px;font-size:11px;border-color:var(--a1);box-shadow:0 0 12px var(--a1g)">V</div>
+      </div>
+
+      <div class="glass sec row" style="align-items:stretch;padding:12px">
+        <div class="lvl-ring">
+          <svg width="74" height="74" class="donut"><circle cx="37" cy="37" r="31" fill="none" class="bgc" stroke-width="6"/>
+          <circle cx="37" cy="37" r="31" fill="none" class="fg" stroke-width="6" stroke-dasharray="150 45"/></svg>
+          <div style="position:absolute;text-align:center">
+            <div style="font-size:8px;color:var(--mut);font-weight:800;letter-spacing:1px">SCORE</div>
+            <div class="v mono" style="font-size:16px">8,740</div>
+          </div>
+        </div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:7px">
+          <div class="stat"><div class="k">Rank</div><div class="v" style="color:var(--gold);font-size:13px">#7 <span style="font-size:8px;color:var(--win)">▲2</span></div></div>
+          <div class="stat"><div class="k">Matches</div><div class="v mono" style="font-size:13px">312</div></div>
+          <div class="stat"><div class="k">Win rate</div><div class="v mono" style="font-size:13px;color:var(--win)">64%</div></div>
+          <div class="stat"><div class="k">K/D</div><div class="v mono" style="font-size:13px">2.41</div></div>
+        </div>
+      </div>
+
+      <div class="glass sec" style="padding:11px">
+        <div class="row"><span class="h">Recent performance</span><span class="sp"></span>
+          <span class="chip on" style="font-size:8px">7D</span><span class="chip" style="font-size:8px">30D</span></div>
+        <svg width="100%" height="52" viewBox="0 0 290 52" preserveAspectRatio="none" style="margin-top:6px">
+          <defs><linearGradient id="sp" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--a1)" stop-opacity=".45"/><stop offset="100%" stop-color="var(--a1)" stop-opacity="0"/>
+          </linearGradient></defs>
+          <path d="M0,40 24,34 48,37 72,26 96,30 120,18 144,24 168,12 192,18 216,9 240,15 264,6 290,10 L290,52 0,52 Z" fill="url(#sp)"/>
+          <polyline points="0,40 24,34 48,37 72,26 96,30 120,18 144,24 168,12 192,18 216,9 240,15 264,6 290,10"
+            fill="none" stroke="var(--a1)" stroke-width="2" style="filter:drop-shadow(0 0 4px var(--a1g))"/>
+        </svg>
+      </div>
+
+      <div class="sec" style="display:flex;gap:9px">
+        <div class="cta p" style="flex:1.2">🏆 VIEW LEADERBOARD</div>
+        <div class="cta g" style="flex:1">＋ ADD MATCH</div>
+      </div>
+
+      <div class="glass sec row glow-you" style="padding:10px 12px">
+        <div class="av sm">V</div>
+        <div style="flex:1"><div style="font-size:11px;font-weight:800">Next tournament · Friday Clash</div>
+        <div class="k">You are seeded #4 of 64</div></div>
+        <div class="cd" style="font-size:11px">02:14:09</div>
+      </div>
+    </div>
+    <div class="bnav">
+      <a class="on" href="#"><span class="ic">⌂</span>HOME</a><a href="#"><span class="ic">📊</span>PERF</a>
+      <a href="#"><span class="ic">🏆</span>BOARD</a><a href="#"><span class="ic">⚔</span>TOURNEY</a><a href="#"><span class="ic">👤</span>PROFILE</a>
+    </div>
+  </div></div>
+
+  <!-- ================= PERFORMANCE ================= -->
+  <div class="shot"><div class="cap"><b>2 · PERFORMANCE</b> — RING CHART + FILTERS</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status"><span>21:46</span><span>LTE ▮▮▮</span></div>
+    <div class="screen">
+      <div class="row"><span class="h">Performance</span><span class="sp"></span>
+        <span class="chip on">Today</span><span class="chip">7D</span><span class="chip">30D</span><span class="chip">All</span></div>
+
+      <div class="glass hi sec row" style="justify-content:center;padding:14px">
+        <div class="lvl-ring" style="width:118px;height:118px">
+          <svg width="118" height="118" class="donut" viewBox="0 0 118 118">
+            <circle cx="59" cy="59" r="50" fill="none" class="bgc" stroke-width="9"/>
+            <circle cx="59" cy="59" r="50" fill="none" class="fg" stroke-width="9" stroke-dasharray="245 70"/>
+          </svg>
+          <div style="position:absolute;text-align:center">
+            <div class="v mono" style="font-size:26px;color:var(--a1);text-shadow:0 0 16px var(--a1g)">8,740</div>
+            <div class="k">PERF SCORE</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sec" style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+        <div class="stat" style="text-align:center"><div class="k">Kills</div><div class="v mono" style="color:var(--a1)">184</div></div>
+        <div class="stat" style="text-align:center"><div class="k">Deaths</div><div class="v mono">76</div></div>
+        <div class="stat" style="text-align:center"><div class="k">Assists</div><div class="v mono" style="color:var(--a2)">59</div></div>
+        <div class="stat" style="text-align:center"><div class="k">K/D</div><div class="v mono">2.42</div></div>
+      </div>
+
+      <div class="glass sec" style="padding:11px">
+        <div class="row" style="margin-bottom:7px"><span class="h" style="font-size:9px">Aim profile</span></div>
+        <div class="row" style="gap:8px;margin-bottom:6px"><span class="k" style="width:74px">Win rate</span>
+          <div class="xpbar" style="flex:1"><i style="width:64%"></i></div><span class="mono" style="font-size:10px">64%</span></div>
+        <div class="row" style="gap:8px;margin-bottom:6px"><span class="k" style="width:74px">Avg damage</span>
+          <div class="xpbar" style="flex:1"><i style="width:72%"></i></div><span class="mono" style="font-size:10px">862</span></div>
+        <div class="row" style="gap:8px;margin-bottom:6px"><span class="k" style="width:74px">Accuracy</span>
+          <div class="xpbar" style="flex:1"><i style="width:58%"></i></div><span class="mono" style="font-size:10px">58%</span></div>
+        <div class="row" style="gap:8px"><span class="k" style="width:74px">Headshot</span>
+          <div class="xpbar" style="flex:1"><i style="width:41%"></i></div><span class="mono" style="font-size:10px">41%</span></div>
+      </div>
+
+      <div class="glass sec" style="padding:11px">
+        <div class="row"><span class="h" style="font-size:9px">Score over time</span><span class="sp"></span>
+          <span class="k">AVG 640</span></div>
+        <svg width="100%" height="46" viewBox="0 0 290 46" style="margin-top:6px">
+          <g fill="url(#gA)">
+            <rect x="2"   y="26" width="12" height="20" rx="3" opacity=".55"/>
+            <rect x="24"  y="18" width="12" height="28" rx="3" opacity=".65"/>
+            <rect x="46"  y="30" width="12" height="16" rx="3" opacity=".45"/>
+            <rect x="68"  y="10" width="12" height="36" rx="3" opacity=".8"/>
+            <rect x="90"  y="20" width="12" height="26" rx="3" opacity=".6"/>
+            <rect x="112" y="6"  width="12" height="40" rx="3"/>
+            <rect x="134" y="16" width="12" height="30" rx="3" opacity=".7"/>
+            <rect x="156" y="24" width="12" height="22" rx="3" opacity=".5"/>
+            <rect x="178" y="12" width="12" height="34" rx="3" opacity=".75"/>
+            <rect x="200" y="28" width="12" height="18" rx="3" opacity=".45"/>
+            <rect x="222" y="8"  width="12" height="38" rx="3" opacity=".9"/>
+            <rect x="244" y="18" width="12" height="28" rx="3" opacity=".65"/>
+            <rect x="266" y="4"  width="12" height="42" rx="3"/>
+          </g>
+        </svg>
+      </div>
+
+      <div class="row sec" style="margin-bottom:2px"><span class="h" style="font-size:9px">Match history</span><span class="sp"></span><span class="k">LAST 5</span></div>
+      <div class="tr-list">
+        <div class="tr"><span class="tag up">WIN</span><b style="flex:1">Squad Ranked #412</b>
+          <span class="mono" style="color:var(--a1)">18/4/6</span><span class="mono" style="color:var(--dim)">812</span></div>
+        <div class="tr"><span class="tag dn">LOSS</span><b style="flex:1">Tournament Qualifier</b>
+          <span class="mono" style="color:var(--a1)">12/9/3</span><span class="mono" style="color:var(--dim)">540</span></div>
+        <div class="tr"><span class="tag up">WIN</span><b style="flex:1">Custom · Dust Zone</b>
+          <span class="mono" style="color:var(--a1)">21/6/9</span><span class="mono" style="color:var(--dim)">905</span></div>
+      </div>
+    </div>
+    <div class="bnav">
+      <a href="#"><span class="ic">⌂</span>HOME</a><a class="on" href="#"><span class="ic">📊</span>PERF</a>
+      <a href="#"><span class="ic">🏆</span>BOARD</a><a href="#"><span class="ic">⚔</span>TOURNEY</a><a href="#"><span class="ic">👤</span>PROFILE</a>
+    </div>
+  </div></div>
+
+  <!-- ================= LEADERBOARD ================= -->
+  <div class="shot"><div class="cap"><b>3 · LEADERBOARD</b> — PODIUM + GLOW CARD</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status"><span>21:46</span><span>LTE ▮▮▮</span></div>
+    <div class="screen">
+      <div class="row"><span class="h">Leaderboard</span><span class="sp"></span>
+        <span class="chip on">Global</span><span class="chip">Friends</span><span class="chip">Local</span></div>
+      <div class="chips sec" style="margin-top:7px">
+        <span class="chip on">Weekly</span><span class="chip">Monthly</span><span class="chip">All Time</span>
+      </div>
+
+      <div class="sec" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;align-items:end">
+        <div class="glass" style="text-align:center;padding:10px 6px">
+          <div class="av sm" style="margin:0 auto 5px">K</div><div style="font-size:9px;font-weight:800">KZ_Ryu</div>
+          <div class="mono" style="font-size:10px;color:var(--dim)">7,120</div>
+          <div class="rankb r2" style="margin:5px auto 0">2</div>
+        </div>
+        <div class="glass hi" style="text-align:center;padding:13px 6px;box-shadow:0 0 26px -6px rgba(251,191,36,.5);border-color:rgba(251,191,36,.4)">
+          <div class="av sm" style="margin:0 auto 5px;border-color:var(--gold);box-shadow:0 0 12px rgba(251,191,36,.5)">A</div>
+          <div style="font-size:10px;font-weight:900">AcePrism</div>
+          <div class="mono" style="font-size:11px;color:var(--gold)">9,860</div>
+          <div class="rankb r1" style="margin:5px auto 0">1</div>
+        </div>
+        <div class="glass" style="text-align:center;padding:10px 6px">
+          <div class="av sm" style="margin:0 auto 5px">M</div><div style="font-size:9px;font-weight:800">MirageX</div>
+          <div class="mono" style="font-size:10px;color:var(--dim)">6,890</div>
+          <div class="rankb r3" style="margin:5px auto 0">3</div>
+        </div>
+      </div>
+
+      <div class="row sec" style="margin-bottom:2px;padding:0 2px"><span class="k" style="flex:1.6">PLAYER</span>
+        <span class="k" style="flex:.8;text-align:center">SCORE</span><span class="k" style="flex:.6;text-align:center">W</span>
+        <span class="k" style="flex:.6;text-align:center">K/D</span><span class="k" style="flex:.5;text-align:right">TREND</span></div>
+      <div class="tr-list">
+        <div class="tr" style="padding:7px 9px"><span class="rankb rn">4</span><div class="av sm">D</div>
+          <b style="flex:1.4;font-size:10px">Drxco</b><span class="mono" style="flex:.8;text-align:center">6,410</span>
+          <span class="mono" style="flex:.6;text-align:center;color:var(--dim)">31</span>
+          <span class="mono" style="flex:.6;text-align:center">2.1</span><span class="arrow up" style="flex:.5;text-align:right">▲</span></div>
+        <div class="tr glow-you" style="padding:7px 9px;border-width:1.5px">
+          <span class="rankb" style="background:linear-gradient(90deg,var(--a1),var(--a2));color:#04101a">7</span>
+          <div class="av sm" style="border-color:var(--a1);box-shadow:0 0 10px var(--a1g)">V</div>
+          <b style="flex:1.4;font-size:10px;color:var(--a1)">YOU · Neonshade</b>
+          <span class="mono" style="flex:.8;text-align:center;color:var(--a1)">5,980</span>
+          <span class="mono" style="flex:.6;text-align:center;color:var(--dim)">29</span>
+          <span class="mono" style="flex:.6;text-align:center">2.4</span><span class="arrow up" style="flex:.5;text-align:right">▲</span></div>
+        <div class="tr" style="padding:7px 9px"><span class="rankb rn">8</span><div class="av sm">Z</div>
+          <b style="flex:1.4;font-size:10px">Zephyr</b><span class="mono" style="flex:.8;text-align:center">5,720</span>
+          <span class="mono" style="flex:.6;text-align:center;color:var(--dim)">27</span>
+          <span class="mono" style="flex:.6;text-align:center">1.8</span><span class="arrow dn" style="flex:.5;text-align:right">▼</span></div>
+        <div class="tr" style="padding:7px 9px"><span class="rankb rn">9</span><div class="av sm">N</div>
+          <b style="flex:1.4;font-size:10px">Nyx_09</b><span class="mono" style="flex:.8;text-align:center">5,504</span>
+          <span class="mono" style="flex:.6;text-align:center;color:var(--dim)">25</span>
+          <span class="mono" style="flex:.6;text-align:center">1.7</span><span class="arrow up" style="flex:.5;text-align:right">▲</span></div>
+      </div>
+
+      <div class="glass sec row" style="padding:9px 12px">
+        <span class="k">SEASON ENDS IN</span><span class="sp"></span><span class="cd">12d 04:22:51</span>
+      </div>
+    </div>
+    <div class="bnav">
+      <a href="#"><span class="ic">⌂</span>HOME</a><a href="#"><span class="ic">📊</span>PERF</a>
+      <a class="on" href="#"><span class="ic">🏆</span>BOARD</a><a href="#"><span class="ic">⚔</span>TOURNEY</a><a href="#"><span class="ic">👤</span>PROFILE</a>
+    </div>
+  </div></div>
+
+  <!-- ================= TOURNAMENTS ================= -->
+  <div class="shot"><div class="cap"><b>4 · TOURNAMENTS</b> — NEW SECTION</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status"><span>21:46</span><span>LTE ▮▮▮</span></div>
+    <div class="screen">
+      <div class="row"><span class="h">Tournaments</span><span class="sp"></span>
+        <span class="chip on">Live</span><span class="chip">Upcoming</span><span class="chip">Mine</span></div>
+
+      <div class="glass hi sec" style="padding:13px">
+        <div class="row"><span class="tag" style="background:rgba(52,211,153,.15);color:var(--win)">● LIVE</span>
+          <span class="k">FRIDAY CLASH · WEEK 38</span></div>
+        <div style="font-size:14px;font-weight:900;margin:7px 0 2px">Zero Stress Championship</div>
+        <div class="k">SQUAD · 5v5 · SINGLE ELIM</div>
+        <div class="timerbox" style="margin:10px 0">
+          <div>02<span>HRS</span></div><div>14<span>MIN</span></div><div>09<span>SEC</span></div>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;background:none;border:none">
+            <span class="k" style="text-align:right">UNTIL<br>START</span></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px">
+          <div class="stat" style="text-align:center"><div class="k">Prize</div><div class="v mono" style="font-size:12px;color:var(--gold)">5,000 🪙</div></div>
+          <div class="stat" style="text-align:center"><div class="k">Players</div><div class="v mono" style="font-size:12px">58/64</div></div>
+          <div class="stat" style="text-align:center"><div class="k">Your pos</div><div class="v mono" style="font-size:12px;color:var(--a1)">#4</div></div>
+        </div>
+        <div class="sec" style="display:flex;gap:8px">
+          <div class="cta p" style="flex:1">JOIN NOW</div><div class="cta g" style="flex:1">VIEW BRACKET</div>
+        </div>
+      </div>
+
+      <div class="glass sec" style="padding:12px">
+        <div class="row"><span class="tag" style="background:rgba(168,85,247,.18);color:#c9a5ff">UPCOMING</span>
+          <span class="sp"></span><span class="cd" style="font-size:10px">1d 06h</span></div>
+        <div style="font-size:13px;font-weight:900;margin:6px 0 2px">Midnight Ladder</div>
+        <div class="row" style="margin-top:8px">
+          <div class="k" style="flex:1">PRIZE 2,500 🪙 · 32/32 SLOTS · SOLO</div>
+          <span class="chip on" style="font-size:8.5px">REGISTERED</span>
+        </div>
+      </div>
+
+      <div class="glass sec" style="padding:12px">
+        <div class="row"><span class="tag dn">ENDED</span><span class="sp"></span><span class="k">YESTERDAY</span></div>
+        <div style="font-size:13px;font-weight:900;margin:6px 0 2px">Dust Zone Cup</div>
+        <div class="row" style="margin-top:8px">
+          <div class="k" style="flex:1">YOU PLACED <b style="color:var(--gold)">#2</b> · +800 🪙 · +300 XP</div>
+          <span class="chip" style="font-size:8.5px">RESULTS</span>
+        </div>
+      </div>
+    </div>
+    <div class="bnav">
+      <a href="#"><span class="ic">⌂</span>HOME</a><a href="#"><span class="ic">📊</span>PERF</a>
+      <a href="#"><span class="ic">🏆</span>BOARD</a><a class="on" href="#"><span class="ic">⚔</span>TOURNEY</a><a href="#"><span class="ic">👤</span>PROFILE</a>
+    </div>
+  </div></div>
+
+  <!-- ================= ADMIN ================= -->
+  <div class="shot"><div class="cap"><b>5 · ADMIN / MANAGER</b> — CONTROL DECK</div>
+  <div class="phone">
+    <div class="notch"></div>
+    <div class="status"><span>21:46</span><span>LTE ▮▮▮</span></div>
+    <div class="screen">
+      <div class="row"><span class="h">Manager console</span><span class="sp"></span>
+        <span class="tag" style="background:rgba(168,85,247,.18);color:#c9a5ff">ADMIN</span></div>
+
+      <div class="sec" style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px">
+        <div class="adm-btn"><span class="ic">＋</span>Add player</div>
+        <div class="adm-btn"><span class="ic">📝</span>Match res</div>
+        <div class="adm-btn"><span class="ic">⚡</span>Adjust score</div>
+        <div class="adm-btn"><span class="ic">🏆</span>Tournament</div>
+        <div class="adm-btn"><span class="ic">📋</span>Leaderboard</div>
+        <div class="adm-btn"><span class="ic">⬆</span>Import</div>
+        <div class="adm-btn"><span class="ic">⬇</span>Export</div>
+        <div class="adm-btn"><span class="ic">📈</span>Stats view</div>
+      </div>
+
+      <div class="search sec" style="margin-top:10px">🔎 Search players — name, ID, role…</div>
+      <div class="chips" style="margin-top:8px">
+        <span class="chip on">All</span><span class="chip">Approved</span><span class="chip">Pending</span><span class="chip">Banned</span>
+        <span class="chip">Sort: Score ▾</span>
+      </div>
+
+      <div class="tr-list sec">
+        <div class="tr" style="padding:8px 10px">
+          <div class="av sm" style="border-color:var(--a1)">V</div>
+          <div style="flex:1"><b style="font-size:10.5px">Neonshade_VT</b><div class="k">LV 42 · #7 · 5,980 pts</div></div>
+          <span class="tag up">OK</span><span class="chip" style="font-size:8px">⋯</span></div>
+        <div class="tr" style="padding:8px 10px">
+          <div class="av sm">K</div>
+          <div style="flex:1"><b style="font-size:10.5px">KZ_Ryu</b><div class="k">LV 38 · #2 · 7,120 pts</div></div>
+          <span class="tag up">OK</span><span class="chip" style="font-size:8px">⋯</span></div>
+        <div class="tr" style="padding:8px 10px;border-color:rgba(251,191,36,.35)">
+          <div class="av sm" style="border-color:var(--gold)">P</div>
+          <div style="flex:1"><b style="font-size:10.5px">Prism_Fan</b><div class="k">LV 12 · PENDING APPROVAL</div></div>
+          <span class="tag" style="background:rgba(251,191,36,.14);color:var(--gold)">REVIEW</span>
+          <span class="chip on" style="font-size:8px">✓</span><span class="chip" style="font-size:8px">✕</span></div>
+        <div class="tr" style="padding:8px 10px;opacity:.75">
+          <div class="av sm" style="border-color:var(--loss)">T</div>
+          <div style="flex:1"><b style="font-size:10.5px">Toxic_Rambo</b><div class="k">LV 20 · BANNED</div></div>
+          <span class="tag dn">BAN</span><span class="chip" style="font-size:8px">⋯</span></div>
+      </div>
+
+      <div class="glass sec row" style="padding:10px 12px">
+        <span class="k">BULK</span><span class="sp"></span>
+        <span class="chip">Reset weekly</span><span class="chip">Season rollover</span><span class="chip on">Audit log</span>
+      </div>
+    </div>
+    <div class="bnav">
+      <a href="#"><span class="ic">⌂</span>HOME</a><a href="#"><span class="ic">📊</span>PERF</a>
+      <a href="#"><span class="ic">🏆</span>BOARD</a><a href="#"><span class="ic">⚔</span>TOURNEY</a><a href="#"><span class="ic">👤</span>PROFILE</a>
+    </div>
+  </div></div>
+
+</div>
+
+<p class="sub" style="text-align:center;margin-top:26px">
+Open this file in any browser. Screens are static mockups — the real app stays Firestore-powered.<br>
+<span style="color:var(--mut)">ZERO STRESS · NEON GLASS v4 design preview</span></p>
+
+<script>
+  const presets = {
+    cyan:{a1:'#22d3ee',a2:'#a855f7',a1g:'rgba(34,211,238,.55)',a2g:'rgba(168,85,247,.45)'},
+    ice: {a1:'#7dd3fc',a2:'#2dd4bf',a1g:'rgba(125,211,252,.55)',a2g:'rgba(45,212,191,.45)'},
+    mag: {a1:'#f472b6',a2:'#8b5cf6',a1g:'rgba(244,114,182,.55)',a2g:'rgba(139,92,246,.45)'},
+    red: {a1:'#ff4d6d',a2:'#22d3ee',a1g:'rgba(255,77,109,.5)', a2g:'rgba(34,211,238,.45)'}
+  };
+  function setAccent(btn,key){
+    const p = presets[key];
+    for (const [k,v] of Object.entries(p)) document.documentElement.style.setProperty('--'+k, v);
+    document.querySelectorAll('.acc').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+  }
+</script>
+</body>
+</html>

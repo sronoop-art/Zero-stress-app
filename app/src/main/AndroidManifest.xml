@@ -41,6 +41,7 @@
         <activity android:name=".AdminDashboardActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".PlayerDashboardActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".LeaderboardActivity" android:theme="@style/Theme.ZeroStress" />
+        <activity android:name=".TournamentActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".ChatActivity" android:theme="@style/Theme.ZeroStress"
             android:windowSoftInputMode="adjustResize" />
         <activity android:name=".VoiceActivity" android:theme="@style/Theme.ZeroStress" />

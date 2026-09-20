@@ -102,7 +102,7 @@ private fun ReportsScreen() {
             if (loading) {
                 EmptyState("Loading reports...")
             } else if (reports.isEmpty()) {
-                EmptyState("No reports — chat is clean 🏁")
+                EmptyState("No reports — chat is clean")
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),

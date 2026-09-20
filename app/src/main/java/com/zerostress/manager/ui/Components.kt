@@ -1,6 +1,7 @@
 package com.zerostress.manager.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,12 +44,15 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -57,20 +62,26 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 // ZsPngIcon lives in this same package (ui/PngIcon.kt) — no import needed
 import com.zerostress.manager.R
-import com.zerostress.manager.ui.theme.ZsBgStart
+import com.zerostress.manager.ui.theme.ZsBgEnd
 import com.zerostress.manager.ui.theme.ZsBgMid
+import com.zerostress.manager.ui.theme.ZsBgStart
 import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsCard
 import com.zerostress.manager.ui.theme.ZsCyan
+import com.zerostress.manager.ui.theme.ZsDanger
+import com.zerostress.manager.ui.theme.ZsGold
+import com.zerostress.manager.ui.theme.ZsSuccess
 import com.zerostress.manager.ui.theme.ZsPrimary
 import com.zerostress.manager.ui.theme.ZsPrimaryDark
+import com.zerostress.manager.ui.theme.ZsPurple
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 
 /**
- * Full-screen dark gradient with a subtle carbon-fiber weave texture,
- * used as the base of every screen (Carbon GT Racing theme).
+ * Full-screen deep-space gradient with the Neon Glass v4 ambient light wash:
+ * a violet glow top-right and a cyan glow top-left, like light spilling from
+ * a stage. Used as the base of every screen.
  */
 @Composable
 fun ZSBackground(
@@ -80,29 +91,33 @@ fun ZSBackground(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(ZsBgStart, ZsBgMid, ZsBgStart)))
+            .background(Brush.verticalGradient(listOf(ZsBgStart, ZsBgMid, ZsBgEnd)))
             .drawBehind {
-                // Fine diagonal weave - reads as carbon fiber at low alpha.
-                val step = 14.dp.toPx()
-                val stroke = 3.dp.toPx()
-                var x = -size.height
-                while (x < size.width) {
-                    drawLine(
-                        color = Color.White.copy(alpha = 0.025f),
-                        start = Offset(x, 0f),
-                        end = Offset(x + size.height, size.height),
-                        strokeWidth = stroke
+                // Ambient neon washes (screen-space, cheap radial layers).
+                val violet = ZsPurple.copy(alpha = 0.10f)
+                val cyan = ZsPrimary.copy(alpha = 0.08f)
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(violet, Color.Transparent),
+                        center = Offset(size.width * 0.92f, size.height * 0.02f),
+                        radius = size.width * 0.85f
                     )
-                    x += step
-                }
+                )
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(cyan, Color.Transparent),
+                        center = Offset(size.width * 0.02f, size.height * 0.10f),
+                        radius = size.width * 0.75f
+                    )
+                )
             },
         content = content
     )
 }
 
 /**
- * Racing hero header: slanted red gradient band with italic title.
- * Used at the top of dashboard screens.
+ * Neon glass hero header: a cyan-to-violet gradient band with upright
+ * ExtraBold title. Used at the top of dashboard screens.
  */
 @Composable
 fun ZSHeroHeader(
@@ -113,23 +128,26 @@ fun ZSHeroHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 22.dp, bottomEnd = 0.dp))
-            .background(Brush.horizontalGradient(listOf(ZsPrimaryDark, ZsPrimary)))
+            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
+            .background(
+                Brush.horizontalGradient(
+                    listOf(ZsPrimaryDark, ZsPrimary, ZsPurple)
+                )
+            )
             .padding(horizontal = 18.dp, vertical = 16.dp)
     ) {
         Column {
             Text(
                 title,
-                color = Color.White,
+                color = Color(0xFF04101A),
                 fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
-                fontStyle = FontStyle.Italic
+                fontWeight = FontWeight.ExtraBold
             )
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
                 Text(
                     subtitle,
-                    color = Color.White.copy(alpha = 0.85f),
+                    color = Color(0xFF04101A).copy(alpha = 0.75f),
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -156,14 +174,15 @@ fun ZSScreenColumn(
 }
 
 /**
- * Shared card with the Carbon GT look: sharp-ish corners, thin steel border
- * and a short racing-red speed stripe along the top edge.
- * Pass [onClick] to make it tappable.
+ * Shared glassmorphism card (Neon Glass v4): translucent white fill on the
+ * dark gradient, thin light stroke, 18dp rounded corners. Pass [highlight]
+ * to tint the border and add a soft outer neon glow. Pass [onClick] to make
+ * it tappable.
  */
 @Composable
 fun ZSCard(
     modifier: Modifier = Modifier,
-    corner: Dp = 8.dp,
+    corner: Dp = 18.dp,
     highlight: Color? = null,
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
@@ -172,45 +191,48 @@ fun ZSCard(
         .fillMaxWidth()
         .clip(RoundedCornerShape(corner))
         .background(ZsCard)
-        .drawBehind {
-            // Speed stripe along the top edge (racing accent).
-            drawRect(
-                color = highlight ?: ZsPrimary,
-                topLeft = Offset(0f, 0f),
-                size = Size(size.width * 0.34f, 3.dp.toPx())
-            )
-        }
         .border(
             width = if (highlight != null) 1.5.dp else 1.dp,
-            color = highlight ?: ZsBorder.copy(alpha = 0.6f),
+            color = highlight ?: Color.White.copy(alpha = 0.09f),
             shape = RoundedCornerShape(corner)
         )
+        .drawBehind {
+            if (highlight != null) {
+                // Soft outer neon glow behind highlighted cards.
+                drawRoundRect(
+                    color = highlight.copy(alpha = 0.28f),
+                    topLeft = Offset(-6.dp.toPx(), -6.dp.toPx()),
+                    size = Size(size.width + 12.dp.toPx(), size.height + 12.dp.toPx()),
+                    cornerRadius = CornerRadius(corner.toPx() + 6.dp.toPx())
+                )
+            }
+        }
     if (onClick != null) m = m.clickable(onClick = onClick)
     Column(modifier = m.padding(14.dp), content = content)
 }
 
-/** Full-width accent button. */
+/** Full-width accent button (Neon Glass gradient style). */
 @Composable
 fun ZSButton(
     text: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     container: Color = ZsPrimary,
-    textColor: Color = Color.White,
+    textColor: Color = Color(0xFF04101A),
     enabled: Boolean = true,
     height: Dp = 50.dp
 ) {
-    // Carbon GT signature: the default action button is a red-to-white speed
+    // Neon Glass signature: the default action button is a cyan-to-violet
     // gradient. Callers passing a custom container color keep a solid fill
     // (danger/secondary actions).
     val useGradient = container == ZsPrimary
-    val shape = RoundedCornerShape(6.dp)
+    val shape = RoundedCornerShape(14.dp)
     val bg: Modifier = when {
         enabled && useGradient -> Modifier.background(
-            brush = Brush.horizontalGradient(listOf(ZsPrimary, Color(0xFFFFC9D1))),
+            brush = Brush.horizontalGradient(listOf(ZsPrimary, ZsPurple)),
             shape = shape
         )
-        !enabled -> Modifier.background(color = ZsBorder.copy(alpha = 0.5f), shape = shape)
+        !enabled -> Modifier.background(color = ZsBorder.copy(alpha = 0.35f), shape = shape)
         else -> Modifier.background(color = container, shape = shape)
     }
     Box(
@@ -225,10 +247,9 @@ fun ZSButton(
         Text(
             text.uppercase(),
             color = if (enabled) textColor else ZsTextMuted,
-            fontWeight = FontWeight.Bold,
-            fontStyle = FontStyle.Italic,
+            fontWeight = FontWeight.ExtraBold,
             fontSize = 15.sp,
-            letterSpacing = 1.sp
+            letterSpacing = 1.2.sp
         )
     }
 }
@@ -250,19 +271,7 @@ fun ZSField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier
-            .fillMaxWidth()
-            .drawBehind {
-                // Red speed stripe on the left edge (racing input style).
-                val stripeW = 3.5.dp.toPx()
-                val stripeH = size.height * 0.42f
-                drawRoundRect(
-                    color = ZsPrimary.copy(alpha = 0.9f),
-                    topLeft = Offset(0f, (size.height - stripeH) / 2f),
-                    size = Size(stripeW, stripeH),
-                    cornerRadius = CornerRadius(stripeW, stripeW)
-                )
-            },
+        modifier = modifier.fillMaxWidth(),
         label = { Text(label) },
         placeholder = { Text(placeholder, color = ZsTextMuted) },
         visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
@@ -270,10 +279,10 @@ fun ZSField(
         singleLine = singleLine,
         minLines = minLines,
         trailingIcon = trailing,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = ZsPrimary.copy(alpha = 0.8f),
-            unfocusedBorderColor = ZsBorder.copy(alpha = 0.7f),
+            focusedBorderColor = ZsPrimary.copy(alpha = 0.7f),
+            unfocusedBorderColor = Color.White.copy(alpha = 0.12f),
             focusedLabelColor = ZsPrimary,
             unfocusedLabelColor = ZsTextMuted,
             focusedTextColor = ZsTextPrimary,
@@ -314,7 +323,7 @@ fun ZSTopBar(
             color = ZsTextPrimary,
             fontSize = 20.sp,
             fontWeight = FontWeight.ExtraBold,
-            fontStyle = FontStyle.Italic
+            letterSpacing = 0.4.sp
         )
         right?.invoke(this)
     }
@@ -376,9 +385,9 @@ fun ZSProgress(
         }
         LinearProgressIndicator(
             progress = { fraction.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)),
+            modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(6.dp)),
             color = color,
-            trackColor = ZsCard
+            trackColor = Color.White.copy(alpha = 0.07f)
         )
     }
 }
@@ -391,7 +400,7 @@ fun EmptyState(text: String, modifier: Modifier = Modifier) {
     }
 }
 
-/** Simple stat tile (label over value). */
+/** Simple glass stat tile (label over value). */
 @Composable
 fun ZSStat(
     label: String,
@@ -402,21 +411,26 @@ fun ZSStat(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(14.dp))
             .background(ZsCard)
-            .border(1.dp, ZsBorder.copy(alpha = 0.6f), RoundedCornerShape(8.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(14.dp))
             .padding(vertical = 12.dp, horizontal = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(label, color = ZsTextMuted, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+        Text(
+            label,
+            color = ZsTextMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp
+        )
         Spacer(Modifier.height(4.dp))
         Text(
             value,
             color = color,
-            fontSize = 23.sp,
-            fontWeight = FontWeight.ExtraBold,
-            fontStyle = FontStyle.Italic
+            fontSize = 21.sp,
+            fontWeight = FontWeight.ExtraBold
         )
     }
 }
@@ -476,17 +490,19 @@ fun ZSMenuTile(
     Column(
         modifier = modifier
             .scale(tileScale)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(ZsCard)
             .drawBehind {
-                // Accent speed stripe across the top edge (mockup tile style).
-                drawRect(
-                    color = accent,
-                    topLeft = Offset.Zero,
-                    size = Size(size.width, 3.dp.toPx())
+                // Accent glow dot in the top-left corner (Neon Glass tile).
+                drawCircle(
+                    brush = Brush.radialGradient(
+                        colors = listOf(accent.copy(alpha = 0.35f), Color.Transparent),
+                        center = Offset(size.width * 0.16f, size.height * 0.12f),
+                        radius = size.width * 0.55f
+                    )
                 )
             }
-            .border(1.dp, ZsBorder.copy(alpha = 0.55f), RoundedCornerShape(10.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(16.dp))
             .pointerInput(onClick) {
                 detectTapGestures(
                     onPress = {
@@ -522,5 +538,287 @@ fun ZSKeyValue(label: String, value: String, valueColor: Color = ZsTextPrimary, 
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label, color = ZsTextMuted, fontSize = 14.sp)
         Text(value, color = valueColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** One destination in the bottom navigation bar. */
+data class ZSNavItem(
+    val iconRes: Int,
+    val label: String,
+    val selected: Boolean,
+    val onClick: () -> Unit
+)
+
+/**
+ * The five bottom-nav destinations shared by every main screen.
+ * [current] is 0=Home, 1=Performance, 2=Leaderboard, 3=Tournaments, 4=Profile.
+ */
+@Composable
+fun zsNavItems(current: Int, context: android.content.Context): List<ZSNavItem> = listOf(
+    ZSNavItem(R.drawable.ic_nav_home, "Home", current == 0) {
+        if (current != 0) context.startActivity(android.content.Intent(context, com.zerostress.manager.PlayerDashboardActivity::class.java))
+    },
+    ZSNavItem(R.drawable.ic_nav_perf, "Perf", current == 1) {
+        if (current != 1) context.startActivity(android.content.Intent(context, com.zerostress.manager.PerformanceGraphsActivity::class.java))
+    },
+    ZSNavItem(R.drawable.ic_nav_board, "Board", current == 2) {
+        if (current != 2) context.startActivity(android.content.Intent(context, com.zerostress.manager.LeaderboardActivity::class.java))
+    },
+    ZSNavItem(R.drawable.ic_nav_tournament, "Cups", current == 3) {
+        if (current != 3) context.startActivity(android.content.Intent(context, com.zerostress.manager.TournamentActivity::class.java))
+    },
+    ZSNavItem(R.drawable.ic_nav_profile, "Profile", current == 4) {
+        if (current != 4) context.startActivity(android.content.Intent(context, com.zerostress.manager.ProfileActivity::class.java))
+    }
+)
+
+/**
+ * Neon Glass bottom navigation shell: translucent glass bar pinned to the
+ * bottom, thin light top stroke, active destination tinted cyan with a glow
+ * dot above the icon. Place it as the LAST child of a Column whose content
+ * is a Weight(1f) screen body (see PlayerDashboardActivity for the pattern).
+ */
+@Composable
+fun ZSBottomNav(items: List<ZSNavItem>, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(ZsBgMid.copy(alpha = 0.92f))
+            .border(width = 1.dp, color = Color.White.copy(alpha = 0.09f))
+            .navigationBarsPadding()
+            .height(58.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        items.forEach { item ->
+            val tint = if (item.selected) ZsPrimary else ZsTextMuted
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxSize()
+                    .clickable(onClick = item.onClick),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                if (item.selected) {
+                    Box(
+                        Modifier
+                            .padding(bottom = 3.dp)
+                            .size(width = 16.dp, height = 2.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(ZsPrimary)
+                    )
+                }
+                Icon(
+                    painter = painterResource(item.iconRes),
+                    contentDescription = item.label,
+                    tint = tint,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    item.label,
+                    color = tint,
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Circular progress ring with a content slot in the middle (Neon Glass stat
+ * ring). [fraction] is clamped to 0..1; the arc sweeps a cyan-to-violet
+ * gradient over a faint track.
+ */
+@Composable
+fun ZSRing(
+    fraction: Float,
+    modifier: Modifier = Modifier,
+    color: Color = ZsPrimary,
+    trackColor: Color = Color.White.copy(alpha = 0.08f),
+    stroke: Dp = 6.dp,
+    content: @Composable BoxScope.() -> Unit
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val strokePx = stroke.toPx()
+            val inset = strokePx / 2 + 1.dp.toPx()
+            val arcSize = Size(size.width - inset * 2, size.height - inset * 2)
+            drawArc(
+                color = trackColor,
+                startAngle = 0f, sweepAngle = 360f, useCenter = false,
+                topLeft = Offset(inset, inset), size = arcSize,
+                style = Stroke(strokePx, cap = StrokeCap.Round)
+            )
+            drawArc(
+                brush = Brush.sweepGradient(listOf(color, ZsPurple, color)),
+                startAngle = -90f, sweepAngle = 360f * fraction.coerceIn(0f, 1f), useCenter = false,
+                topLeft = Offset(inset, inset), size = arcSize,
+                style = Stroke(strokePx, cap = StrokeCap.Round)
+            )
+        }
+        content()
+    }
+}
+
+/** Lightweight sparkline: neon line with a soft gradient fill underneath. */
+@Composable
+fun ZSSparkline(
+    values: List<Float>,
+    modifier: Modifier = Modifier,
+    color: Color = ZsPrimary,
+    strokeWidth: Dp = 2.5.dp
+) {
+    Canvas(modifier = modifier.fillMaxWidth().height(64.dp)) {
+        if (values.size < 2) return@Canvas
+        val maxV = (values.maxOrNull() ?: 1f).coerceAtLeast(1f)
+        val minV = values.minOrNull() ?: 0f
+        val range = (maxV - minV).coerceAtLeast(1f)
+        val stepX = size.width / (values.size - 1)
+        fun y(v: Float) = size.height - 6.dp.toPx() -
+            ((v - minV) / range) * (size.height - 12.dp.toPx())
+        val line = Path()
+        values.forEachIndexed { i, v ->
+            val x = i * stepX
+            if (i == 0) line.moveTo(x, y(v)) else line.lineTo(x, y(v))
+        }
+        val fill = Path().apply {
+            addPath(line)
+            lineTo(size.width, size.height)
+            lineTo(0f, size.height)
+            close()
+        }
+        drawPath(
+            fill,
+            brush = Brush.verticalGradient(listOf(color.copy(alpha = 0.25f), Color.Transparent))
+        )
+        drawPath(line, color = color, style = Stroke(strokeWidth.toPx(), cap = StrokeCap.Round))
+    }
+}
+
+/** Lightweight neon bar chart (kills per match, etc.). */
+@Composable
+fun ZSBarChart(
+    values: List<Float>,
+    modifier: Modifier = Modifier,
+    color: Color = ZsPrimary
+) {
+    Canvas(modifier = modifier.fillMaxWidth().height(64.dp)) {
+        if (values.isEmpty()) return@Canvas
+        val maxV = (values.maxOrNull() ?: 1f).coerceAtLeast(1f)
+        val gap = 4.dp.toPx()
+        val barW = (size.width - gap * (values.size - 1)) / values.size
+        values.forEachIndexed { i, v ->
+            val h = (v / maxV) * (size.height - 4.dp.toPx())
+            drawRoundRect(
+                brush = Brush.verticalGradient(listOf(color, color.copy(alpha = 0.35f))),
+                topLeft = Offset(i * (barW + gap), size.height - h),
+                size = Size(barW, h.coerceAtLeast(2.dp.toPx())),
+                cornerRadius = CornerRadius(3.dp.toPx())
+            )
+        }
+    }
+}
+
+/**
+ * Glass filter chip row. The selected chip gets the cyan-to-violet gradient
+ * with dark ink text; the rest stay translucent glass.
+ */
+@Composable
+fun ZSFilterChips(
+    options: List<String>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        options.forEachIndexed { i, label ->
+            val selected = i == selectedIndex
+            Text(
+                label,
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(
+                        if (selected) Brush.horizontalGradient(listOf(ZsPrimary, ZsPurple))
+                        else Brush.horizontalGradient(listOf(ZsCard, ZsCard))
+                    )
+                    .border(
+                        1.dp,
+                        if (selected) Color.Transparent else Color.White.copy(alpha = 0.12f),
+                        RoundedCornerShape(10.dp)
+                    )
+                    .clickable { onSelect(i) }
+                    .padding(vertical = 8.dp),
+                color = if (selected) Color(0xFF04101A) else ZsTextSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+/** Trend arrow: 1 = up (green), -1 = down (red), 0 = flat (muted dash). */
+@Composable
+fun ZSTrend(direction: Int, modifier: Modifier = Modifier) {
+    if (direction > 0) {
+        ZsPngIcon(
+            R.drawable.ic_trend_up, size = 14.dp, tint = ZsSuccess,
+            modifier = modifier, contentDescription = "Trending up"
+        )
+    } else if (direction < 0) {
+        ZsPngIcon(
+            R.drawable.ic_trend_down, size = 14.dp, tint = ZsDanger,
+            modifier = modifier, contentDescription = "Trending down"
+        )
+    } else {
+        Box(
+            modifier
+                .padding(horizontal = 3.dp)
+                .size(width = 8.dp, height = 2.dp)
+                .clip(RoundedCornerShape(1.dp))
+                .background(ZsTextMuted)
+        )
+    }
+}
+
+/**
+ * Glass initials avatar with a neon ring. The name is reduced to up to two
+ * initials so roster rows work everywhere without any image loading.
+ */
+@Composable
+fun ZSAvatar(
+    name: String,
+    size: Dp = 40.dp,
+    ringColor: Color = ZsPrimary,
+    modifier: Modifier = Modifier
+) {
+    val initials = name.trim().split(Regex("\\s+"))
+        .filter { it.isNotEmpty() }
+        .take(2)
+        .map { it.first().uppercaseChar() }
+        .joinToString("")
+        .ifEmpty { "?" }
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(percent = 50))
+            .background(Brush.linearGradient(listOf(Color(0xFF1C2033), Color(0xFF11131F))))
+            .border(1.5.dp, ringColor, RoundedCornerShape(percent = 50)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            initials,
+            color = ZsTextSecondary,
+            fontSize = (size.value * 0.34f).sp,
+            fontWeight = FontWeight.ExtraBold
+        )
     }
 }

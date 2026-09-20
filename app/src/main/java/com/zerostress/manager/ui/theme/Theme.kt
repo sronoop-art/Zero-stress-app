@@ -6,25 +6,24 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-// ---- Brand palette: CARBON GT RACING (theme #11) ----
-// Carbon-fiber charcoal + racing red + silver-white, italic motorsport type.
-val ZsBgStart = Color(0xFF1A1D24)
-val ZsBgMid = Color(0xFF12141A)
-val ZsBgEnd = Color(0xFF0C0E12)
-val ZsCard = Color(0xFF14161C)
-val ZsCardAlt = Color(0xFF1A1D24)
+// ---- Brand palette: NEON GLASS v4 (ui-redesign-preview.html) ----
+// Deep space navy + glassmorphism surfaces + neon cyan / violet lighting.
+val ZsBgStart = Color(0xFF0E1122)
+val ZsBgMid = Color(0xFF0B0D1A)
+val ZsBgEnd = Color(0xFF070810)
+val ZsCard = Color(0x0EFFFFFF)         // glass fill (white @ ~5.5%)
+val ZsCardAlt = Color(0x14FFFFFF)      // brighter glass (white @ ~8%)
 
-val ZsPrimary = Color(0xFFFF1E3C)      // racing red
-val ZsPrimaryDark = Color(0xFFD91633)
-val ZsPurple = Color(0xFF2A2E38)       // carbon slate (legacy slot)
+val ZsPrimary = Color(0xFF22D3EE)      // neon cyan
+val ZsPrimaryDark = Color(0xFF0E7490)  // deep cyan (pressed / gradients)
+val ZsPurple = Color(0xFFA855F7)       // neon violet (secondary glow)
 
-val ZsAccent = Color(0xFFFF1E3C)       // hero red accent
-val ZsAccentDark = Color(0xFFD91633)
+val ZsAccent = Color(0xFF22D3EE)       // hero accent (cyan)
+val ZsAccentDark = Color(0xFF0E7490)
 
 val ZsTextPrimary = Color(0xFFE8EAF0)
 val ZsTextSecondary = Color(0xFF9AA3B2)
@@ -32,10 +31,10 @@ val ZsTextMuted = Color(0xFF6B7280)
 val ZsBorder = Color(0xFF333A46)
 val ZsBorderLight = Color(0xFF4A5160)
 
-val ZsDanger = Color(0xFFFF1E3C)
-val ZsSuccess = Color(0xFF30D158)
+val ZsDanger = Color(0xFFFB7185)
+val ZsSuccess = Color(0xFF34D399)
 val ZsGreen = Color(0xFF30D158)
-val ZsCyan = Color(0xFFD7DCE6)         // silver-white secondary accent (legacy slot)
+val ZsCyan = Color(0xFF22D3EE)         // kept as the shared "cyan" slot (neon cyan)
 val ZsGold = Color(0xFFFFD60A)         // rank gold
 val ZsSilver = Color(0xFFC0C7D1)
 val ZsBronze = Color(0xFFCD7F32)
@@ -43,24 +42,24 @@ val ZsWarning = Color(0xFFFFB020)
 val ZsInfo = Color(0xFF6EC1FF)
 val ZsGrey = Color(0xFF8B949E)
 
-val ZsChatSentStart = Color(0xFFFF1E3C)
-val ZsChatSentEnd = Color(0xFFD91633)
-val ZsChatReceived = Color(0xFF14161C)
+val ZsChatSentStart = Color(0xFF22D3EE)
+val ZsChatSentEnd = Color(0xFFA855F7)
+val ZsChatReceived = Color(0x14FFFFFF)
 
 private val ZsColorScheme = darkColorScheme(
     primary = ZsPrimary,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFF04101A),      // dark ink on neon fills
     primaryContainer = ZsCard,
     onPrimaryContainer = ZsTextPrimary,
-    secondary = ZsCyan,
-    onSecondary = Color(0xFF0B1220),
+    secondary = ZsPurple,
+    onSecondary = Color(0xFF04101A),
     secondaryContainer = ZsCardAlt,
     onSecondaryContainer = ZsTextPrimary,
     tertiary = ZsAccent,
-    onTertiary = Color(0xFF06251D),
+    onTertiary = Color(0xFF04101A),
     background = ZsBgStart,
     onBackground = ZsTextPrimary,
-    surface = ZsCard,
+    surface = ZsBgMid,
     onSurface = ZsTextPrimary,
     surfaceVariant = ZsCardAlt,
     onSurfaceVariant = ZsTextSecondary,
@@ -70,30 +69,28 @@ private val ZsColorScheme = darkColorScheme(
 )
 
 private val ZsTypography = Typography(
-    // Racing type: bold italic headings, like a motorsport HUD.
+    // Esports HUD type: ExtraBold upright headings with wide tracking,
+    // per the Neon Glass v4 spec (crisp, high contrast, no italic).
     headlineLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
-        fontStyle = FontStyle.Italic,
         fontSize = 32.sp,
         letterSpacing = (-0.5).sp
     ),
     headlineMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.ExtraBold,
-        fontStyle = FontStyle.Italic,
         fontSize = 24.sp
     ),
     titleLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.Bold,
-        fontStyle = FontStyle.Italic,
-        fontSize = 20.sp
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 20.sp,
+        letterSpacing = 0.4.sp
     ),
     titleMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontStyle = FontStyle.Italic,
         fontSize = 16.sp
     ),
     bodyLarge = TextStyle(
@@ -108,8 +105,9 @@ private val ZsTypography = Typography(
     ),
     labelLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 15.sp
+        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp,
+        letterSpacing = 0.8.sp
     )
 )
 

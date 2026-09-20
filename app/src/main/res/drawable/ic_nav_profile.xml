@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Profile: person -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12,4c2.21,0 4,1.79 4,4s-1.79,4 -4,4s-4,-1.79 -4,-4S9.79,4 12,4zM12,14c3.87,0 7,1.79 7,4v1c0,0.55 -0.45,1 -1,1H6c-0.55,0 -1,-0.45 -1,-1v-1C5,15.79 8.13,14 12,14z" />
+</vector>

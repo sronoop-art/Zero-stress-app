@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -39,15 +40,23 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.LoadingBox
+import com.zerostress.manager.ui.ZSAvatar
 import com.zerostress.manager.ui.ZSBackground
+import com.zerostress.manager.ui.ZSBadge
+import com.zerostress.manager.ui.ZSBottomNav
 import com.zerostress.manager.ui.ZSCard
+import com.zerostress.manager.ui.ZSFilterChips
 import com.zerostress.manager.ui.ZSTopBar
+import com.zerostress.manager.ui.ZSTrend
+import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.theme.ZeroStressTheme
+import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsBronze
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsGold
 import com.zerostress.manager.ui.theme.ZsPrimary
+import com.zerostress.manager.ui.theme.ZsPurple
 import com.zerostress.manager.ui.theme.ZsSilver
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
@@ -74,11 +83,31 @@ private fun LeaderboardScreen() {
     val db = remember { FirebaseFirestore.getInstance() }
 
     var currentTab by remember { mutableIntStateOf(0) }
+    var scope by remember { mutableIntStateOf(0) } // 0=Global 1=Friends 2=Local
     var players by remember { mutableStateOf<List<DocumentSnapshot>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var isAdmin by remember { mutableStateOf(false) }
     var showResetTypeDialog by remember { mutableStateOf(false) }
     var showResetConfirmDialog by remember { mutableStateOf<String?>(null) }
+    val myUid = auth.uid
+    var friendIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var myRegion by remember { mutableStateOf<String?>(null) }
+
+    // Friend ids + my region for the scope filters
+    LaunchedEffect(Unit) {
+        val uid = auth.uid ?: return@LaunchedEffect
+        db.collection("players").document(uid).get()
+            .addOnSuccessListener { doc -> if (doc.exists()) myRegion = doc.getString("region") }
+        db.collection("friendships").whereEqualTo("userId1", uid).get()
+            .addOnSuccessListener { q1 ->
+                val ids = q1.documents.mapNotNull { it.getString("userId2") }.toMutableSet()
+                db.collection("friendships").whereEqualTo("userId2", uid).get()
+                    .addOnSuccessListener { q2 ->
+                        ids += q2.documents.mapNotNull { it.getString("userId1") }
+                        friendIds = ids
+                    }
+            }
+    }
 
     fun scoreForTab(doc: DocumentSnapshot): Long = when (currentTab) {
         0 -> doc.getLong("dailyScore") ?: 0
@@ -267,7 +296,7 @@ private fun LeaderboardScreen() {
                             )
                             .clickable { currentTab = index }
                             .padding(vertical = 10.dp),
-                        color = if (selected) Color.White else ZsTextMuted,
+                        color = if (selected) Color(0xFF04101A) else ZsTextMuted,
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
@@ -275,20 +304,30 @@ private fun LeaderboardScreen() {
             }
             Spacer(Modifier.height(8.dp))
 
+            // Scope filter: Global / Friends / Local
+            ZSFilterChips(listOf("Global", "Friends", "Local"), scope) { scope = it }
+            Spacer(Modifier.height(8.dp))
+
+            val visiblePlayers = when (scope) {
+                1 -> players.filter { it.id == myUid || it.id in friendIds }
+                2 -> myRegion?.let { reg -> players.filter { (it.getString("region") ?: "") == reg } } ?: players
+                else -> players
+            }
+
             if (loading) {
-                LoadingBox()
-            } else if (players.isEmpty()) {
-                EmptyState("No approved players yet")
+                LoadingBox(Modifier.weight(1f))
+            } else if (visiblePlayers.isEmpty()) {
+                EmptyState("No players in this scope yet", Modifier.weight(1f))
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().weight(1f),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         start = 16.dp, end = 16.dp, bottom = 24.dp, top = 4.dp
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(players, key = { it.id }) { doc ->
-                        val index = players.indexOf(doc)
+                    items(visiblePlayers, key = { it.id }) { doc ->
+                        val index = visiblePlayers.indexOf(doc)
                         val name = doc.getString("name") ?: "Unknown"
                         val score = scoreForTab(doc)
                         val kills = killsForTab(doc)
@@ -312,8 +351,20 @@ private fun LeaderboardScreen() {
                             else -> ""
                         }
 
+                        val isMe = doc.id == myUid
+                        // Momentum arrow relative to the field (no history in schema)
+                        val trend = when {
+                            visiblePlayers.size < 3 -> 0
+                            index < visiblePlayers.size / 3 -> 1
+                            index < visiblePlayers.size * 2 / 3 -> 0
+                            else -> -1
+                        }
                         ZSCard(
-                            highlight = if (index == 0) ZsGold else null,
+                            highlight = when {
+                                isMe -> ZsPurple
+                                index == 0 -> ZsGold
+                                else -> null
+                            },
                             onClick = {
                                 // Open the player's read-only profile view
                                 val i = android.content.Intent(context, PlayerProfileViewActivity::class.java).apply {
@@ -329,15 +380,27 @@ private fun LeaderboardScreen() {
                                     color = if (index < 3) medalColor else ZsTextMuted,
                                     fontWeight = FontWeight.Black,
                                     fontSize = 18.sp,
-                                    modifier = Modifier.padding(end = 12.dp)
+                                    modifier = Modifier.padding(end = 10.dp)
                                 )
+                                ZSAvatar(
+                                    name, size = 40.dp,
+                                    ringColor = if (index < 3) medalColor else ZsBorder
+                                )
+                                Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
-                                    Text(
-                                        "$medal$name",
-                                        color = if (index < 3) medalColor else ZsTextPrimary,
-                                        fontWeight = FontWeight.Bold,
-                                        fontSize = 16.sp
-                                    )
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            "$medal$name",
+                                            color = if (index < 3) medalColor else ZsTextPrimary,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 16.sp,
+                                            maxLines = 1
+                                        )
+                                        if (isMe) {
+                                            Spacer(Modifier.width(6.dp))
+                                            ZSBadge("YOU", ZsPurple)
+                                        }
+                                    }
                                     Spacer(Modifier.height(3.dp))
                                     Text(
                                         buildString {
@@ -348,17 +411,21 @@ private fun LeaderboardScreen() {
                                         fontSize = 12.sp
                                     )
                                 }
+                                ZSTrend(trend, Modifier.padding(horizontal = 6.dp))
                                 Text(
                                     "$score pts",
                                     color = ZsCyan,
                                     fontWeight = FontWeight.ExtraBold,
-                                    fontSize = 15.sp
+                                    fontSize = 14.sp
                                 )
                             }
                         }
                     }
                 }
             }
+
+            // Neon Glass bottom navigation shell
+            ZSBottomNav(zsNavItems(2, context))
         }
     }
 
