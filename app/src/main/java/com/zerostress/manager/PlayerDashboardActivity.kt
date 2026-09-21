@@ -36,6 +36,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.R
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.fcm.ZSFCMService
+import com.zerostress.manager.ui.launchTab
 import com.zerostress.manager.ui.ZSAvatar
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSBadge
@@ -344,7 +345,7 @@ private fun PlayerDashboardScreen() {
                 // (Add Match removed by request — match logging is admin-only now)
                 ZSButton(
                     "View Leaderboard",
-                    { context.startActivity(Intent(context, LeaderboardActivity::class.java)) },
+                    { context.launchTab(LeaderboardActivity::class.java) },
                     Modifier.fillMaxWidth(),
                     height = 46.dp
                 )
@@ -361,7 +362,7 @@ private fun PlayerDashboardScreen() {
                         else -> "starts in ${remain / 86_400_000}d ${(remain % 86_400_000) / 3_600_000}h"
                     }
                     ZSCard(highlight = ZsPrimary, onClick = {
-                        context.startActivity(Intent(context, ScheduleActivity::class.java))
+                        context.launchTab(ScheduleActivity::class.java)
                     }) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(Modifier.weight(1f)) {
@@ -409,7 +410,7 @@ private fun PlayerDashboardScreen() {
                             else -> ZsPrimary
                         },
                         iconRes = item.iconRes,
-                        onClick = { context.startActivity(Intent(context, item.target)) }
+                        onClick = { context.launchTab(item.target) }
                     )
                 }
                 item {

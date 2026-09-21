@@ -34,6 +34,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.ui.EmptyState
+import com.zerostress.manager.ui.launchTab
 import com.zerostress.manager.ui.SectionTitle
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSBadge
@@ -195,34 +196,34 @@ private fun AdminDashboardScreen() {
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("", "Daily Input", { context.startActivity(Intent(context, DailyInputActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_edit)
+                        ZSMenuTile("", "Daily Input", { context.launchTab(DailyInputActivity::class.java) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_edit)
                         ZSMenuTile("", "Broadcast", { showAnnouncementOrSchedule = true }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_announce)
-                        ZSMenuTile("", "Leaderboard", { context.startActivity(Intent(context, LeaderboardActivity::class.java)) }, Modifier.weight(1f), ZsGold, iconRes = R.drawable.ic_menu_trophy)
+                        ZSMenuTile("", "Leaderboard", { context.launchTab(LeaderboardActivity::class.java) }, Modifier.weight(1f), ZsGold, iconRes = R.drawable.ic_menu_trophy)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("", "Tournaments", { context.startActivity(Intent(context, TournamentActivity::class.java)) }, Modifier.weight(1f), ZsPurple, iconRes = R.drawable.ic_nav_tournament)
-                        ZSMenuTile("", "Chat", { context.startActivity(Intent(context, ChatActivity::class.java)) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_chat)
-                        ZSMenuTile("", "Voice Call", { context.startActivity(Intent(context, VoiceActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_call)
+                        ZSMenuTile("", "Tournaments", { context.launchTab(TournamentActivity::class.java) }, Modifier.weight(1f), ZsPurple, iconRes = R.drawable.ic_nav_tournament)
+                        ZSMenuTile("", "Chat", { context.launchTab(ChatActivity::class.java) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_chat)
+                        ZSMenuTile("", "Voice Call", { context.launchTab(VoiceActivity::class.java) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_call)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("", "All Stats", { context.startActivity(Intent(context, ViewAllPlayersStatsActivity::class.java)) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_people)
-                        ZSMenuTile("", "Reports", { context.startActivity(Intent(context, ReportsActivity::class.java)) }, Modifier.weight(1f), ZsDanger, iconRes = R.drawable.ic_menu_bell)
-                        ZSMenuTile("", "Voice Channels", { context.startActivity(Intent(context, ManageVoiceChannelsActivity::class.java)) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_channels)
+                        ZSMenuTile("", "All Stats", { context.launchTab(ViewAllPlayersStatsActivity::class.java) }, Modifier.weight(1f), ZsCyan, iconRes = R.drawable.ic_menu_people)
+                        ZSMenuTile("", "Reports", { context.launchTab(ReportsActivity::class.java) }, Modifier.weight(1f), ZsDanger, iconRes = R.drawable.ic_menu_bell)
+                        ZSMenuTile("", "Voice Channels", { context.launchTab(ManageVoiceChannelsActivity::class.java) }, Modifier.weight(1f), ZsAccent, iconRes = R.drawable.ic_menu_channels)
                     }
                     Spacer(Modifier.height(10.dp))
                     Row(
                         Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        ZSMenuTile("", "My Profile", { context.startActivity(Intent(context, ProfileActivity::class.java)) }, Modifier.weight(1f), ZsPrimary, iconRes = R.drawable.ic_menu_person)
+                        ZSMenuTile("", "My Profile", { context.launchTab(ProfileActivity::class.java) }, Modifier.weight(1f), ZsPrimary, iconRes = R.drawable.ic_menu_person)
                         ZSMenuTile("", "Logout", {
                             auth.signOut()
                             // CLEAR_TASK wipes every activity behind the logout
