@@ -50,7 +50,6 @@ import com.zerostress.manager.ui.ZSBottomNav
 import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
-import com.zerostress.manager.ui.theme.ZsCardAlt
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsGold
@@ -103,6 +102,7 @@ private fun PlayerDashboardScreen() {
         listOf(
             MenuItem(R.drawable.ic_menu_calendar, "Schedule", ScheduleActivity::class.java),
             MenuItem(R.drawable.ic_menu_trophy, "Leaderboard", LeaderboardActivity::class.java),
+            MenuItem(R.drawable.ic_nav_tournament, "Tournaments", TournamentActivity::class.java),
             MenuItem(R.drawable.ic_menu_chat, "Team Chat", ChatActivity::class.java),
             MenuItem(R.drawable.ic_menu_mic, "Voice Chat", VoiceActivity::class.java),
             MenuItem(R.drawable.ic_menu_person, "My Profile", ProfileActivity::class.java),
@@ -326,23 +326,14 @@ private fun PlayerDashboardScreen() {
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // Primary CTAs (glass secondary style for Add Match per v4)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    ZSButton(
-                        "View Leaderboard",
-                        { context.startActivity(Intent(context, LeaderboardActivity::class.java)) },
-                        Modifier.weight(1f),
-                        height = 46.dp
-                    )
-                    ZSButton(
-                        "Add Match",
-                        { context.startActivity(Intent(context, SubmitMatchActivity::class.java)) },
-                        Modifier.weight(1f),
-                        container = ZsCardAlt,
-                        textColor = ZsTextPrimary,
-                        height = 46.dp
-                    )
-                }
+                // Primary CTA (v4): full-width gradient leaderboard button
+                // (Add Match removed by request — match logging is admin-only now)
+                ZSButton(
+                    "View Leaderboard",
+                    { context.startActivity(Intent(context, LeaderboardActivity::class.java)) },
+                    Modifier.fillMaxWidth(),
+                    height = 46.dp
+                )
 
                 // Next-match countdown card
                 if (nextMatchTitle != null) {
