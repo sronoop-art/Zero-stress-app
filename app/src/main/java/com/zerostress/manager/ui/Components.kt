@@ -116,8 +116,9 @@ fun ZSBackground(
 }
 
 /**
- * Neon glass hero header: a cyan-to-violet gradient band with upright
- * ExtraBold title. Used at the top of dashboard screens.
+ * v4 section header: upright ExtraBold uppercase title with wide tracking and
+ * a muted subtitle, on the page background (the mockups use no gradient
+ * bands - neon lighting comes from ZSBackground and highlighted cards).
  */
 @Composable
 fun ZSHeroHeader(
@@ -125,33 +126,27 @@ fun ZSHeroHeader(
     subtitle: String? = null,
     modifier: Modifier = Modifier
 ) {
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(bottomStart = 24.dp, bottomEnd = 24.dp))
-            .background(
-                Brush.horizontalGradient(
-                    listOf(ZsPrimaryDark, ZsPrimary, ZsPurple)
-                )
-            )
-            .padding(horizontal = 18.dp, vertical = 16.dp)
+            .padding(horizontal = 18.dp, vertical = 10.dp)
     ) {
-        Column {
+        Text(
+            title.uppercase(),
+            color = ZsTextPrimary,
+            fontSize = 20.sp,
+            fontWeight = FontWeight.ExtraBold,
+            letterSpacing = 2.sp
+        )
+        if (subtitle != null) {
+            Spacer(Modifier.height(2.dp))
             Text(
-                title,
-                color = Color(0xFF04101A),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold
+                subtitle,
+                color = ZsTextSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.4.sp
             )
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    subtitle,
-                    color = Color(0xFF04101A).copy(alpha = 0.75f),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
     }
 }
