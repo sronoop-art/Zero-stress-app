@@ -29,6 +29,9 @@ plugins {
     // The Kotlin 2.3.21 compiler is provided via the buildscript classpath in the
     // root build.gradle.kts (Code On The Go Gradle 9.6.1 / AGP 9.3.1 / Kotlin 2.3.21 stack).
     id("com.android.application")
+    // Required since Kotlin 2.0 whenever buildFeatures.compose = true.
+    // Version comes from the root build.gradle.kts.
+    id("org.jetbrains.kotlin.plugin.compose")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
 }

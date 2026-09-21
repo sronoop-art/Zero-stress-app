@@ -13,11 +13,15 @@ buildscript {
     }
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21")
+        // Required since Kotlin 2.0: enabling buildFeatures.compose needs the
+        // Compose Compiler Gradle plugin on the toolchain classpath.
+        classpath("org.jetbrains.kotlin:compose-compiler-gradle-plugin:2.3.21")
     }
 }
 
 plugins {
     id("com.android.application") version "9.3.1" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.3.21" apply false
     id("com.google.gms.google-services") version "4.5.0" apply false
     id("com.google.firebase.crashlytics") version "3.0.8" apply false
 }
