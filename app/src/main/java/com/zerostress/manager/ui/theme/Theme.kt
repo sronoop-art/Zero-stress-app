@@ -6,9 +6,11 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.zerostress.manager.R
 
 // ---- Brand palette: NEON GLASS v4 (ui-redesign-preview.html) ----
 // Deep space navy + glassmorphism surfaces + neon cyan / violet lighting.
@@ -68,43 +70,57 @@ private val ZsColorScheme = darkColorScheme(
     outline = ZsBorder
 )
 
+/**
+ * Esports display family (Rajdhani): squared, techy numerals and headings.
+ * Weights map onto the shipped files; the Bold file also serves ExtraBold /
+ * Black so headings stay crisp without extra font assets.
+ */
+private val ZsRajdhani = FontFamily(
+    Font(R.font.rajdhani_medium, FontWeight.Normal),
+    Font(R.font.rajdhani_medium, FontWeight.Medium),
+    Font(R.font.rajdhani_semibold, FontWeight.SemiBold),
+    Font(R.font.rajdhani_bold, FontWeight.Bold),
+    Font(R.font.rajdhani_bold, FontWeight.ExtraBold),
+    Font(R.font.rajdhani_bold, FontWeight.Black)
+)
+
 private val ZsTypography = Typography(
     // Esports HUD type: ExtraBold upright headings with wide tracking,
     // per the Neon Glass v4 spec (crisp, high contrast, no italic).
     headlineLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 32.sp,
         letterSpacing = (-0.5).sp
     ),
     headlineMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 24.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 20.sp,
         letterSpacing = 0.4.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.Bold,
         fontSize = 16.sp
     ),
     bodyLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.SansSerif,
+        fontFamily = ZsRajdhani,
         fontWeight = FontWeight.Bold,
         fontSize = 15.sp,
         letterSpacing = 0.8.sp
