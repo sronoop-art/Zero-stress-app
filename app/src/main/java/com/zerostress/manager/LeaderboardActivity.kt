@@ -400,7 +400,8 @@ private fun LeaderboardScreen() {
                                 )
                                 ZSAvatar(
                                     name, size = 40.dp,
-                                    ringColor = if (index < 3) medalColor else ZsBorder
+                                    ringColor = if (index < 3) medalColor else ZsBorder,
+                                    avatarUrl = doc.getString("avatarUrl")
                                 )
                                 Spacer(Modifier.width(10.dp))
                                 Column(Modifier.weight(1f)) {
@@ -517,6 +518,7 @@ private fun PodiumCard(
         return
     }
     val name = doc.getString("name") ?: "?"
+    val avatarUrl = doc.getString("avatarUrl")
     val isTop = place == 1
     Box(
         modifier = modifier
@@ -543,7 +545,11 @@ private fun PodiumCard(
             Modifier.fillMaxWidth().padding(vertical = if (isTop) 14.dp else 10.dp, horizontal = 6.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            ZSAvatar(name, size = if (isTop) 34.dp else 28.dp, ringColor = if (isTop) ZsGold else medalColor)
+            ZSAvatar(
+                name, size = if (isTop) 34.dp else 28.dp,
+                ringColor = if (isTop) ZsGold else medalColor,
+                avatarUrl = avatarUrl
+            )
             Spacer(Modifier.height(5.dp))
             Text(
                 name,

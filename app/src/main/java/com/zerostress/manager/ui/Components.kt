@@ -787,14 +787,27 @@ fun ZSTrend(direction: Int, modifier: Modifier = Modifier) {
 /**
  * Glass initials avatar with a neon ring. The name is reduced to up to two
  * initials so roster rows work everywhere without any image loading.
+ *
+ * When `avatarUrl` is supplied (players/{uid}.avatarUrl - Cloudinary CDN),
+ * the cloud photo is rendered instead of initials, keeping the same ring.
  */
 @Composable
 fun ZSAvatar(
     name: String,
     size: Dp = 40.dp,
     ringColor: Color = ZsPrimary,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    avatarUrl: String? = null,
 ) {
+    if (!avatarUrl.isNullOrBlank()) {
+        ZsRemoteAvatar(
+            url = avatarUrl,
+            size = size,
+            modifier = modifier,
+            ringColor = ringColor
+        )
+        return
+    }
     val initials = name.trim().split(Regex("\\s+"))
         .filter { it.isNotEmpty() }
         .take(2)

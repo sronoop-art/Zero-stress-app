@@ -91,6 +91,7 @@ private fun PlayerDashboardScreen() {
     var totalMatches by remember { mutableStateOf(0L) }
     var position by remember { mutableStateOf<Int?>(null) }
     var recentScores by remember { mutableStateOf<List<Float>>(emptyList()) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
 
     // Next-match countdown (soonest upcoming scheduled match)
     var nextMatchTitle by remember { mutableStateOf<String?>(null) }
@@ -135,6 +136,7 @@ private fun PlayerDashboardScreen() {
                     totalDeaths = doc.getLong("deaths") ?: 0
                     totalWins = doc.getLong("wins") ?: 0
                     totalMatches = doc.getLong("matches") ?: 0
+                    avatarUrl = doc.getString("avatarUrl")
                     loaded = true
                 }
             }
@@ -257,7 +259,7 @@ private fun PlayerDashboardScreen() {
                             )
                         }
                         Spacer(Modifier.width(10.dp))
-                        ZSAvatar(name, size = 40.dp, ringColor = ZsPrimary)
+                        ZSAvatar(name, size = 40.dp, ringColor = ZsPrimary, avatarUrl = avatarUrl)
                     }
                 }
                 Spacer(Modifier.height(10.dp))

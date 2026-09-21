@@ -7,6 +7,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -15,12 +16,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.zerostress.manager.R
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -56,14 +60,17 @@ fun ZsRemoteAvatar(
     url: String?,
     size: Dp,
     modifier: Modifier = Modifier,
-    fallbackRes: Int = R.drawable.ic_menu_person
+    fallbackRes: Int = R.drawable.ic_menu_person,
+    ringColor: Color? = null
 ) {
     val key = url?.takeIf { it.isNotBlank() }?.let { cacheKeyFor(it) }
     var bitmap by remember(key) { mutableStateOf(key?.let { ZsAvatarCache.get(it) }) }
 
     produceState(initialValue = bitmap, key) {
         if (key == null || ZsAvatarCache.get(key) != null) return@produceState
-        val bmp = download(url)
+        // Network must happen off the main thread - produceState runs on the
+        // composition dispatcher, so hop to IO for the download.
+        val bmp = withContext(Dispatchers.IO) { download(url) }
         if (bmp != null) {
             ZsAvatarCache.put(key, bmp)
             value = bmp
@@ -76,12 +83,16 @@ fun ZsRemoteAvatar(
     ) {
         val bmp = bitmap
         if (bmp != null) {
+            val imageMod = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(Color(0xFF111827), CircleShape)
             Image(
                 bitmap = bmp.asImageBitmap(),
                 contentDescription = "Profile picture",
-                modifier = Modifier
-                    .size(size)
-                    .background(Color(0xFF111827), CircleShape),
+                modifier = if (ringColor != null)
+                    imageMod.border(1.5.dp, ringColor, CircleShape)
+                else imageMod,
                 contentScale = ContentScale.Crop
             )
         } else {
