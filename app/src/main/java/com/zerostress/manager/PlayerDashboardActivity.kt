@@ -27,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,7 @@ import com.zerostress.manager.R
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.fcm.ZSFCMService
 import com.zerostress.manager.ui.launchTab
+import com.zerostress.manager.ui.ZsAvatarFrame
 import com.zerostress.manager.ui.ZSAvatar
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSBadge
@@ -284,7 +286,18 @@ private fun PlayerDashboardScreen() {
                             )
                         }
                         Spacer(Modifier.width(10.dp))
-                        ZSAvatar(name, size = 40.dp, ringColor = ZsPrimary, avatarUrl = avatarUrl)
+                        // Rank-title frame around the hero avatar - follows the
+                        // highest title achieved by score (Bronze and up).
+                        val heroTitle = com.zerostress.manager.models.ZsRankTitles.titleForScore(score)
+                        ZsAvatarFrame(
+                            heroTitle?.let {
+                                com.zerostress.manager.models.ZsRankTitles.frameSource(context, it)
+                            },
+                            heroTitle?.let { Color(it.color) } ?: ZsPrimary,
+                            40.dp
+                        ) {
+                            ZSAvatar(name, size = 40.dp, ringColor = Color.Transparent, avatarUrl = avatarUrl)
+                        }
                     }
                 }
                 Spacer(Modifier.height(10.dp))

@@ -80,13 +80,30 @@ fun ZsAvatarFrame(
     }
 }
 
+/**
+ * Code-drawn frame shown when no PNG asset exists: a bright title-colored
+ * ring with a soft outer glow, always clearly visible in front of the
+ * avatar (the old 3dp border was nearly invisible).
+ */
 @Composable
 private fun FallbackRing(frameColor: Color, avatarSize: Dp) {
-    Box(
-        modifier = Modifier
-            .size(avatarSize + 6.dp)
-            .border(3.dp, frameColor, CircleShape)
-    )
+    androidx.compose.foundation.Canvas(
+        Modifier.size(avatarSize + 16.dp)
+    ) {
+        val outer = size.minDimension / 2f
+        // Soft glow halo behind the bright ring.
+        drawCircle(
+            color = frameColor.copy(alpha = 0.30f),
+            radius = outer - 2.dp.toPx() / 2f,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 6.dp.toPx())
+        )
+        // Bright main ring sitting just outside the avatar edge.
+        drawCircle(
+            color = frameColor,
+            radius = outer - 6.dp.toPx() / 2f,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(width = 3.dp.toPx())
+        )
+    }
 }
 
 /** Compatibility helper for existing call sites that pass a drawable res id. */

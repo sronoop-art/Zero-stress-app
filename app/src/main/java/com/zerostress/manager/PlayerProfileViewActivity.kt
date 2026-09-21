@@ -160,9 +160,13 @@ private fun PlayerProfileViewScreen(playerId: String?, presetName: String?) {
                         Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        // Frame follows the equipped title, falling back to the
+                        // highest title achieved by score (visible even without
+                        // PNG assets thanks to the code-drawn neon ring).
                         val titleObj = ZsRankTitles.byName(equippedTitle)
-                        val frameSource = if (titleObj != null) ZsRankTitles.frameSource(context, titleObj) else null
-                        val frameColor = if (titleObj != null) Color(titleObj.color) else ZsPrimary
+                            ?: ZsRankTitles.titleForScore(score)
+                        val frameSource = titleObj?.let { ZsRankTitles.frameSource(context, it) }
+                        val frameColor = titleObj?.let { Color(it.color) } ?: ZsPrimary
                         ZsAvatarFrame(frameSource, frameColor, 96.dp) {
                             Box(
                                 Modifier

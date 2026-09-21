@@ -227,12 +227,16 @@ private fun ProfileScreen() {
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         // Avatar with rank-title frame (bundled or OTA-downloaded
-                        // frame_<rank>.png; colored ring fallback otherwise).
+                        // frame_<rank>.png; neon ring fallback otherwise). The frame
+                        // follows the EQUIPPED title, and falls back to the highest
+                        // title the player's score has ACHIEVED - so reaching a rank
+                        // shows the frame even before equipping it.
                         val titleObj = com.zerostress.manager.models.ZsRankTitles.byName(equippedTitle)
-                        val frameSource = if (titleObj != null)
-                            com.zerostress.manager.models.ZsRankTitles.frameSource(context, titleObj) else null
-                        val frameColor = if (titleObj != null)
-                            Color(titleObj.color) else ZsPrimary
+                            ?: com.zerostress.manager.models.ZsRankTitles.titleForScore(score)
+                        val frameSource = titleObj?.let {
+                            com.zerostress.manager.models.ZsRankTitles.frameSource(context, it)
+                        }
+                        val frameColor = titleObj?.let { Color(it.color) } ?: ZsPrimary
                         com.zerostress.manager.ui.ZsAvatarFrame(frameSource, frameColor, 88.dp) {
                             Box(
                                 Modifier
