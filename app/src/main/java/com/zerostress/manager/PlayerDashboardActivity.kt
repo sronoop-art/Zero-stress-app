@@ -16,8 +16,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -37,29 +37,30 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.R
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.fcm.ZSFCMService
-import com.zerostress.manager.ui.launchTab
-import com.zerostress.manager.ui.ZsAvatarFrame
 import com.zerostress.manager.ui.ZSAvatar
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSBadge
+import com.zerostress.manager.ui.ZSBarChart
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
-import com.zerostress.manager.ui.ZSMenuTile
+import com.zerostress.manager.ui.ZSBottomNav
+import com.zerostress.manager.ui.zsNavItems
+import com.zerostress.manager.ui.ZsAvatarFrame
 import com.zerostress.manager.ui.ZSProgress
 import com.zerostress.manager.ui.ZSRing
 import com.zerostress.manager.ui.ZSSparkline
 import com.zerostress.manager.ui.ZSStat
-import com.zerostress.manager.ui.ZSBottomNav
-import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsGold
+import com.zerostress.manager.ui.theme.ZsPrimary
+import com.zerostress.manager.ui.theme.ZsPurple
+import com.zerostress.manager.ui.theme.ZsSuccess
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
-import com.zerostress.manager.ui.theme.ZsPrimary
-import com.zerostress.manager.ui.theme.ZsSuccess
+import com.zerostress.manager.ui.theme.ZsTextSecondary
 
 class PlayerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -72,8 +73,6 @@ class PlayerDashboardActivity : ComponentActivity() {
     }
 }
 
-private data class MenuItem(val iconRes: Int, val label: String, val target: Class<*>)
-
 @Composable
 private fun PlayerDashboardScreen() {
     val context = LocalContext.current
@@ -81,47 +80,52 @@ private fun PlayerDashboardScreen() {
     val db = remember { FirebaseFirestore.getInstance() }
     val uid = auth.uid
 
+    // Player state
     var name by remember { mutableStateOf("Player") }
     var score by remember { mutableStateOf(0L) }
     var level by remember { mutableStateOf(1L) }
     var rank by remember { mutableStateOf("Iron") }
     var coins by remember { mutableStateOf(0L) }
     var xp by remember { mutableStateOf(0L) }
-    var loaded by remember { mutableStateOf(false) }
     var totalKills by remember { mutableStateOf(0L) }
     var totalDeaths by remember { mutableStateOf(0L) }
     var totalWins by remember { mutableStateOf(0L) }
     var totalMatches by remember { mutableStateOf(0L) }
+    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+
+    // Leaderboard position + recent form
     var position by remember { mutableStateOf<Int?>(null) }
     var recentScores by remember { mutableStateOf<List<Float>>(emptyList()) }
-    var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var dailyKills by remember { mutableStateOf(0L) }
+    var dailyScore by remember { mutableStateOf(0L) }
 
-    // Next-match countdown (soonest upcoming scheduled match)
+    // Next match
     var nextMatchTitle by remember { mutableStateOf<String?>(null) }
     var nextMatchTime by remember { mutableStateOf(0L) }
-    var nextMatchId by remember { mutableStateOf<String?>(null) }
+
     var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
 
-    val menuItems = remember {
-        listOf(
-            MenuItem(R.drawable.ic_menu_calendar, "Schedule", ScheduleActivity::class.java),
-            MenuItem(R.drawable.ic_menu_trophy, "Leaderboard", LeaderboardActivity::class.java),
-            MenuItem(R.drawable.ic_nav_tournament, "Tournaments", TournamentActivity::class.java),
-            MenuItem(R.drawable.ic_menu_chat, "Team Chat", ChatActivity::class.java),
-            MenuItem(R.drawable.ic_menu_mic, "Voice Chat", VoiceActivity::class.java),
-            MenuItem(R.drawable.ic_menu_person, "My Profile", ProfileActivity::class.java),
-            MenuItem(R.drawable.ic_menu_friends, "Friends", FriendsActivity::class.java),
-            MenuItem(R.drawable.ic_menu_medal, "Seasons", SeasonActivity::class.java),
-            MenuItem(R.drawable.ic_menu_medal, "Achievements", AchievementsActivity::class.java),
-            MenuItem(R.drawable.ic_menu_announce, "Announcements", AnnouncementsActivity::class.java),
-            MenuItem(R.drawable.ic_menu_gift, "Daily Rewards", DailyLoginRewardsActivity::class.java),
-            MenuItem(R.drawable.ic_menu_fire, "Daily Challenges", DailyChallengesActivity::class.java),
-            MenuItem(R.drawable.ic_menu_ticket, "Battle Pass", BattlePassActivity::class.java),
-            MenuItem(R.drawable.ic_menu_sparkles, "My Titles", PlayerTitlesActivity::class.java),
-            MenuItem(R.drawable.ic_menu_chart, "Performance", PerformanceGraphsActivity::class.java),
-            MenuItem(R.drawable.ic_menu_bell, "Notifications", NotificationsActivity::class.java),
-            MenuItem(R.drawable.ic_menu_settings, "Settings", SettingsActivity::class.java)
-        )
+    fun loadPosition() {
+        if (uid == null) return
+        db.collection("players").whereEqualTo("status", "approved").get()
+            .addOnSuccessListener { q ->
+                val sorted = q.documents.sortedByDescending { it.getLong("score") ?: 0 }
+                val idx = sorted.indexOfFirst { it.id == uid }
+                position = if (idx >= 0) idx + 1 else null
+            }
+            .addOnFailureListener { position = null }
+    }
+
+    fun loadRecentForm() {
+        if (uid == null) return
+        db.collection("match_logs").whereEqualTo("playerId", uid)
+            .orderBy("date").limitToLast(12)
+            .get()
+            .addOnSuccessListener { q ->
+                recentScores = q.documents.mapNotNull { it.getLong("score")?.toFloat() }
+            }
+            .addOnFailureListener { recentScores = emptyList() }
     }
 
     // Live player-doc subscription. Three jobs: (1) hero updates in realtime
@@ -160,36 +164,14 @@ private fun PlayerDashboardScreen() {
                 totalWins = doc.getLong("wins") ?: 0
                 totalMatches = doc.getLong("matches") ?: 0
                 avatarUrl = doc.getString("avatarUrl")
+                dailyKills = doc.getLong("dailyKills") ?: 0
+                dailyScore = doc.getLong("dailyScore") ?: 0
                 loaded = true
             } else {
                 loaded = true
             }
         }
         onDispose { reg.remove() }
-    }
-
-    // Leaderboard position: rank my doc among all approved players by score.
-    fun loadPosition() {
-        if (uid == null) return
-        db.collection("players").whereEqualTo("status", "approved").get()
-            .addOnSuccessListener { q ->
-                val sorted = q.documents.sortedByDescending { it.getLong("score") ?: 0 }
-                val idx = sorted.indexOfFirst { it.id == uid }
-                position = if (idx >= 0) idx + 1 else null
-            }
-            .addOnFailureListener { position = null }
-    }
-
-    // Recent form: last 12 logged match scores for the sparkline.
-    fun loadRecentForm() {
-        if (uid == null) return
-        db.collection("match_logs").whereEqualTo("playerId", uid)
-            .orderBy("date").limitToLast(12)
-            .get()
-            .addOnSuccessListener { q ->
-                recentScores = q.documents.mapNotNull { it.getLong("score")?.toFloat() }
-            }
-            .addOnFailureListener { recentScores = emptyList() }
     }
 
     // Live subscription to the soonest upcoming match.
@@ -202,7 +184,6 @@ private fun PlayerDashboardScreen() {
                 val doc = snap?.documents?.firstOrNull()
                 nextMatchTitle = doc?.getString("title")
                 nextMatchTime = doc?.getLong("matchTime") ?: 0L
-                nextMatchId = doc?.id
             }
         onDispose { listener.remove() }
     }
@@ -242,7 +223,9 @@ private fun PlayerDashboardScreen() {
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
             ) {
                 // Player hero: level number inside the XP ring, avatar on the right (v4)
                 ZSCard(highlight = ZsPrimary) {
@@ -352,6 +335,38 @@ private fun PlayerDashboardScreen() {
                 }
                 Spacer(Modifier.height(10.dp))
 
+                // Performance graph (v4 home spec): last 12 match scores as bars,
+                // plus a TODAY strip fed by the Daily Input aggregates.
+                ZSCard {
+                    Text(
+                        "PERFORMANCE",
+                        color = ZsTextMuted,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    if (recentScores.isNotEmpty()) {
+                        ZSBarChart(recentScores, color = ZsCyan)
+                    } else {
+                        Text(
+                            "No matches logged yet - your last 12 games will chart here.",
+                            color = ZsTextMuted,
+                            fontSize = 12.sp
+                        )
+                        Spacer(Modifier.height(6.dp))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                        ZSStat("Today", "$dailyScore", ZsCyan, Modifier.weight(1f))
+                        ZSStat("Today K", "$dailyKills", ZsSuccess, Modifier.weight(1f))
+                        ZSStat("K/D", if (totalDeaths > 0)
+                            String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
+                        else "$totalKills", ZsTextPrimary, Modifier.weight(1f))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+
                 // Recent form sparkline
                 ZSCard {
                     Text(
@@ -367,7 +382,6 @@ private fun PlayerDashboardScreen() {
                 Spacer(Modifier.height(10.dp))
 
                 // Primary CTA (v4): full-width gradient leaderboard button
-                // (Add Match removed by request — match logging is admin-only now)
                 ZSButton(
                     "View Leaderboard",
                     { context.launchTab(LeaderboardActivity::class.java) },
@@ -415,48 +429,10 @@ private fun PlayerDashboardScreen() {
                         }
                     }
                 }
+                Spacer(Modifier.height(16.dp))
             }
 
-            // Menu grid (fills the space above the bottom navigation)
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                modifier = Modifier.fillMaxSize().padding(horizontal = 12.dp).weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(menuItems.size) { i ->
-                    val item = menuItems[i]
-                    ZSMenuTile(
-                        label = item.label,
-                        accent = when (i) {
-                            0 -> ZsCyan
-                            1 -> ZsGold
-                            2 -> ZsAccent
-                            else -> ZsPrimary
-                        },
-                        iconRes = item.iconRes,
-                        onClick = { context.launchTab(item.target) }
-                    )
-                }
-                item {
-                    ZSMenuTile(
-                        label = "Logout",
-                        accent = ZsDanger,
-                        iconRes = R.drawable.ic_menu_logout,
-                        onClick = {
-                            auth.signOut()
-                            // CLEAR_TASK wipes every activity behind the logout so
-                            // the next login starts on a clean stack.
-                            context.startActivity(Intent(context, LoginActivity::class.java).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                            })
-                            (context as? android.app.Activity)?.finish()
-                        }
-                    )
-                }
-            }
-
-            // Neon Glass bottom navigation shell
+            // Neon Glass bottom navigation shell (6 tabs - menu items live in More)
             ZSBottomNav(zsNavItems(0, context))
         }
     }

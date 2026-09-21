@@ -60,6 +60,7 @@
         <activity android:name=".DailyChallengesActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".BattlePassActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".PerformanceGraphsActivity" android:theme="@style/Theme.ZeroStress" />
+        <activity android:name=".MoreActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".DailyLoginRewardsActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".SendNotificationActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".ManageSeasonsActivity" android:theme="@style/Theme.ZeroStress" />

@@ -561,8 +561,10 @@ fun android.content.Context.launchTab(cls: Class<*>) {
 }
 
 /**
- * The five bottom-nav destinations shared by every main screen.
- * [current] is 0=Home, 1=Performance, 2=Leaderboard, 3=Tournaments, 4=Profile.
+ * The six bottom-nav destinations shared by every main screen.
+ * [current] is 0=Home, 1=Performance, 2=Leaderboard, 3=Tournaments, 4=Profile,
+ * 5=More. The More tab hosts every destination that used to be a home-screen
+ * tile, keeping HOME a clean stats surface.
  */
 @Composable
 fun zsNavItems(current: Int, context: android.content.Context): List<ZSNavItem> = listOf(
@@ -580,6 +582,9 @@ fun zsNavItems(current: Int, context: android.content.Context): List<ZSNavItem> 
     },
     ZSNavItem(R.drawable.ic_nav_profile, "Profile", current == 4) {
         if (current != 4) context.launchTab(com.zerostress.manager.ProfileActivity::class.java)
+    },
+    ZSNavItem(R.drawable.ic_menu_settings, "More", current == 5) {
+        if (current != 5) context.launchTab(com.zerostress.manager.MoreActivity::class.java)
     }
 )
 
