@@ -69,6 +69,7 @@ private fun ViewAllPlayersStatsScreen() {
         db.collection("players")
             .whereEqualTo("status", "approved")
             .get()
+            .addOnFailureListener { loading = false }
             .addOnSuccessListener { query ->
                 loading = false
                 val list = query.documents.sortedByDescending { it.getLong("score") ?: 0 }

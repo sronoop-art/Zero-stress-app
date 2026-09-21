@@ -152,67 +152,61 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
     }
 
     /**
-     * Rolls a saved daily_stats entry into the player doc. The leaderboard
+     * Rolls a saved daily_stats entry into the player doc ATOMICALLY, using
+     * server-side FieldValue.increment so rapid entries or two admins typing
+     * at once can never lose each other's updates (the old read-then-write
+     * version silently dropped counters under races). The leaderboard
      * (Daily/Weekly/Monthly tabs) and the cron resets read dailyScore,
      * weeklyScore, monthlyScore and their Kills/Wins/Matches companions from
-     * the player doc - without this merge the admin's entries are write-only
-     * and never appear anywhere. Score formula mirrors SubmitMatchActivity:
+     * the player doc. Score formula mirrors SubmitMatchActivity:
      * kills*10 + damage/100 (+50 per win).
      */
-    fun mergeIntoPlayerDoc(playerId: String, k: Int, d: Int, a: Int, dmg: Long, h: Double, isWin: Boolean, ts: Long) {
-        val entryScore = k * 10 + (dmg / 100).toInt() + if (isWin) 50 else 0
-        db.collection("players").document(playerId).get()
-            .addOnCompleteListener { task ->
-                val doc = task.result
-                if (!doc.exists()) return@addOnCompleteListener
-                // Period buckets on the player doc.
-                val daily = doc.getLong("dailyScore") ?: 0
-                val weekly = doc.getLong("weeklyScore") ?: 0
-                val monthly = doc.getLong("monthlyScore") ?: 0
-                // Lifetime totals used by the dashboard hero + all-time tab.
-                val curKills = doc.getLong("kills") ?: 0
-                val curDeaths = doc.getLong("deaths") ?: 0
-                val curAssists = doc.getLong("assists") ?: 0
-                val curDamage = doc.getLong("damage") ?: 0
-                val curWins = doc.getLong("wins") ?: 0
-                val curMatches = doc.getLong("matches") ?: 0
-                val curMinutes = doc.getLong("minutesPlayed") ?: 0
-                var curXp = (doc.getLong("xp") ?: 0).toInt()
-                var curLevel = (doc.getLong("level") ?: 1).toInt()
-
-                val xpGained = k * 5 + (dmg / 50).toInt() + if (isWin) 100 else 20
-                var newXp = curXp + xpGained
-                while (newXp >= curLevel * 500) {
-                    newXp -= curLevel * 500
-                    curLevel++
-                }
-
-                val updates = mapOf<String, Any>(
-                    "dailyScore" to daily + entryScore,
-                    "weeklyScore" to weekly + entryScore,
-                    "monthlyScore" to monthly + entryScore,
-                    "dailyKills" to (doc.getLong("dailyKills") ?: 0) + k,
-                    "dailyWins" to (doc.getLong("dailyWins") ?: 0) + if (isWin) 1 else 0,
-                    "dailyMatches" to (doc.getLong("dailyMatches") ?: 0) + 1,
-                    "weeklyKills" to (doc.getLong("weeklyKills") ?: 0) + k,
-                    "weeklyWins" to (doc.getLong("weeklyWins") ?: 0) + if (isWin) 1 else 0,
-                    "weeklyMatches" to (doc.getLong("weeklyMatches") ?: 0) + 1,
-                    "monthlyKills" to (doc.getLong("monthlyKills") ?: 0) + k,
-                    "monthlyWins" to (doc.getLong("monthlyWins") ?: 0) + if (isWin) 1 else 0,
-                    "monthlyMatches" to (doc.getLong("monthlyMatches") ?: 0) + 1,
-                    "kills" to curKills + k,
-                    "deaths" to curDeaths + d,
-                    "assists" to curAssists + a,
-                    "damage" to curDamage + dmg,
-                    "wins" to curWins + if (isWin) 1 else 0,
-                    "matches" to curMatches + 1,
-                    "minutesPlayed" to curMinutes + (h * 60).toLong(),
+    fun mergeIntoPlayerDoc(
+        playerId: String, k: Int, d: Int, a: Int, dmg: Long, h: Double, isWin: Boolean, ts: Long
+    ) {
+        val entryScore = (k * 10 + (dmg / 100).toInt() + if (isWin) 50 else 0).toLong()
+        val xpGained = (k * 5 + (dmg / 50).toInt() + if (isWin) 100 else 20).toLong()
+        val minutes = (h * 60).toLong()
+        val playerRef = db.collection("players").document(playerId)
+        db.runTransaction { tx ->
+            val snap = tx.get(playerRef)
+            // XP/level needs the current values to apply level-ups, so it is
+            // computed here; everything else uses conflict-free increments.
+            var newXp = (snap.getLong("xp") ?: 0) + xpGained
+            var newLevel = (snap.getLong("level") ?: 1).toInt()
+            while (newXp >= newLevel * 500) {
+                newXp -= newLevel * 500
+                newLevel++
+            }
+            tx.update(
+                playerRef,
+                mapOf<String, Any>(
+                    "dailyScore" to FieldValue.increment(entryScore),
+                    "weeklyScore" to FieldValue.increment(entryScore),
+                    "monthlyScore" to FieldValue.increment(entryScore),
+                    "dailyKills" to FieldValue.increment(k.toLong()),
+                    "dailyWins" to FieldValue.increment(if (isWin) 1L else 0L),
+                    "dailyMatches" to FieldValue.increment(1L),
+                    "weeklyKills" to FieldValue.increment(k.toLong()),
+                    "weeklyWins" to FieldValue.increment(if (isWin) 1L else 0L),
+                    "weeklyMatches" to FieldValue.increment(1L),
+                    "monthlyKills" to FieldValue.increment(k.toLong()),
+                    "monthlyWins" to FieldValue.increment(if (isWin) 1L else 0L),
+                    "monthlyMatches" to FieldValue.increment(1L),
+                    "kills" to FieldValue.increment(k.toLong()),
+                    "deaths" to FieldValue.increment(d.toLong()),
+                    "assists" to FieldValue.increment(a.toLong()),
+                    "damage" to FieldValue.increment(dmg),
+                    "wins" to FieldValue.increment(if (isWin) 1L else 0L),
+                    "matches" to FieldValue.increment(1L),
+                    "minutesPlayed" to FieldValue.increment(minutes),
                     "xp" to newXp,
-                    "level" to curLevel,
+                    "level" to newLevel.toLong(),
                     "updatedat" to ts
                 )
-                db.collection("players").document(playerId).update(updates)
-            }
+            )
+            null
+        }
     }
 
     fun submit() {

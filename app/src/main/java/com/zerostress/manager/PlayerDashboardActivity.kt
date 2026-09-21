@@ -122,37 +122,48 @@ private fun PlayerDashboardScreen() {
         )
     }
 
-    fun loadProfile() {
-        if (uid == null) return
-        db.collection("players").document(uid).get()
-            .addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    // Admins live in the manager console. If one ends up here
-                    // (notification deep-link, back press, stale stack), bounce
-                    // them home instead of showing the player dashboard.
-                    if (doc.getString("role") == "admin") {
-                        context.startActivity(
-                            Intent(context, AdminDashboardActivity::class.java).apply {
-                                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                            }
-                        )
-                        (context as? android.app.Activity)?.finish()
-                        return@addOnSuccessListener
-                    }
-                    name = doc.getString("name") ?: "Player"
-                    score = doc.getLong("score") ?: 0
-                    level = doc.getLong("level") ?: 1
-                    rank = doc.getString("rank") ?: "Iron"
-                    coins = doc.getLong("coins") ?: 0
-                    xp = doc.getLong("xp") ?: 0
-                    totalKills = doc.getLong("kills") ?: 0
-                    totalDeaths = doc.getLong("deaths") ?: 0
-                    totalWins = doc.getLong("wins") ?: 0
-                    totalMatches = doc.getLong("matches") ?: 0
-                    avatarUrl = doc.getString("avatarUrl")
-                    loaded = true
-                }
+    // Live player-doc subscription. Three jobs: (1) hero updates in realtime
+    // - an admin's Daily Input entry shows up here the instant it lands;
+    // (2) the loading flag clears on success AND failure (the old one-shot
+    // get() left the screen skeletonized forever when the read failed);
+    // (3) admins landing here get bounced to the manager console.
+    DisposableEffect(uid) {
+        if (uid == null) return@DisposableEffect onDispose { }
+        val reg = db.collection("players").document(uid).addSnapshotListener { doc, err ->
+            if (err != null) {
+                loaded = true
+                return@addSnapshotListener
             }
+            if (doc != null && doc.exists()) {
+                // Admins live in the manager console. If one ends up here
+                // (notification deep-link, back press, stale stack), bounce
+                // them home instead of showing the player dashboard.
+                if (doc.getString("role") == "admin") {
+                    context.startActivity(
+                        Intent(context, AdminDashboardActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                        }
+                    )
+                    (context as? android.app.Activity)?.finish()
+                    return@addSnapshotListener
+                }
+                name = doc.getString("name") ?: "Player"
+                score = doc.getLong("score") ?: 0
+                level = doc.getLong("level") ?: 1
+                rank = doc.getString("rank") ?: "Iron"
+                coins = doc.getLong("coins") ?: 0
+                xp = doc.getLong("xp") ?: 0
+                totalKills = doc.getLong("kills") ?: 0
+                totalDeaths = doc.getLong("deaths") ?: 0
+                totalWins = doc.getLong("wins") ?: 0
+                totalMatches = doc.getLong("matches") ?: 0
+                avatarUrl = doc.getString("avatarUrl")
+                loaded = true
+            } else {
+                loaded = true
+            }
+        }
+        onDispose { reg.remove() }
     }
 
     // Leaderboard position: rank my doc among all approved players by score.
@@ -164,6 +175,7 @@ private fun PlayerDashboardScreen() {
                 val idx = sorted.indexOfFirst { it.id == uid }
                 position = if (idx >= 0) idx + 1 else null
             }
+            .addOnFailureListener { position = null }
     }
 
     // Recent form: last 12 logged match scores for the sparkline.
@@ -175,6 +187,7 @@ private fun PlayerDashboardScreen() {
             .addOnSuccessListener { q ->
                 recentScores = q.documents.mapNotNull { it.getLong("score")?.toFloat() }
             }
+            .addOnFailureListener { recentScores = emptyList() }
     }
 
     // Live subscription to the soonest upcoming match.
@@ -201,7 +214,6 @@ private fun PlayerDashboardScreen() {
     }
 
     LaunchedEffect(Unit) {
-        loadProfile()
         loadPosition()
         loadRecentForm()
         ZSFCMService.saveTokenToFirestoreWithRetry(context)

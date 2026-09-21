@@ -24,6 +24,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -268,7 +269,24 @@ private fun LeaderboardScreen() {
         }
     }
 
-    LaunchedEffect(currentTab) {
+    // Live listener: the leaderboard updates in realtime (e.g. the moment the
+    // admin saves a Daily Input entry for a player). DisposableEffect removes
+    // the listener when the screen closes so nothing leaks. Reads currentTab
+    // through the delegate at callback time, so the sort always follows the
+    // tab the user is on. Reward distribution stays a manual admin action.
+    DisposableEffect(Unit) {
+        val reg = db.collection("players")
+            .whereEqualTo("status", "approved")
+            .addSnapshotListener { snap, err ->
+                if (err != null) return@addSnapshotListener
+                snap?.let {
+                    loading = false
+                    val list = it.documents.filter { d -> d.getString("role") != "admin" }
+                    players = list.sortedByDescending { d -> scoreForTab(d) }
+                }
+            }
+        onDispose { reg.remove() }
+    }    LaunchedEffect(Unit) {
         loadLeaderboard()
     }
 
@@ -294,11 +312,14 @@ private fun LeaderboardScreen() {
             ZSFilterChips(listOf("Global", "Friends", "Local"), scope) { scope = it }
             Spacer(Modifier.height(8.dp))
 
+            // Sort at render time by the active tab's metric: the live
+            // snapshot listener keeps `players` fresh, so Daily/Weekly/Monthly
+            // re-rank instantly on tab switch - no refetch, no loading flicker.
             val visiblePlayers = when (scope) {
                 1 -> players.filter { it.id == myUid || it.id in friendIds }
                 2 -> myRegion?.let { reg -> players.filter { (it.getString("region") ?: "") == reg } } ?: players
                 else -> players
-            }
+            }.sortedByDescending { scoreForTab(it) }
 
             if (loading) {
                 LoadingBox(Modifier.weight(1f))
