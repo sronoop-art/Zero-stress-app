@@ -545,25 +545,41 @@ data class ZSNavItem(
 )
 
 /**
+ * Opens one of the five main tabs WITHOUT stacking duplicate activities.
+ * Repeatedly calling plain startActivity() piles a new Activity instance
+ * (each with its own Firestore listeners and glow animations) on the back
+ * stack on every tap - freezing the app and ballooning RAM/CPU/GPU.
+ * FLAG_ACTIVITY_REORDER_TO_FRONT instead brings the existing instance to
+ * the front, so each tab exists at most once.
+ */
+fun android.content.Context.launchTab(cls: Class<*>) {
+    startActivity(
+        android.content.Intent(this, cls).apply {
+            addFlags(android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        }
+    )
+}
+
+/**
  * The five bottom-nav destinations shared by every main screen.
  * [current] is 0=Home, 1=Performance, 2=Leaderboard, 3=Tournaments, 4=Profile.
  */
 @Composable
 fun zsNavItems(current: Int, context: android.content.Context): List<ZSNavItem> = listOf(
     ZSNavItem(R.drawable.ic_nav_home, "Home", current == 0) {
-        if (current != 0) context.startActivity(android.content.Intent(context, com.zerostress.manager.PlayerDashboardActivity::class.java))
+        if (current != 0) context.launchTab(com.zerostress.manager.PlayerDashboardActivity::class.java)
     },
     ZSNavItem(R.drawable.ic_nav_perf, "Perf", current == 1) {
-        if (current != 1) context.startActivity(android.content.Intent(context, com.zerostress.manager.PerformanceGraphsActivity::class.java))
+        if (current != 1) context.launchTab(com.zerostress.manager.PerformanceGraphsActivity::class.java)
     },
     ZSNavItem(R.drawable.ic_nav_board, "Board", current == 2) {
-        if (current != 2) context.startActivity(android.content.Intent(context, com.zerostress.manager.LeaderboardActivity::class.java))
+        if (current != 2) context.launchTab(com.zerostress.manager.LeaderboardActivity::class.java)
     },
     ZSNavItem(R.drawable.ic_nav_tournament, "Cups", current == 3) {
-        if (current != 3) context.startActivity(android.content.Intent(context, com.zerostress.manager.TournamentActivity::class.java))
+        if (current != 3) context.launchTab(com.zerostress.manager.TournamentActivity::class.java)
     },
     ZSNavItem(R.drawable.ic_nav_profile, "Profile", current == 4) {
-        if (current != 4) context.startActivity(android.content.Intent(context, com.zerostress.manager.ProfileActivity::class.java))
+        if (current != 4) context.launchTab(com.zerostress.manager.ProfileActivity::class.java)
     }
 )
 

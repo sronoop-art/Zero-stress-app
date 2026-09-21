@@ -154,18 +154,14 @@ private fun SplashScreen() {
 
             db.collection("players").document(userId).get()
                 .addOnSuccessListener { doc ->
-                    // Logged-in users get the (once-per-version) intro video
-                    // before their dashboard; guests go straight to login.
+                    // Intro video plays at APP START (once per version) for everyone -
+                    // logged-in users continue to their dashboard, guests to login.
                     if (doc.exists() && doc.getString("role") == "admin") {
                         IntroVideoActivity.launch(context, AdminDashboardActivity::class.java)
                     } else if (doc.exists()) {
                         IntroVideoActivity.launch(context, PlayerDashboardActivity::class.java)
                     } else {
-                        context.startActivity(
-                            Intent(context, LoginActivity::class.java).apply {
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                            }
-                        )
+                        IntroVideoActivity.launch(context, LoginActivity::class.java)
                     }
                     (context as? android.app.Activity)?.finish()
                 }
