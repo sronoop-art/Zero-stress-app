@@ -131,7 +131,12 @@ private fun ProfileScreen() {
                                             Toast.makeText(context, "Saved locally only: ${e.message}", Toast.LENGTH_LONG).show()
                                         }
                                 } else if (url == null) {
-                                    Toast.makeText(context, "Upload failed - avatar kept locally", Toast.LENGTH_LONG).show()
+                                    val why = com.zerostress.manager.ota.ZsCloudinary.lastError ?: "unknown error"
+                                    Toast.makeText(
+                                        context,
+                                        "Upload failed ($why) - avatar kept locally",
+                                        Toast.LENGTH_LONG
+                                    ).show()
                                 }
                             }
                         }.start()

@@ -6,7 +6,6 @@ import android.util.Base64
 import android.util.Log
 import com.google.firebase.remoteconfig.FirebaseRemoteConfig
 import java.io.ByteArrayOutputStream
-import java.io.DataOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -31,6 +30,11 @@ object ZsCloudinary {
     private const val TAG = "ZsCloudinary"
     private const val BOUNDARY = "----ZeroStressBoundary7d1a6c"
 
+    /** Human-readable reason for the most recent failure (null after success). */
+    @Volatile
+    var lastError: String? = null
+        private set
+
     fun cloudName(): String = FirebaseRemoteConfig.getInstance().getString("cloudinary_cloud_name")
     fun uploadPreset(): String = FirebaseRemoteConfig.getInstance().getString("cloudinary_upload_preset")
 
@@ -42,7 +46,9 @@ object ZsCloudinary {
      * Runs on the calling thread - call from a background dispatcher.
      */
     fun uploadAvatar(bitmap: Bitmap): String? {
+        lastError = null
         if (!isEnabled()) {
+            lastError = "cloud not configured"
             Log.w(TAG, "Cloudinary not configured (set cloudinary_cloud_name / cloudinary_upload_preset)")
             return null
         }
@@ -53,6 +59,11 @@ object ZsCloudinary {
             scaled.compress(Bitmap.CompressFormat.JPEG, 85, baos)
             val bytes = baos.toByteArray()
 
+            // Build the exact multipart body first, then declare its TRUE size.
+            // (The old code over-declared the length by ~250 bytes, so the server
+            // waited forever for a tail that never arrived and the upload timed out.)
+            val body = buildMultipartBody(bytes)
+
             val url = "https://api.cloudinary.com/v1_1/${cloudName()}/image/upload"
             val conn = URL(url).openConnection() as HttpURLConnection
             conn.requestMethod = "POST"
@@ -60,47 +71,59 @@ object ZsCloudinary {
             conn.connectTimeout = 15000
             conn.readTimeout = 30000
             conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$BOUNDARY")
-            conn.setFixedLengthStreamingMode(
-                bytes.size + 512 + uploadPreset().length
-            )
+            conn.setFixedLengthStreamingMode(body.size)
 
-            DataOutputStream(conn.outputStream).use { out ->
-                out.writeBytes("--$BOUNDARY\r\n")
-                out.writeBytes("Content-Disposition: form-data; name=\"upload_preset\"\r\n\r\n")
-                out.writeBytes(uploadPreset() + "\r\n")
-                out.writeBytes("--$BOUNDARY\r\n")
-                out.writeBytes("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n")
-                out.writeBytes("Content-Type: image/jpeg\r\n\r\n")
-                out.write(bytes)
-                out.writeBytes("\r\n--$BOUNDARY--\r\n")
+            conn.outputStream.use { out ->
+                out.write(body)
                 out.flush()
             }
 
             val code = conn.responseCode
-            val body = (if (code in 200..299) conn.inputStream else conn.errorStream)
+            val bodyText = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.use { it.readText() } ?: ""
             if (code !in 200..299) {
-                Log.w(TAG, "Cloudinary upload failed: HTTP $code $body")
+                lastError = "HTTP $code"
+                Log.w(TAG, "Cloudinary upload failed: HTTP $code $bodyText")
                 return null
             }
 
             // Extract "secure_url":"..." without a JSON library.
             val marker = "\"secure_url\":\""
-            val start = body.indexOf(marker)
+            val start = bodyText.indexOf(marker)
             if (start < 0) {
+                lastError = "unexpected response"
                 Log.w(TAG, "Cloudinary response missing secure_url")
                 return null
             }
             val urlStart = start + marker.length
-            val end = body.indexOf('"', urlStart)
-            if (end < 0) return null
-            val secureUrl = body.substring(urlStart, end)
+            val end = bodyText.indexOf('"', urlStart)
+            if (end < 0) {
+                lastError = "unexpected response"
+                return null
+            }
+            val secureUrl = bodyText.substring(urlStart, end)
             // JSON-escaped forward slashes are common; unescape them.
             secureUrl.replace("\\/", "/")
         } catch (e: Exception) {
+            lastError = e.message?.take(80) ?: "network error"
             Log.w(TAG, "Cloudinary upload error: ${e.message}")
             null
         }
+    }
+
+    /** Builds the complete multipart/form-data payload for an unsigned upload. */
+    private fun buildMultipartBody(jpeg: ByteArray): ByteArray {
+        val out = ByteArrayOutputStream(jpeg.size + 1024)
+        fun s(t: String) = out.write(t.toByteArray(Charsets.UTF_8))
+        s("--$BOUNDARY\r\n")
+        s("Content-Disposition: form-data; name=\"upload_preset\"\r\n\r\n")
+        s(uploadPreset() + "\r\n")
+        s("--$BOUNDARY\r\n")
+        s("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n")
+        s("Content-Type: image/jpeg\r\n\r\n")
+        out.write(jpeg)
+        s("\r\n--$BOUNDARY--\r\n")
+        return out.toByteArray()
     }
 
     private fun scaleDown(bitmap: Bitmap, maxSize: Int): Bitmap {
