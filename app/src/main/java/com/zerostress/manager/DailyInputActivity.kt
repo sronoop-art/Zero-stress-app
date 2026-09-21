@@ -90,6 +90,7 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
     var assists by remember { mutableStateOf("") }
     var damage by remember { mutableStateOf("") }
     var hours by remember { mutableStateOf("") }
+    var result by remember { mutableStateOf<String?>(null) }
     var matchType by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
     var recent by remember { mutableStateOf("") }
@@ -125,7 +126,8 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
                         val dm = doc.getLong("damage") ?: 0
                         val h = doc.getLong("hours") ?: 0
                         val mt = doc.getString("matchType") ?: "-"
-                        "$mt - ${k}K/${d}D/${a}A - $dm dmg - ${h}h"
+                        val res = if (doc.getBoolean("win") == true) "W" else "L"
+                        "$res - $mt - ${k}K/${d}D/${a}A - $dm dmg - ${h}h"
                     }
                 }
             }
@@ -149,6 +151,70 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
         }
     }
 
+    /**
+     * Rolls a saved daily_stats entry into the player doc. The leaderboard
+     * (Daily/Weekly/Monthly tabs) and the cron resets read dailyScore,
+     * weeklyScore, monthlyScore and their Kills/Wins/Matches companions from
+     * the player doc - without this merge the admin's entries are write-only
+     * and never appear anywhere. Score formula mirrors SubmitMatchActivity:
+     * kills*10 + damage/100 (+50 per win).
+     */
+    fun mergeIntoPlayerDoc(playerId: String, k: Int, d: Int, a: Int, dmg: Long, h: Double, isWin: Boolean, ts: Long) {
+        val entryScore = k * 10 + (dmg / 100).toInt() + if (isWin) 50 else 0
+        db.collection("players").document(playerId).get()
+            .addOnCompleteListener { task ->
+                val doc = task.result
+                if (!doc.exists()) return@addOnCompleteListener
+                // Period buckets on the player doc.
+                val daily = doc.getLong("dailyScore") ?: 0
+                val weekly = doc.getLong("weeklyScore") ?: 0
+                val monthly = doc.getLong("monthlyScore") ?: 0
+                // Lifetime totals used by the dashboard hero + all-time tab.
+                val curKills = doc.getLong("kills") ?: 0
+                val curDeaths = doc.getLong("deaths") ?: 0
+                val curAssists = doc.getLong("assists") ?: 0
+                val curDamage = doc.getLong("damage") ?: 0
+                val curWins = doc.getLong("wins") ?: 0
+                val curMatches = doc.getLong("matches") ?: 0
+                val curMinutes = doc.getLong("minutesPlayed") ?: 0
+                var curXp = (doc.getLong("xp") ?: 0).toInt()
+                var curLevel = (doc.getLong("level") ?: 1).toInt()
+
+                val xpGained = k * 5 + (dmg / 50).toInt() + if (isWin) 100 else 20
+                var newXp = curXp + xpGained
+                while (newXp >= curLevel * 500) {
+                    newXp -= curLevel * 500
+                    curLevel++
+                }
+
+                val updates = mapOf<String, Any>(
+                    "dailyScore" to daily + entryScore,
+                    "weeklyScore" to weekly + entryScore,
+                    "monthlyScore" to monthly + entryScore,
+                    "dailyKills" to (doc.getLong("dailyKills") ?: 0) + k,
+                    "dailyWins" to (doc.getLong("dailyWins") ?: 0) + if (isWin) 1 else 0,
+                    "dailyMatches" to (doc.getLong("dailyMatches") ?: 0) + 1,
+                    "weeklyKills" to (doc.getLong("weeklyKills") ?: 0) + k,
+                    "weeklyWins" to (doc.getLong("weeklyWins") ?: 0) + if (isWin) 1 else 0,
+                    "weeklyMatches" to (doc.getLong("weeklyMatches") ?: 0) + 1,
+                    "monthlyKills" to (doc.getLong("monthlyKills") ?: 0) + k,
+                    "monthlyWins" to (doc.getLong("monthlyWins") ?: 0) + if (isWin) 1 else 0,
+                    "monthlyMatches" to (doc.getLong("monthlyMatches") ?: 0) + 1,
+                    "kills" to curKills + k,
+                    "deaths" to curDeaths + d,
+                    "assists" to curAssists + a,
+                    "damage" to curDamage + dmg,
+                    "wins" to curWins + if (isWin) 1 else 0,
+                    "matches" to curMatches + 1,
+                    "minutesPlayed" to curMinutes + (h * 60).toLong(),
+                    "xp" to newXp,
+                    "level" to curLevel,
+                    "updatedat" to ts
+                )
+                db.collection("players").document(playerId).update(updates)
+            }
+    }
+
     fun submit() {
         val k = kills.toIntOrNull()
         val d = deaths.toIntOrNull()
@@ -163,6 +229,11 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
             Toast.makeText(context, "Select a player first", Toast.LENGTH_SHORT).show()
             return
         }
+        if (result == null) {
+            Toast.makeText(context, "Pick the match result", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val isWin = result == "Win"
         loading = true
         val entry = mapOf(
             "playerId" to targetPlayerId,
@@ -171,14 +242,19 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
             "assists" to a,
             "damage" to dmg,
             "hours" to h,
+            "win" to isWin,
             "matchType" to (matchType ?: "Casual"),
             "timestamp" to System.currentTimeMillis()
         )
         db.collection("daily_stats").add(entry)
             .addOnSuccessListener {
+                // Roll the entry into the player doc so the leaderboard,
+                // dashboard and profile actually reflect it.
+                mergeIntoPlayerDoc(targetPlayerId, k, d, a, dmg, h, isWin, entry["timestamp"] as Long)
                 loading = false
                 Toast.makeText(context, "Stats logged for $targetPlayerName", Toast.LENGTH_SHORT).show()
                 kills = ""; deaths = ""; assists = ""; damage = ""; hours = ""
+                result = null
                 matchType = null
                 recent = "" // triggers the recent-entries reload
             }
@@ -246,6 +322,13 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
                 ZSField(value = damage, onValueChange = { damage = it }, label = "Damage", keyboardType = KeyboardType.Number)
                 Spacer(Modifier.height(12.dp))
                 ZSField(value = hours, onValueChange = { hours = it }, label = "Hours played", keyboardType = KeyboardType.Decimal)
+                Spacer(Modifier.height(12.dp))
+                ZSDropdown(
+                    label = "Result",
+                    items = listOf("Win", "Loss"),
+                    selected = result,
+                    onSelect = { result = it }
+                )
                 Spacer(Modifier.height(12.dp))
                 ZSDropdown(
                     label = "Match type",

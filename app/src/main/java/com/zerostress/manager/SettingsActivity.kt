@@ -193,7 +193,10 @@ private fun SettingsScreen() {
                     text = "Logout",
                     onClick = {
                         FirebaseAuth.getInstance().signOut()
-                        context.startActivity(Intent(context, LoginActivity::class.java))
+                        // CLEAR_TASK so no pre-logout activity survives under login.
+                        context.startActivity(Intent(context, LoginActivity::class.java).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                        })
                         (context as? android.app.Activity)?.finish()
                     },
                     container = ZsPrimary

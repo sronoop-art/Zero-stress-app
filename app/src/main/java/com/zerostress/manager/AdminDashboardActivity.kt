@@ -225,7 +225,12 @@ private fun AdminDashboardScreen() {
                         ZSMenuTile("", "My Profile", { context.startActivity(Intent(context, ProfileActivity::class.java)) }, Modifier.weight(1f), ZsPrimary, iconRes = R.drawable.ic_menu_person)
                         ZSMenuTile("", "Logout", {
                             auth.signOut()
-                            context.startActivity(Intent(context, LoginActivity::class.java))
+                            // CLEAR_TASK wipes every activity behind the logout
+                            // (tabs, player screens) so the next login starts fresh
+                            // instead of surfacing stale layers from the old session.
+                            context.startActivity(Intent(context, LoginActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            })
                             (context as? android.app.Activity)?.finish()
                         }, Modifier.weight(1f), ZsDanger, iconRes = R.drawable.ic_menu_logout)
                         Spacer(Modifier.weight(1f))

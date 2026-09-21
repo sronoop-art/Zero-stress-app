@@ -126,6 +126,18 @@ private fun PlayerDashboardScreen() {
         db.collection("players").document(uid).get()
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
+                    // Admins live in the manager console. If one ends up here
+                    // (notification deep-link, back press, stale stack), bounce
+                    // them home instead of showing the player dashboard.
+                    if (doc.getString("role") == "admin") {
+                        context.startActivity(
+                            Intent(context, AdminDashboardActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+                            }
+                        )
+                        (context as? android.app.Activity)?.finish()
+                        return@addOnSuccessListener
+                    }
                     name = doc.getString("name") ?: "Player"
                     score = doc.getLong("score") ?: 0
                     level = doc.getLong("level") ?: 1
@@ -407,7 +419,11 @@ private fun PlayerDashboardScreen() {
                         iconRes = R.drawable.ic_menu_logout,
                         onClick = {
                             auth.signOut()
-                            context.startActivity(Intent(context, LoginActivity::class.java))
+                            // CLEAR_TASK wipes every activity behind the logout so
+                            // the next login starts on a clean stack.
+                            context.startActivity(Intent(context, LoginActivity::class.java).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                            })
                             (context as? android.app.Activity)?.finish()
                         }
                     )
