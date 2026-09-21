@@ -208,7 +208,7 @@ private fun LoginScreen() {
                                                     PlayerDashboardActivity::class.java
                                                 // No intro video here - it already played at app
                                                 // start; go straight to the dashboard.
-                                                startActivity(Intent(context, target).apply {
+                                                context.startActivity(Intent(context, target).apply {
                                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                                 })
                                                 (context as? android.app.Activity)?.finish()
@@ -216,7 +216,7 @@ private fun LoginScreen() {
                                             .addOnFailureListener {
                                                 // No profile (or Firestore failed): still enter the app
                                                 // as a player - same behavior as the splash login path.
-                                                startActivity(Intent(context, PlayerDashboardActivity::class.java).apply {
+                                                context.startActivity(Intent(context, PlayerDashboardActivity::class.java).apply {
                                                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
                                                 })
                                                 (context as? android.app.Activity)?.finish()
