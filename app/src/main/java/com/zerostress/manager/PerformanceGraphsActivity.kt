@@ -44,6 +44,7 @@ import com.zerostress.manager.ui.ZSBottomNav
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSFilterChips
 import com.zerostress.manager.ui.ZSKeyValue
+import com.zerostress.manager.ui.ZSProgress
 import com.zerostress.manager.ui.ZSRing
 import com.zerostress.manager.ui.ZSSparkline
 import com.zerostress.manager.ui.ZSStat
@@ -184,48 +185,37 @@ private fun PerformanceGraphsScreen() {
                     Modifier.fillMaxSize().padding(horizontal = 16.dp).weight(1f)
                         .verticalScroll(rememberScrollState())
                 ) {
-                    // Big performance score ring
+                    // v4 hero: big centered performance ring
                     ZSCard(highlight = ZsPrimary) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            ZSRing(perf / 100f, Modifier.size(96.dp), stroke = 8.dp) {
+                        Column(
+                            Modifier.fillMaxWidth(),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            ZSRing(perf / 100f, Modifier.size(118.dp), stroke = 9.dp) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                     Text(
                                         "$perf",
-                                        color = ZsTextPrimary,
-                                        fontSize = 24.sp,
+                                        color = ZsPrimary,
+                                        fontSize = 26.sp,
                                         fontWeight = FontWeight.ExtraBold
                                     )
                                     Text(
-                                        "/100",
+                                        "PERF SCORE",
                                         color = ZsTextMuted,
-                                        fontSize = 9.sp,
-                                        fontWeight = FontWeight.Bold
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 1.sp
                                     )
                                 }
                             }
-                            Spacer(Modifier.width(14.dp))
-                            Column(Modifier.weight(1f)) {
-                                Text(
-                                    "PERFORMANCE SCORE",
-                                    color = ZsTextMuted,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 1.sp
-                                )
-                                Spacer(Modifier.height(4.dp))
-                                Text(
-                                    perfPeriods[period],
-                                    color = ZsPrimary,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.ExtraBold
-                                )
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    "K/D, win rate and score over the selected period",
-                                    color = ZsTextSecondary,
-                                    fontSize = 11.sp
-                                )
-                            }
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                perfPeriods[period],
+                                color = ZsTextSecondary,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.sp
+                            )
                         }
                     }
                     Spacer(Modifier.height(10.dp))
@@ -234,35 +224,42 @@ private fun PerformanceGraphsScreen() {
                     ZSFilterChips(perfPeriods, period) { period = it }
                     Spacer(Modifier.height(12.dp))
 
-                    // Stat grid for the selected period
+                    // KDA row (v4 4-tile grid)
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(7.dp)
                     ) {
+                        ZSStat("Kills", "$k", ZsCyan, Modifier.weight(1f))
+                        ZSStat("Deaths", "$d", ZsTextPrimary, Modifier.weight(1f))
+                        ZSStat("Assists", "$a", ZsPurple, Modifier.weight(1f))
                         ZSStat(
                             "K/D", String.format(Locale.getDefault(), "%.2f", kd),
-                            ZsGold, Modifier.weight(1f)
-                        )
-                        ZSStat(
-                            "Win Rate", String.format(Locale.getDefault(), "%.0f%%", wr),
-                            ZsAccent, Modifier.weight(1f)
-                        )
-                        ZSStat(
-                            "Avg DMG", String.format(Locale.getDefault(), "%.0f", avgDmg),
-                            ZsCyan, Modifier.weight(1f)
+                            ZsTextPrimary, Modifier.weight(1f)
                         )
                     }
-                    Spacer(Modifier.height(10.dp))
-                    Row(
-                        Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        ZSStat(
-                            "Avg Kills", String.format(Locale.getDefault(), "%.1f", avgKills),
-                            ZsPrimary, Modifier.weight(1f)
+                    Spacer(Modifier.height(12.dp))
+
+                    // Aim profile bars (v4)
+                    ZSCard {
+                        Text(
+                            "AIM PROFILE",
+                            color = ZsTextMuted,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.sp
                         )
-                        ZSStat("Accuracy", accText, ZsGreen, Modifier.weight(1f))
-                        ZSStat("Headshot", hsText, ZsPurple, Modifier.weight(1f))
+                        Spacer(Modifier.height(8.dp))
+                        AimBar("Win rate", (wr / 100.0).toFloat(), String.format(Locale.getDefault(), "%.0f%%", wr))
+                        Spacer(Modifier.height(6.dp))
+                        AimBar(
+                            "Avg damage",
+                            (avgDmg.coerceAtMost(1500.0) / 1500.0).toFloat(),
+                            String.format(Locale.getDefault(), "%.0f", avgDmg)
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        AimBar("Accuracy", (accuracyField?.toFloat() ?: 0f) / 100f, accText)
+                        Spacer(Modifier.height(6.dp))
+                        AimBar("Headshot", (headshotsField?.toFloat() ?: 0f) / 100f, hsText)
                     }
                     Spacer(Modifier.height(12.dp))
 
@@ -406,5 +403,23 @@ private fun PerformanceGraphsScreen() {
             // Neon Glass bottom navigation shell
             ZSBottomNav(zsNavItems(1, context))
         }
+    }
+}
+
+/** v4 aim-profile row: label, neon progress bar, value. */
+@Composable
+private fun AimBar(label: String, fraction: Float, valueText: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            label,
+            color = ZsTextMuted,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.sp,
+            modifier = Modifier.width(86.dp)
+        )
+        ZSProgress(fraction, modifier = Modifier.weight(1f))
+        Spacer(Modifier.width(8.dp))
+        Text(valueText, color = ZsTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
     }
 }

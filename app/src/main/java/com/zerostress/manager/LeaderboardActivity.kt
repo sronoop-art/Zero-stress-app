@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +31,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -52,6 +57,7 @@ import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsBronze
+import com.zerostress.manager.ui.theme.ZsCard
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsGold
@@ -279,29 +285,8 @@ private fun LeaderboardScreen() {
                 }
             )
 
-            // Tabs
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                periods.forEachIndexed { index, period ->
-                    val selected = index == currentTab
-                    Text(
-                        text = period,
-                        modifier = Modifier
-                            .weight(1f)
-                            .background(
-                                if (selected) ZsPrimary else Color.Transparent,
-                                RoundedCornerShape(10.dp)
-                            )
-                            .clickable { currentTab = index }
-                            .padding(vertical = 10.dp),
-                        color = if (selected) Color(0xFF04101A) else ZsTextMuted,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                    )
-                }
-            }
+            // Tabs (v4 gradient chips)
+            ZSFilterChips(periods, currentTab) { currentTab = it }
             Spacer(Modifier.height(8.dp))
 
             // Scope filter: Global / Friends / Local
@@ -319,6 +304,36 @@ private fun LeaderboardScreen() {
             } else if (visiblePlayers.isEmpty()) {
                 EmptyState("No players in this scope yet", Modifier.weight(1f))
             } else {
+                // v4 podium: top three players, gold-glow center card
+                val podium = visiblePlayers.take(3)
+                if (podium.isNotEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        PodiumCard(
+                            podium.getOrNull(1), 2, ZsSilver,
+                            podium.getOrNull(1)?.let { scoreForTab(it) } ?: 0,
+                            podium.getOrNull(1)?.let { winsForTab(it) } ?: 0,
+                            Modifier.weight(1f)
+                        )
+                        PodiumCard(
+                            podium.getOrNull(0), 1, ZsGold,
+                            podium.getOrNull(0)?.let { scoreForTab(it) } ?: 0,
+                            podium.getOrNull(0)?.let { winsForTab(it) } ?: 0,
+                            Modifier.weight(1f)
+                        )
+                        PodiumCard(
+                            podium.getOrNull(2), 3, ZsBronze,
+                            podium.getOrNull(2)?.let { scoreForTab(it) } ?: 0,
+                            podium.getOrNull(2)?.let { winsForTab(it) } ?: 0,
+                            Modifier.weight(1f)
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().weight(1f),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
@@ -326,7 +341,7 @@ private fun LeaderboardScreen() {
                     ),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    items(visiblePlayers, key = { it.id }) { doc ->
+                    items(visiblePlayers.drop(3), key = { it.id }) { doc ->
                         val index = visiblePlayers.indexOf(doc)
                         val name = doc.getString("name") ?: "Unknown"
                         val score = scoreForTab(doc)
@@ -480,5 +495,95 @@ private fun LeaderboardScreen() {
                 TextButton(onClick = { showResetConfirmDialog = null }) { Text("Cancel") }
             }
         )
+    }
+}
+
+/**
+ * v4 leaderboard podium tile: medal-ringed avatar, name, score and a rank
+ * badge. The center card (place 1) is taller with a gold glow treatment.
+ */
+@Composable
+private fun PodiumCard(
+    doc: DocumentSnapshot?,
+    place: Int,
+    medalColor: Color,
+    score: Long,
+    wins: Long,
+    modifier: Modifier = Modifier
+) {
+    if (doc == null) {
+        Spacer(modifier)
+        return
+    }
+    val name = doc.getString("name") ?: "?"
+    val isTop = place == 1
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(ZsCard)
+            .border(
+                1.5.dp,
+                if (isTop) ZsGold.copy(alpha = 0.55f) else medalColor.copy(alpha = 0.35f),
+                RoundedCornerShape(16.dp)
+            )
+            .drawBehind {
+                if (isTop) {
+                    drawCircle(
+                        brush = Brush.radialGradient(
+                            listOf(ZsGold.copy(alpha = 0.30f), Color.Transparent),
+                            center = Offset(size.width * 0.5f, size.height * 0.30f),
+                            radius = size.width * 0.7f
+                        )
+                    )
+                }
+            }
+    ) {
+        Column(
+            Modifier.fillMaxWidth().padding(vertical = if (isTop) 14.dp else 10.dp, horizontal = 6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            ZSAvatar(name, size = if (isTop) 34.dp else 28.dp, ringColor = if (isTop) ZsGold else medalColor)
+            Spacer(Modifier.height(5.dp))
+            Text(
+                name,
+                color = if (isTop) ZsGold else ZsTextPrimary,
+                fontSize = if (isTop) 11.sp else 10.sp,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 1
+            )
+            Spacer(Modifier.height(2.dp))
+            Text(
+                String.format(java.util.Locale.US, "%,d", score),
+                color = if (isTop) ZsGold else ZsTextSecondary,
+                fontSize = if (isTop) 12.sp else 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(6.dp))
+            Box(
+                Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(
+                        when (place) {
+                            1 -> Brush.linearGradient(listOf(Color(0xFFFBBF24), Color(0xFFF59E0B)))
+                            2 -> Brush.linearGradient(listOf(Color(0xFFD7DCE6), Color(0xFF9AA3B8)))
+                            else -> Brush.linearGradient(listOf(Color(0xFFE0955C), Color(0xFFB0703A)))
+                        }
+                    )
+                    .padding(horizontal = 10.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    "$place",
+                    color = when (place) {
+                        1 -> Color(0xFF231A00)
+                        2 -> Color(0xFF1A1D26)
+                        else -> Color(0xFF26130A)
+                    },
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            Text("$wins W", color = ZsTextMuted, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+        }
     }
 }

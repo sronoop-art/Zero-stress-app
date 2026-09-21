@@ -27,9 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,13 +36,10 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.R
 import com.zerostress.manager.fcm.FCMConfig
 import com.zerostress.manager.fcm.ZSFCMService
-import com.zerostress.manager.ui.ZsPngIcon
-import com.zerostress.manager.ui.EmptyState
 import com.zerostress.manager.ui.ZSAvatar
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSBadge
 import com.zerostress.manager.ui.ZSButton
-import com.zerostress.manager.ui.ZSHeroHeader
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSMenuTile
 import com.zerostress.manager.ui.ZSProgress
@@ -55,14 +50,14 @@ import com.zerostress.manager.ui.ZSBottomNav
 import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
+import com.zerostress.manager.ui.theme.ZsCardAlt
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsGold
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
-import com.zerostress.manager.ui.theme.ZsTextSecondary
 import com.zerostress.manager.ui.theme.ZsPrimary
-import com.zerostress.manager.ui.theme.ZsPurple
+import com.zerostress.manager.ui.theme.ZsSuccess
 
 class PlayerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -200,25 +195,40 @@ private fun PlayerDashboardScreen() {
 
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
-            // Neon Glass hero header
-            ZSHeroHeader(
-                title = "ZERO STRESS",
-                subtitle = "Player command center"
-            )
+            // v4 header: quiet section title row (no gradient band in the design)
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "HOME",
+                    color = ZsTextPrimary,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 2.sp
+                )
+                Spacer(Modifier.weight(1f))
+                ZSBadge(rank, ZsGold)
+            }
             Column(
                 Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
             ) {
-                // Player hero: avatar in an XP ring + identity + leaderboard position
+                // Player hero: level number inside the XP ring, avatar on the right (v4)
                 ZSCard(highlight = ZsPrimary) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ZSRing(
                             fraction = xp.toFloat() / (level * 500).toFloat(),
-                            modifier = Modifier.size(74.dp),
+                            modifier = Modifier.size(54.dp),
                             stroke = 4.dp
                         ) {
-                            ZSAvatar(name, size = 56.dp, ringColor = Color.Transparent)
+                            Text(
+                                "$level",
+                                color = ZsPrimary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.ExtraBold
+                            )
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
@@ -226,7 +236,7 @@ private fun PlayerDashboardScreen() {
                                 Text(
                                     name,
                                     color = ZsTextPrimary,
-                                    fontSize = 18.sp,
+                                    fontSize = 16.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     maxLines = 1
                                 )
@@ -234,57 +244,71 @@ private fun PlayerDashboardScreen() {
                                 ZSBadge("LV $level", ZsPrimary)
                             }
                             Spacer(Modifier.height(4.dp))
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                ZSBadge(rank, ZsGold)
-                                Spacer(Modifier.width(6.dp))
-                                Text(
-                                    position?.let { "#$it on leaderboard" } ?: "Unranked",
-                                    color = ZsCyan,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                            }
-                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                position?.let { "#$it on leaderboard" } ?: "Unranked",
+                                color = ZsCyan,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Spacer(Modifier.height(6.dp))
                             ZSProgress(
                                 fraction = xp.toFloat() / (level * 500).toFloat(),
                                 label = "XP $xp / ${level * 500} to level ${level + 1}"
                             )
                         }
+                        Spacer(Modifier.width(10.dp))
+                        ZSAvatar(name, size = 40.dp, ringColor = ZsPrimary)
                     }
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // Core stat grid
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ZSStat("Score", "$score", ZsGold, Modifier.weight(1f))
-                    ZSStat("Coins", "$coins", ZsGold, Modifier.weight(1f))
-                    ZSStat(
-                        "K/D",
-                        if (totalDeaths > 0)
-                            String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
-                        else "$totalKills",
-                        ZsCyan, Modifier.weight(1f)
-                    )
-                }
-                Spacer(Modifier.height(10.dp))
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    ZSStat(
-                        "Win Rate",
-                        if (totalMatches > 0) "${totalWins * 100 / totalMatches}%" else "0%",
-                        ZsAccent, Modifier.weight(1f)
-                    )
-                    ZSStat("Matches", "$totalMatches", ZsCyan, Modifier.weight(1f))
-                    ZSStat(
-                        "Avg Score",
-                        if (totalMatches > 0) "${score / totalMatches}" else "0",
-                        ZsPurple, Modifier.weight(1f)
-                    )
+                // Signature v4 hero: score ring + 2x2 stat grid (Rank/Matches/Win rate/K-D)
+                ZSCard {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ZSRing(
+                            fraction = (score % 10000L).toFloat() / 10000f,
+                            modifier = Modifier.size(88.dp),
+                            stroke = 6.dp
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    "SCORE",
+                                    color = ZsTextMuted,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                                Text(
+                                    "$score",
+                                    color = ZsTextPrimary,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.ExtraBold
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Column(Modifier.weight(1f)) {
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                ZSStat("Rank", position?.let { "#$it" } ?: "—", ZsGold, Modifier.weight(1f))
+                                ZSStat("Matches", "$totalMatches", ZsCyan, Modifier.weight(1f))
+                            }
+                            Spacer(Modifier.height(7.dp))
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                                ZSStat(
+                                    "Win rate",
+                                    if (totalMatches > 0) "${totalWins * 100 / totalMatches}%" else "0%",
+                                    ZsSuccess, Modifier.weight(1f)
+                                )
+                                ZSStat(
+                                    "K/D",
+                                    if (totalDeaths > 0)
+                                        String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
+                                    else "$totalKills",
+                                    ZsTextPrimary, Modifier.weight(1f)
+                                )
+                            }
+                        }
+                    }
                 }
                 Spacer(Modifier.height(10.dp))
 
@@ -302,7 +326,7 @@ private fun PlayerDashboardScreen() {
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // Primary CTAs
+                // Primary CTAs (glass secondary style for Add Match per v4)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     ZSButton(
                         "View Leaderboard",
@@ -314,7 +338,8 @@ private fun PlayerDashboardScreen() {
                         "Add Match",
                         { context.startActivity(Intent(context, SubmitMatchActivity::class.java)) },
                         Modifier.weight(1f),
-                        container = ZsPurple,
+                        container = ZsCardAlt,
+                        textColor = ZsTextPrimary,
                         height = 46.dp
                     )
                 }
@@ -340,7 +365,6 @@ private fun PlayerDashboardScreen() {
                                     color = ZsPrimary,
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    fontStyle = FontStyle.Italic,
                                     letterSpacing = 1.sp
                                 )
                                 Spacer(Modifier.height(2.dp))
@@ -355,8 +379,7 @@ private fun PlayerDashboardScreen() {
                                 countdown,
                                 color = if (remain <= 60_000) ZsPrimary else ZsCyan,
                                 fontSize = 14.sp,
-                                fontWeight = FontWeight.Bold,
-                                fontStyle = FontStyle.Italic
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -378,7 +401,7 @@ private fun PlayerDashboardScreen() {
                             0 -> ZsCyan
                             1 -> ZsGold
                             2 -> ZsAccent
-                            else -> com.zerostress.manager.ui.theme.ZsPrimary
+                            else -> ZsPrimary
                         },
                         iconRes = item.iconRes,
                         onClick = { context.startActivity(Intent(context, item.target)) }
