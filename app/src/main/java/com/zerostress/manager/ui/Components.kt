@@ -730,8 +730,8 @@ fun ZSBarChart(
 fun ZSFilterChips(
     options: List<String>,
     selectedIndex: Int,
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSelect: (Int) -> Unit
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),

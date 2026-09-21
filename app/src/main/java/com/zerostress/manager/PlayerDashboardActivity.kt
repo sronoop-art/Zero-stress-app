@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -160,6 +161,7 @@ private fun PlayerDashboardScreen() {
         if (uid == null) return
         db.collection("match_logs").whereEqualTo("playerId", uid)
             .orderBy("date").limitToLast(12)
+            .get()
             .addOnSuccessListener { q ->
                 recentScores = q.documents.mapNotNull { it.getLong("score")?.toFloat() }
             }

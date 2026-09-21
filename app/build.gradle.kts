@@ -38,7 +38,8 @@ plugins {
 
 android {
     namespace = "com.zerostress.manager"
-    compileSdk = 36
+    // Compose BOM 2026.08.00 artifacts (compose 1.12.x) require compileSdk 37+.
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.zerostress.manager"

@@ -122,6 +122,7 @@ private fun PerformanceGraphsScreen() {
                 .addOnFailureListener { loading = false }
             db.collection("match_logs").whereEqualTo("playerId", userId)
                 .orderBy("date").limitToLast(60)
+                .get()
                 .addOnSuccessListener { q -> logs = q.documents }
         } else {
             loading = false
