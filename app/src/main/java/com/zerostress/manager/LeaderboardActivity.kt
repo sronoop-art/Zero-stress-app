@@ -286,7 +286,9 @@ private fun LeaderboardScreen() {
                 }
             }
         onDispose { reg.remove() }
-    }    LaunchedEffect(Unit) {
+    }
+
+    LaunchedEffect(Unit) {
         loadLeaderboard()
     }
 
