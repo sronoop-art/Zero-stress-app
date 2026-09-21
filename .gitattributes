@@ -1,0 +1,4 @@
+# Keep the branch zip out of `git archive` output: when ZS3.1.zip is
+# regenerated from HEAD, this rule prevents the old zip from being
+# packaged inside the new one (self-nesting bug).
+ZS3.1.zip export-ignore
