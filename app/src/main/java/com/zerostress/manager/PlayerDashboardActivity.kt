@@ -44,6 +44,7 @@ import com.zerostress.manager.ui.ZSBarChart
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSBottomNav
+import com.zerostress.manager.ui.launchTab
 import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.ZsAvatarFrame
 import com.zerostress.manager.ui.ZSProgress

@@ -29,6 +29,7 @@ import com.zerostress.manager.ui.ZSMenuTile
 import com.zerostress.manager.ui.ZSBottomNav
 import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.launchTab
+import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsDanger
 import com.zerostress.manager.ui.theme.ZsPrimary
