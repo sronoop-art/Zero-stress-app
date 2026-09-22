@@ -219,6 +219,9 @@ private fun PlayerDashboardScreen() {
                     letterSpacing = 2.sp
                 )
                 Spacer(Modifier.weight(1f))
+                // Coin balance - loaded from the player doc, always visible up top.
+                ZSBadge("$coins coins", ZsGold)
+                Spacer(Modifier.width(8.dp))
                 ZSBadge(rank, ZsGold)
             }
             Column(
