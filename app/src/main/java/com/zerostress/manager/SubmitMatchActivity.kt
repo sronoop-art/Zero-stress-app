@@ -35,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
@@ -101,78 +102,74 @@ private fun SubmitMatchScreen() {
                 "win" to isWin,
                 "matchType" to matchTypes[matchType],
                 "date" to System.currentTimeMillis(),
-                "score" to (k * 10 + dmg / 100 + if (isWin) 200 else 0)
+                "score" to ZsScore.entryScore(k, dmg, isWin)
             )
         ).addOnSuccessListener {
-            // Update player stats
-            db.collection("players").document(userId ?: "").get()
-                .addOnCompleteListener { task ->
-                    val doc = task.result
-                    if (!doc.exists()) {
-                        loading = false
-                        return@addOnCompleteListener
-                    }
-                    val currentKills = doc.getLong("kills") ?: 0
-                    val currentDamage = doc.getLong("damage") ?: 0
-                    val currentWins = doc.getLong("wins") ?: 0
-                    val currentMatches = doc.getLong("matches") ?: 0
-                    var currentXp = (doc.getLong("xp") ?: 0).toInt()
-                    var currentLevel = (doc.getLong("level") ?: 1).toInt()
-                    val startLevel = currentLevel
-                    val currentCoins = (doc.getLong("coins") ?: 0).toInt()
+            // Update player stats atomically: lifetime counters via server-side
+            // increments, leaderboard buckets so the Daily/Weekly/Monthly tabs
+            // react to player-submitted matches too, and rank from the shared
+            // ZsScore ladder so both entry paths agree.
+            val playerRef = db.collection("players").document(userId ?: "")
+            val entryScore = ZsScore.entryScore(k, dmg, isWin)
+            db.runTransaction { tx ->
+                val snap = tx.get(playerRef)
+                if (!snap.exists()) return@runTransaction null
 
-                    val newKills = currentKills + k
-                    val newDamage = currentDamage + dmg
-                    val newWins = currentWins + if (isWin) 1 else 0
-                    val newMatches = currentMatches + 1
-                    val newScore = newKills * 10 + newDamage / 100 + newWins * 50
+                val xpGained = ZsScore.entryXp(k, dmg, isWin)
+                val coinsGained = ZsScore.entryCoins(k, isWin)
 
-                    val xpGained = k * 5 + (dmg / 50).toInt() + if (isWin) 100 else 20
-                    var newXp = currentXp + xpGained
-                    var newLevel = startLevel
-                    while (newXp >= newLevel * 500) {
-                        newXp -= newLevel * 500
-                        newLevel++
-                    }
-
-                    val coinsGained = k * 2 + if (isWin) 25 else 5
-                    val newCoins = currentCoins + coinsGained
-
-                    val newRank = when {
-                        newScore >= 5000 -> "Mythic"
-                        newScore >= 4000 -> "Diamond"
-                        newScore >= 3000 -> "Platinum"
-                        newScore >= 2000 -> "Gold"
-                        newScore >= 1200 -> "Silver"
-                        newScore >= 600 -> "Bronze"
-                        else -> "Iron"
-                    }
-
-                    db.collection("players").document(userId ?: "").update(
-                        mapOf(
-                            "kills" to newKills,
-                            "damage" to newDamage,
-                            "wins" to newWins,
-                            "matches" to newMatches,
-                            "score" to newScore,
-                            "xp" to newXp,
-                            "level" to newLevel,
-                            "coins" to newCoins,
-                            "rank" to newRank
-                        )
-                    ).addOnSuccessListener {
-                        loading = false
-                        Toast.makeText(
-                            context,
-                            "+$xpGained XP, +$coinsGained coins",
-                            Toast.LENGTH_LONG
-                        ).show()
-                        (context as? android.app.Activity)?.finish()
-                    }.addOnFailureListener { e ->
-                        loading = false
-                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                    }
+                // XP/level needs current values to apply level-ups.
+                var newXp = (snap.getLong("xp") ?: 0) + xpGained
+                var newLevel = ((snap.getLong("level") ?: 1)).toInt()
+                while (newXp >= newLevel * 500) {
+                    newXp -= newLevel * 500
+                    newLevel++
                 }
+                val newScore = (snap.getLong("score") ?: 0) + entryScore
+                val newRank = ZsScore.rankFor(newScore)
+
+                tx.update(
+                    playerRef,
+                    mapOf<String, Any>(
+                        "kills" to FieldValue.increment(k.toLong()),
+                        "deaths" to FieldValue.increment(d.toLong()),
+                        "assists" to FieldValue.increment(a.toLong()),
+                        "damage" to FieldValue.increment(dmg),
+                        "wins" to FieldValue.increment(if (isWin) 1L else 0L),
+                        "matches" to FieldValue.increment(1L),
+                        "score" to FieldValue.increment(entryScore),
+                        "rank" to newRank,
+                        "coins" to FieldValue.increment(coinsGained),
+                        "dailyScore" to FieldValue.increment(entryScore),
+                        "weeklyScore" to FieldValue.increment(entryScore),
+                        "monthlyScore" to FieldValue.increment(entryScore),
+                        "dailyKills" to FieldValue.increment(k.toLong()),
+                        "dailyWins" to FieldValue.increment(if (isWin) 1L else 0L),
+                        "dailyMatches" to FieldValue.increment(1L),
+                        "weeklyKills" to FieldValue.increment(k.toLong()),
+                        "weeklyWins" to FieldValue.increment(if (isWin) 1L else 0L),
+                        "weeklyMatches" to FieldValue.increment(1L),
+                        "monthlyKills" to FieldValue.increment(k.toLong()),
+                        "monthlyWins" to FieldValue.increment(if (isWin) 1L else 0L),
+                        "monthlyMatches" to FieldValue.increment(1L),
+                        "xp" to newXp,
+                        "level" to newLevel.toLong(),
+                        "updatedat" to System.currentTimeMillis()
+                    )
+                )
+                null
+            }.addOnSuccessListener {
+                loading = false
+                Toast.makeText(
+                    context,
+                    "+${ZsScore.entryXp(k, dmg, isWin)} XP, +${ZsScore.entryCoins(k, isWin)} coins",
+                    Toast.LENGTH_LONG
+                ).show()
+                (context as? android.app.Activity)?.finish()
+            }.addOnFailureListener { e ->
+                loading = false
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
         }.addOnFailureListener { e ->
             loading = false
             Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()

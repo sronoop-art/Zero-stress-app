@@ -158,14 +158,14 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
      * version silently dropped counters under races). The leaderboard
      * (Daily/Weekly/Monthly tabs) and the cron resets read dailyScore,
      * weeklyScore, monthlyScore and their Kills/Wins/Matches companions from
-     * the player doc. Score formula mirrors SubmitMatchActivity:
-     * kills*10 + damage/100 (+50 per win).
+     * the player doc. Lifetime score/rank/coins use the shared ZsScore rules
+     * (kills*10 + damage/100 + 200 per win) so both entry paths agree.
      */
     fun mergeIntoPlayerDoc(
         playerId: String, k: Int, d: Int, a: Int, dmg: Long, h: Double, isWin: Boolean, ts: Long
     ) {
-        val entryScore = (k * 10 + (dmg / 100).toInt() + if (isWin) 50 else 0).toLong()
-        val xpGained = (k * 5 + (dmg / 50).toInt() + if (isWin) 100 else 20).toLong()
+        val entryScore = ZsScore.entryScore(k, dmg, isWin)
+        val xpGained = ZsScore.entryXp(k, dmg, isWin)
         val minutes = (h * 60).toLong()
         val playerRef = db.collection("players").document(playerId)
         db.runTransaction { tx ->
@@ -178,6 +178,9 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
                 newXp -= newLevel * 500
                 newLevel++
             }
+            // Lifetime score and rank move together with the entry.
+            val newScore = (snap.getLong("score") ?: 0) + entryScore
+            val newCoins = (snap.getLong("coins") ?: 0) + ZsScore.dailyCoins(k, isWin)
             tx.update(
                 playerRef,
                 mapOf<String, Any>(
@@ -200,6 +203,9 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
                     "wins" to FieldValue.increment(if (isWin) 1L else 0L),
                     "matches" to FieldValue.increment(1L),
                     "minutesPlayed" to FieldValue.increment(minutes),
+                    "score" to FieldValue.increment(entryScore),
+                    "rank" to ZsScore.rankFor(newScore),
+                    "coins" to FieldValue.increment(newCoins),
                     "xp" to newXp,
                     "level" to newLevel.toLong(),
                     "updatedat" to ts
@@ -207,6 +213,32 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
             )
             null
         }
+    }
+
+    /**
+     * Mirrors an admin-logged entry into match_logs so every chart and the
+     * performance screens treat admin entries exactly like player-submitted
+     * matches (same field shape: playerId, date, kills, damage, win, score).
+     */
+    fun mirrorToMatchLogs(
+        playerId: String, playerName: String, k: Int, d: Int, a: Int,
+        dmg: Long, isWin: Boolean, mt: String?, ts: Long
+    ) {
+        db.collection("match_logs").add(
+            mapOf(
+                "playerId" to playerId,
+                "playerName" to playerName,
+                "kills" to k,
+                "deaths" to d,
+                "assists" to a,
+                "damage" to dmg,
+                "win" to isWin,
+                "matchType" to (mt ?: "Casual"),
+                "loggedBy" to "admin",
+                "date" to ts,
+                "score" to ZsScore.entryScore(k, dmg, isWin)
+            )
+        )
     }
 
     fun submit() {
@@ -243,8 +275,10 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
         db.collection("daily_stats").add(entry)
             .addOnSuccessListener {
                 // Roll the entry into the player doc so the leaderboard,
-                // dashboard and profile actually reflect it.
+                // dashboard and profile actually reflect it, and mirror it
+                // into match_logs so charts/performance screens see it too.
                 mergeIntoPlayerDoc(targetPlayerId, k, d, a, dmg, h, isWin, entry["timestamp"] as Long)
+                mirrorToMatchLogs(targetPlayerId, targetPlayerName, k, d, a, dmg, isWin, matchType, entry["timestamp"] as Long)
                 loading = false
                 Toast.makeText(context, "Stats logged for $targetPlayerName", Toast.LENGTH_SHORT).show()
                 kills = ""; deaths = ""; assists = ""; damage = ""; hours = ""
