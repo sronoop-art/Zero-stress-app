@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Enforces HTTPS for every connection the app makes (Cloudinary, OTA asset
+  packs, intro video, audio streams, and anything a Remote Config URL may
+  point at). Cleartext HTTP is refused by the platform itself, so a
+  misconfigured URL fails loudly instead of leaking traffic.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>

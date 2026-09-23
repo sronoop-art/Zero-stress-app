@@ -185,6 +185,11 @@ private fun FriendsScreen() {
                     Toast.makeText(context, "Friend request sent to $targetName!", Toast.LENGTH_SHORT).show()
                     db.collection("notifications").add(
                         mapOf(
+                            // "uid" makes this a targeted notification for the
+                            // recipient only; without it every player would see
+                            // the request and the Cloud Function would push ALL
+                            // devices.
+                            "uid" to targetId,
                             "title" to "Friend Request",
                             "message" to "$userName sent you a friend request!\nOpen Friends to accept.",
                             "type" to "general",

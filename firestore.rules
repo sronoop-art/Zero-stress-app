@@ -61,7 +61,9 @@ service cloud.firestore {
     match /players/{uid} {
       allow read: if isSignedIn();
       // New accounts always start as pending players - a client can never
-      // create itself as admin (privilege escalation fix).
+      // create itself as admin (privilege escalation fix). role and status
+      // are REQUIRED on create so a direct-API write cannot omit them and
+      // inherit console defaults.
       allow create: if isSelf(uid)
                     && request.resource.data.role == 'player'
                     && request.resource.data.status == 'pending';
@@ -124,7 +126,9 @@ service cloud.firestore {
 
     match /match_logs/{logId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn(); // players submit their own matches
+      // Player match submission is removed - stats are entered only by admins
+      // (DailyInputActivity), which mirrors entries into match_logs.
+      allow create: if isAdmin();
       allow update, delete: if isAdmin();
     }
 
@@ -143,7 +147,13 @@ service cloud.firestore {
       allow read: if isSignedIn()
                   && (resource.data.uid == null
                       || resource.data.uid == request.auth.uid);
-      allow create: if isSignedIn() && hasAppCheck();
+      // Attribution: if a doc carries a senderId it must be the caller's own
+      // uid, so a modified client cannot forge notifications that look like
+      // they came from someone else (mentions/friend requests set senderId
+      // to the sender; admin broadcasts carry no senderId and still pass).
+      allow create: if isSignedIn() && hasAppCheck()
+                    && (!('senderId' in request.resource.data)
+                        || request.resource.data.senderId == request.auth.uid);
       // Recipients can manage their own copies (delete/clear); broadcasts
       // (no uid) stay admin-only so one player can't wipe everyone's feed.
       allow update, delete: if isAdmin()

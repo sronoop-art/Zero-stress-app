@@ -3,8 +3,9 @@
 build/
 app/build/
 local.properties
+# Signing keystores must NEVER leave your machine - anyone holding the .jks
+# can sign fake updates that install as this app.
 *.jks
-!app/zerostress.jks
 
 # IDE
 .idea/

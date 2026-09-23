@@ -180,7 +180,6 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
             }
             // Lifetime score and rank move together with the entry.
             val newScore = (snap.getLong("score") ?: 0) + entryScore
-            val newCoins = (snap.getLong("coins") ?: 0) + ZsScore.dailyCoins(k, isWin)
             tx.update(
                 playerRef,
                 mapOf<String, Any>(
@@ -205,7 +204,10 @@ private fun DailyInputScreen(presetPlayerId: String?, presetPlayerName: String?)
                     "minutesPlayed" to FieldValue.increment(minutes),
                     "score" to FieldValue.increment(entryScore),
                     "rank" to ZsScore.rankFor(newScore),
-                    "coins" to FieldValue.increment(newCoins),
+                    // Server-side increment: adding to the balance read above
+                    // would clobber coins earned concurrently (double-spend of
+                    // the whole balance on every rapid admin entry).
+                    "coins" to FieldValue.increment(ZsScore.dailyCoins(k, isWin)),
                     "xp" to newXp,
                     "level" to newLevel.toLong(),
                     "updatedat" to ts

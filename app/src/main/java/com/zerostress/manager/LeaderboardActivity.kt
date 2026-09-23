@@ -174,9 +174,10 @@ private fun LeaderboardScreen() {
                 list.forEach { player ->
                     val playerId = player.id
                     val playerName = player.getString("name") ?: "?"
-                    val currentCoins = player.getLong("coins") ?: 0
+                    // Server-side increment: rewards granted concurrently (season
+                    // end, another admin) must not be overwritten by this write.
                     db.collection("players").document(playerId)
-                        .update("coins", currentCoins + rewardCoins)
+                        .update("coins", com.google.firebase.firestore.FieldValue.increment(rewardCoins))
                         .addOnSuccessListener {
                             android.util.Log.d("Leaderboard", "Awarded $rewardCoins coins to $playerName")
                         }

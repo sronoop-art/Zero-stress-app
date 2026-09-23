@@ -21,7 +21,7 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.ZeroStress"
-        android:usesCleartextTraffic="true">
+        android:networkSecurityConfig="@xml/network_security_config">
 
         <activity
             android:name=".SplashScreenActivity"
@@ -51,7 +51,6 @@
         <activity android:name=".FriendsActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".AchievementsActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".SeasonActivity" android:theme="@style/Theme.ZeroStress" />
-        <activity android:name=".SubmitMatchActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".AnnouncementsActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".DailyInputActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".PerformanceActivity" android:theme="@style/Theme.ZeroStress" />

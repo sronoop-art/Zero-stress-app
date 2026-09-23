@@ -213,21 +213,39 @@ private fun DailyLoginRewardsScreen() {
                     showClaimDialog = false
                     val rewardCoins = todayReward.coins
                     val newStreak = if (currentStreak + 1 > 7) 1 else currentStreak + 1
-                    db.collection("players").document(userId ?: "").get()
-                        .addOnSuccessListener { doc ->
-                            val currentCoins = doc.getLong("coins") ?: 0
-                            db.collection("players").document(userId ?: "").update(
-                                mapOf(
-                                    "loginStreak" to newStreak,
-                                    "lastLoginDate" to System.currentTimeMillis(),
-                                    "coins" to currentCoins + rewardCoins
-                                )
-                            ).addOnSuccessListener {
-                                Toast.makeText(context, "+$rewardCoins Coins!", Toast.LENGTH_SHORT).show()
-                                claimedToday = true
-                                loadRewards()
-                            }
+                    val playerRef = db.collection("players").document(userId ?: "")
+                    db.runTransaction { tx ->
+                        val snap = tx.get(playerRef)
+                        // Only the first claim flips lastLoginDate to today; a
+                        // double-tap (or a second device) finds it already set
+                        // and is paid nothing instead of double-claiming.
+                        val lastClaim = snap.getLong("lastLoginDate") ?: 0
+                        val startOfToday = java.util.Calendar.getInstance().apply {
+                            set(java.util.Calendar.HOUR_OF_DAY, 0)
+                            set(java.util.Calendar.MINUTE, 0)
+                            set(java.util.Calendar.SECOND, 0)
+                            set(java.util.Calendar.MILLISECOND, 0)
+                        }.timeInMillis
+                        if (lastClaim >= startOfToday) return@runTransaction false
+
+                        tx.update(
+                            playerRef,
+                            mapOf<String, Any>(
+                                "loginStreak" to newStreak,
+                                "lastLoginDate" to System.currentTimeMillis(),
+                                "coins" to com.google.firebase.firestore.FieldValue.increment(rewardCoins)
+                            )
+                        )
+                        true
+                    }.addOnSuccessListener { claimed ->
+                        if (claimed == true) {
+                            Toast.makeText(context, "+$rewardCoins Coins!", Toast.LENGTH_SHORT).show()
+                            claimedToday = true
+                            loadRewards()
                         }
+                    }.addOnFailureListener { e ->
+                        Toast.makeText(context, "Claim failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }) { Text("Claim", color = ZsAccent) }
             },
             dismissButton = {

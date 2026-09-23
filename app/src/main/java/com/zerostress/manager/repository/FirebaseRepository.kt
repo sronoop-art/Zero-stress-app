@@ -110,49 +110,55 @@ object FirebaseRepository {
     }
 
     // --- Match Logs ---
+    /**
+     * Writes a match log and rolls its stats into the player doc in ONE
+     * transaction using the shared ZsScore rules - matching the admin
+     * DailyInput path exactly (the old version recomputed lifetime score with
+     * a stale formula from lifetime totals and used a racy read-modify-write).
+     */
     fun addMatchLog(log: MatchLog, callback: OnResultCallback<Void?>) {
         val id = matchLogsRef.document().id
         log.id = id
+        val entryScore = com.zerostress.manager.ZsScore.entryScore(log.kills, log.damage, log.win)
         matchLogsRef.document(id).set(log)
             .addOnSuccessListener {
-                getPlayer(log.playerId ?: "", object : OnResultCallback<Player?> {
-                    override fun onSuccess(result: Player?) {
-                        val player = result
-                        if (player == null) { callback.onSuccess(null); return }
-                        val newKills = player.kills + log.kills
-                        val newDamage = (player.damage + log.damage).toInt()
-                        val newWins = player.wins + if (log.win) 1 else 0
-                        val newMatches = player.matches + 1
-                        val newScore = Player.calculateScore(newKills, newDamage.toLong(), newWins)
-                        val newRank = Player.getRankTier(newScore)
-                        val xpGained = log.kills * 5 + (log.damage / 50).toInt() + if (log.win) 100 else 20
-                        var newXp = player.xp + xpGained
-                        var newLevel = player.level
-                        while (newXp >= Player.xpForLevel(newLevel)) {
-                            newXp -= Player.xpForLevel(newLevel)
-                            newLevel++
-                        }
-                        val coinsGained = log.kills * 2 + if (log.win) 25 else 5
+                val playerRef = playersRef.document(log.playerId ?: "")
+                db.runTransaction { tx ->
+                    val snap = tx.get(playerRef)
+                    if (!snap.exists()) return@runTransaction null
 
-                        val updates = mapOf(
-                            "kills" to newKills,
-                            "damage" to newDamage,
-                            "wins" to newWins,
-                            "matches" to newMatches,
-                            "score" to newScore,
-                            "rank" to newRank,
-                            "xp" to newXp,
-                            "level" to newLevel,
-                            "coins" to player.coins + coinsGained
-                        )
-
-                        playersRef.document(log.playerId ?: "").update(updates)
-                            .addOnSuccessListener { callback.onSuccess(null) }
-                            .addOnFailureListener { e -> callback.onFailure(e) }
+                    val xpGained = com.zerostress.manager.ZsScore.entryXp(log.kills, log.damage, log.win)
+                    var newXp = (snap.getLong("xp") ?: 0) + xpGained
+                    var newLevel = (snap.getLong("level") ?: 1).toInt()
+                    while (newXp >= Player.xpForLevel(newLevel)) {
+                        newXp -= Player.xpForLevel(newLevel)
+                        newLevel++
                     }
+                    val newScore = (snap.getLong("score") ?: 0) + entryScore
 
-                    override fun onFailure(e: Exception?) { callback.onFailure(e) }
-                })
+                    tx.update(
+                        playerRef,
+                        mapOf<String, Any>(
+                            "kills" to com.google.firebase.firestore.FieldValue.increment(log.kills.toLong()),
+                            "deaths" to com.google.firebase.firestore.FieldValue.increment(log.deaths.toLong()),
+                            "assists" to com.google.firebase.firestore.FieldValue.increment(log.assists.toLong()),
+                            "damage" to com.google.firebase.firestore.FieldValue.increment(log.damage),
+                            "wins" to com.google.firebase.firestore.FieldValue.increment(if (log.win) 1L else 0L),
+                            "matches" to com.google.firebase.firestore.FieldValue.increment(1L),
+                            "score" to com.google.firebase.firestore.FieldValue.increment(entryScore),
+                            "rank" to com.zerostress.manager.ZsScore.rankFor(newScore),
+                            "coins" to com.google.firebase.firestore.FieldValue.increment(
+                                com.zerostress.manager.ZsScore.entryCoins(log.kills, log.win)
+                            ),
+                            "xp" to newXp,
+                            "level" to newLevel.toLong(),
+                            "updatedat" to System.currentTimeMillis()
+                        )
+                    )
+                    null
+                }
+                    .addOnSuccessListener { callback.onSuccess(null) }
+                    .addOnFailureListener { e -> callback.onFailure(e) }
             }
             .addOnFailureListener { e -> callback.onFailure(e) }
     }

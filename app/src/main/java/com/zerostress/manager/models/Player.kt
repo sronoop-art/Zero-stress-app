@@ -1,5 +1,7 @@
 package com.zerostress.manager.models
 
+import com.zerostress.manager.ZsScore
+
 class Player {
     var id: String? = null
     var name: String? = null
@@ -64,18 +66,14 @@ class Player {
     )
 
     companion object {
+        // Single source of truth lives in ZsScore (kills*10 + damage/100 + 200
+        // per win). The old inline copy used wins*50 and drifted from the
+        // DailyInput / repository entry paths - delegate so they can never
+        // disagree again.
         fun calculateScore(kills: Int, damage: Long, wins: Int): Long =
-            (kills * 10 + damage / 100 + wins * 50).toLong()
+            ZsScore.entryScore(kills, damage, wins > 0)
 
-        fun getRankTier(score: Long): String = when {
-            score >= 5000 -> "Mythic"
-            score >= 4000 -> "Diamond"
-            score >= 3000 -> "Platinum"
-            score >= 2000 -> "Gold"
-            score >= 1200 -> "Silver"
-            score >= 600 -> "Bronze"
-            else -> "Iron"
-        }
+        fun getRankTier(score: Long): String = ZsScore.rankFor(score)
 
         fun xpForLevel(level: Int): Int = level * 500
     }
