@@ -137,7 +137,9 @@ class ZSFCMService : FirebaseMessagingService() {
         super.onNewToken(token)
         Log.d(TAG, "FCM token refreshed")
         fcmScope.launch {
-            saveTokenToFirestoreRetry(context)
+            // `context` is a Kotlin keyword in this compiler and a Service only
+            // exposes applicationContext/baseContext, so use applicationContext.
+            saveTokenToFirestoreRetry(applicationContext)
             subscribeToTopics()
         }
     }

@@ -233,7 +233,7 @@ private fun DailyLoginRewardsScreen() {
                             mapOf<String, Any>(
                                 "loginStreak" to newStreak,
                                 "lastLoginDate" to System.currentTimeMillis(),
-                                "coins" to com.google.firebase.firestore.FieldValue.increment(rewardCoins)
+                                "coins" to com.google.firebase.firestore.FieldValue.increment(rewardCoins.toLong())
                             )
                         )
                         true
