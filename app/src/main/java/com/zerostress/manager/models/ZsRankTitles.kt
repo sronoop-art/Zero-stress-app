@@ -44,11 +44,22 @@ object ZsRankTitles {
     /** Finds a title by its Firestore display name (e.g. the equipped "title" field). */
     fun byName(name: String?): RankTitle? = ALL.firstOrNull { it.name == name }
 
-    /** Drawable resource id for `ic_title_<id>`, or 0 when the PNG is not in the project. */
-    fun badgeRes(context: Context, title: RankTitle): Int =
-        context.resources.getIdentifier(
+    /**
+     * Drawable resource id for the title badge shown in My Titles.
+     *
+     * Prefers a dedicated `ic_title_<id>.png` when one has been added, and
+     * otherwise falls back to the rank's `frame_<id>.png` ring, which is always
+     * shipped. The badge rings have a transparent centre, so the rank initial
+     * shows through the hole and the tile reads as a proper rank medallion
+     * instead of dropping to the plain letter fallback.
+     */
+    fun badgeRes(context: Context, title: RankTitle): Int {
+        val badge = context.resources.getIdentifier(
             "ic_title_${title.id}", "drawable", context.packageName
         )
+        return if (badge != 0) badge
+        else context.resources.getIdentifier("frame_${title.id}", "drawable", context.packageName)
+    }
 
     /** Local OTA file for `frame_<id>.png`, or null when not downloaded. */
     fun frameFile(context: Context, title: RankTitle): java.io.File? {

@@ -120,7 +120,24 @@ object FirebaseRepository {
         val id = matchLogsRef.document().id
         log.id = id
         val entryScore = com.zerostress.manager.ZsScore.entryScore(log.kills, log.damage, log.win)
-        matchLogsRef.document(id).set(log)
+        // Written as an explicit map rather than set(log): MatchLog.getScore()
+        // is a function, not a property, so Firestore never serialized it and
+        // every performance chart read a missing "score" as 0.
+        matchLogsRef.document(id).set(
+            mapOf(
+                "id" to id,
+                "playerId" to (log.playerId ?: ""),
+                "playerName" to (log.playerName ?: ""),
+                "kills" to log.kills,
+                "deaths" to log.deaths,
+                "assists" to log.assists,
+                "damage" to log.damage,
+                "win" to log.win,
+                "matchType" to (log.matchType ?: "Casual"),
+                "date" to log.date,
+                "score" to entryScore
+            )
+        )
             .addOnSuccessListener {
                 val playerRef = playersRef.document(log.playerId ?: "")
                 db.runTransaction { tx ->

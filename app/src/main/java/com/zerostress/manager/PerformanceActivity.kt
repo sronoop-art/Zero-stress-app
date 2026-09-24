@@ -72,12 +72,15 @@ private fun PerformanceScreen() {
                     var totalKills = 0L
                     var totalDamage = 0L
                     var totalWins = 0L
+                    var totalScore = 0L
                     for (doc in list) {
                         totalKills += doc.getLong("kills") ?: 0
                         totalDamage += doc.getLong("damage") ?: 0
                         if (doc.getBoolean("win") == true) totalWins++
+                        totalScore += ZsScore.logScore(doc)
                     }
-                    summary = "Last ${list.size} matches: $totalKills kills, $totalDamage damage, $totalWins wins"
+                    summary = "Last ${list.size} matches: $totalScore pts, $totalKills kills, " +
+                        "$totalDamage damage, $totalWins wins"
                 }
         } else null
         onDispose { listener?.remove() }
@@ -110,6 +113,7 @@ private fun PerformanceScreen() {
                         val win = doc.getBoolean("win") == true
                         val kills = doc.getLong("kills") ?: 0
                         val damage = doc.getLong("damage") ?: 0
+                        val score = ZsScore.logScore(doc)
                         val date = doc.getLong("date") ?: 0L
                         val type = doc.getString("matchType") ?: "Classic"
 
@@ -121,6 +125,13 @@ private fun PerformanceScreen() {
                                         color = ZsTextPrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 15.sp
+                                    )
+                                    Spacer(Modifier.height(2.dp))
+                                    Text(
+                                        "Score  $score pts",
+                                        color = ZsCyan,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp
                                     )
                                     Spacer(Modifier.height(3.dp))
                                     Text(

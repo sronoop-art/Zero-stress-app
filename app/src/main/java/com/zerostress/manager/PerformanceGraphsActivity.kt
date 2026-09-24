@@ -150,7 +150,7 @@ private fun PerformanceGraphsScreen() {
     val a = filtered.sumOf { it.getLong("assists") ?: 0 }
     val w = filtered.count { it.getBoolean("win") == true }
     val dmg = filtered.sumOf { it.getLong("damage") ?: 0 }
-    val sc = filtered.sumOf { it.getLong("score") ?: 0 }
+    val sc = filtered.sumOf { com.zerostress.manager.ZsScore.logScore(it) }
     val kd = if (d > 0) k.toDouble() / d else k.toDouble()
     val wr = if (m > 0) w * 100.0 / m else 0.0
     val avgDmg = if (m > 0) dmg.toDouble() / m else 0.0
@@ -164,7 +164,7 @@ private fun PerformanceGraphsScreen() {
 
     val chartLogs = filtered.sortedBy { it.getLong("date") ?: 0 }.takeLast(20)
     val killBars = chartLogs.map { (it.getLong("kills") ?: 0).toFloat() }
-    val scoreLine = chartLogs.map { (it.getLong("score") ?: 0).toFloat() }
+    val scoreLine = chartLogs.map { com.zerostress.manager.ZsScore.logScore(it).toFloat() }
     val history = filtered.sortedByDescending { it.getLong("date") ?: 0 }.take(8)
     val dateFmt = remember { SimpleDateFormat("MMM d", Locale.getDefault()) }
     val accText = accuracyField?.let { "$it%" } ?: "—"
@@ -345,7 +345,7 @@ private fun PerformanceGraphsScreen() {
                             val ld = doc.getLong("deaths") ?: 0
                             val la = doc.getLong("assists") ?: 0
                             val lDmg = doc.getLong("damage") ?: 0
-                            val lScore = doc.getLong("score") ?: 0
+                            val lScore = com.zerostress.manager.ZsScore.logScore(doc)
                             val whenMs = doc.getLong("date") ?: 0L
                             ZSCard {
                                 Row(verticalAlignment = Alignment.CenterVertically) {

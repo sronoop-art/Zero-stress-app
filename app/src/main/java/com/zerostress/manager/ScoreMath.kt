@@ -1,5 +1,7 @@
 package com.zerostress.manager
 
+import com.google.firebase.firestore.DocumentSnapshot
+
 /**
  * Single source of truth for scoring, XP, coins and the rank ladder.
  * All stat writers (DailyInputActivity = admin-logged entries, mirrored to
@@ -26,6 +28,27 @@ object ZsScore {
 
     /** Coins for an admin-logged daily entry (70% of the full rate). */
     fun dailyCoins(kills: Int, isWin: Boolean): Long = entryCoins(kills, isWin) * 7L / 10L
+
+    /**
+     * Score of a `match_logs` document.
+     *
+     * Admin Daily Input mirrors include an explicit "score", but logs written
+     * through the MatchLog model never do - `getScore()` there is a function,
+     * not a property, so Firestore does not serialize it. Reading that missing
+     * field directly returned null everywhere, which is why the performance
+     * bars, the score line and the per-match score always came out as 0.
+     *
+     * Prefer the stored value when it exists and otherwise recompute it from
+     * the log's own stats using the exact same rule the writers use, so old and
+     * new logs chart identically with no data migration.
+     */
+    fun logScore(doc: DocumentSnapshot): Long {
+        doc.getLong("score")?.let { return it }
+        val kills = doc.getLong("kills")?.toInt() ?: 0
+        val damage = doc.getLong("damage") ?: 0L
+        val isWin = doc.getBoolean("win") == true
+        return entryScore(kills, damage, isWin)
+    }
 
     /** Map a lifetime score to its rank name (same ladder as models/Player.kt). */
     fun rankFor(score: Long): String = when {

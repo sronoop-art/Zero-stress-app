@@ -193,8 +193,10 @@ private fun PlayerTitlesScreen() {
 }
 
 /**
- * Rank badge: shows ic_title_<id>.png if added to res/drawable/,
- * otherwise a colored medallion with the rank's first letter.
+ * Rank badge: draws the rank initial and overlays the title PNG
+ * (`ic_title_<id>.png`, or the rank's `frame_<id>.png` ring) on top of it.
+ * The ring PNGs have a transparent centre, so the initial stays visible
+ * through the hole and every tile shows a real title image.
  * Equipped titles get an accent ring.
  */
 @Composable
@@ -205,7 +207,7 @@ private fun TitleBadge(context: android.content.Context, title: RankTitle, unloc
 
     Box(
         modifier = Modifier
-            .size(64.dp)
+            .size(72.dp)
             .alpha(if (unlocked) 1f else 0.45f)
             .clip(CircleShape)
             .background(displayColor.copy(alpha = 0.15f))
@@ -216,15 +218,15 @@ private fun TitleBadge(context: android.content.Context, title: RankTitle, unloc
             ),
         contentAlignment = Alignment.Center
     ) {
+        Text(
+            title.name.take(1),
+            color = displayColor,
+            fontWeight = FontWeight.Black,
+            fontSize = 24.sp
+        )
         if (resId != 0) {
-            ZsPngIcon(resId, size = 40.dp)
-        } else {
-            Text(
-                title.name.take(1),
-                color = displayColor,
-                fontWeight = FontWeight.Black,
-                fontSize = 26.sp
-            )
+            // Drawn after the initial so the frame sits in front of it.
+            ZsPngIcon(resId, size = 72.dp)
         }
     }
 }

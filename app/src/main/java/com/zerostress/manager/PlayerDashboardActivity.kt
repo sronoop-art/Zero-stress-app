@@ -96,6 +96,7 @@ private fun PlayerDashboardScreen() {
     var totalWins by remember { mutableStateOf(0L) }
     var totalMatches by remember { mutableStateOf(0L) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
+    var equippedTitle by remember { mutableStateOf("") }
     var loaded by remember { mutableStateOf(false) }
 
     // Leaderboard position + recent form
@@ -103,6 +104,10 @@ private fun PlayerDashboardScreen() {
     var recentScores by remember { mutableStateOf<List<Float>>(emptyList()) }
     var dailyKills by remember { mutableStateOf(0L) }
     var dailyScore by remember { mutableStateOf(0L) }
+    // Same-day totals derived from match_logs, used when the player doc has no
+    // Daily Input aggregates yet.
+    var todayKillsFromLogs by remember { mutableStateOf(0L) }
+    var todayScoreFromLogs by remember { mutableStateOf(0L) }
 
     // Next match
     var nextMatchTitle by remember { mutableStateOf<String?>(null) }
@@ -123,13 +128,32 @@ private fun PlayerDashboardScreen() {
 
     fun loadRecentForm() {
         if (uid == null) return
+        val startOfToday = java.util.Calendar.getInstance().apply {
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }.timeInMillis
         db.collection("match_logs").whereEqualTo("playerId", uid)
             .orderBy("date").limitToLast(12)
             .get()
             .addOnSuccessListener { q ->
-                recentScores = q.documents.mapNotNull { it.getLong("score")?.toFloat() }
+                val docs = q.documents
+                // match_logs written through the MatchLog model never stored a
+                // "score" field, so the score is recomputed from each log's own
+                // stats when it is missing - otherwise this always came out
+                // empty and the PERFORMANCE card never charted anything.
+                recentScores = docs.map { ZsScore.logScore(it).toFloat() }
+                val todays = docs.filter { (it.getLong("date") ?: 0L) >= startOfToday }
+                todayScoreFromLogs = todays.sumOf { ZsScore.logScore(it) }
+                todayKillsFromLogs = todays.sumOf { it.getLong("kills") ?: 0L }
             }
-            .addOnFailureListener { recentScores = emptyList() }
+            .addOnFailureListener { e ->
+                // Almost always the match_logs(playerId, date) composite index
+                // has not been deployed - surface it instead of showing nothing.
+                Log.w(TAG, "match_logs query failed: ${e.message}")
+                recentScores = emptyList()
+            }
     }
 
     // Live player-doc subscription. Three jobs: (1) hero updates in realtime
@@ -168,6 +192,7 @@ private fun PlayerDashboardScreen() {
                 totalWins = doc.getLong("wins") ?: 0
                 totalMatches = doc.getLong("matches") ?: 0
                 avatarUrl = doc.getString("avatarUrl")
+                equippedTitle = doc.getString("title") ?: ""
                 dailyKills = doc.getLong("dailyKills") ?: 0
                 dailyScore = doc.getLong("dailyScore") ?: 0
                 loaded = true
@@ -283,9 +308,14 @@ private fun PlayerDashboardScreen() {
                             )
                         }
                         Spacer(Modifier.width(10.dp))
-                        // Rank-title frame around the hero avatar - follows the
-                        // highest title achieved by score (Bronze and up).
-                        val heroTitle = com.zerostress.manager.models.ZsRankTitles.titleForScore(score)
+                        // Rank-title frame around the hero avatar. Follows the
+                        // title the player equipped in My Titles first, and
+                        // only falls back to the score ladder when nothing is
+                        // equipped - otherwise selecting a title never changed
+                        // the dashboard avatar.
+                        val heroTitle = com.zerostress.manager.models.ZsRankTitles
+                            .byName(equippedTitle.takeIf { it.isNotEmpty() })
+                            ?: com.zerostress.manager.models.ZsRankTitles.titleForScore(score)
                         ZsAvatarFrame(
                             heroTitle?.let {
                                 com.zerostress.manager.models.ZsRankTitles.frameSource(context, it)
@@ -350,7 +380,11 @@ private fun PlayerDashboardScreen() {
                 Spacer(Modifier.height(10.dp))
 
                 // Performance graph (v4 home spec): last 12 match scores as bars,
-                // plus a TODAY strip fed by the Daily Input aggregates.
+                // plus a TODAY strip. Daily Input aggregates win when present,
+                // otherwise the same totals are derived from today's match_logs
+                // so the card shows a score even before an admin logs anything.
+                val todayScore = if (dailyScore > 0L) dailyScore else todayScoreFromLogs
+                val todayKills = if (dailyKills > 0L) dailyKills else todayKillsFromLogs
                 ZSCard {
                     Text(
                         "PERFORMANCE",
@@ -374,13 +408,13 @@ private fun PlayerDashboardScreen() {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                         ZSStat(
                             "Today",
-                            if (dailyScore > 0) "$dailyScore" else "—",
+                            if (todayScore > 0L) "$todayScore" else "—",
                             ZsCyan,
                             Modifier.weight(1f)
                         )
                         ZSStat(
                             "Today K",
-                            if (dailyKills > 0) "$dailyKills" else "—",
+                            if (todayKills > 0L) "$todayKills" else "—",
                             ZsSuccess,
                             Modifier.weight(1f)
                         )
@@ -394,9 +428,9 @@ private fun PlayerDashboardScreen() {
                             Modifier.weight(1f)
                         )
                     }
-                    if (dailyScore == 0L && dailyKills == 0L && totalMatches > 0) {
+                    if (todayScore == 0L && todayKills == 0L && totalMatches > 0) {
                         Text(
-                            "Today’s stats appear after an admin enters them via Daily Input.",
+                            "Today’s stats appear once a match today is logged.",
                             color = ZsTextMuted,
                             fontSize = 11.sp,
                             modifier = Modifier.padding(top = 4.dp)
