@@ -29,6 +29,15 @@ function getDb() {
 // ------------------------------------------------------------- FCM (HTTP v1)
 // firebase-admin mints the OAuth token from the service account and posts to
 // the v1 endpoint — same free FCM delivery, no legacy server key involved.
+// When the app is in the foreground our own listener picks the channel, but for
+// a backgrounded/killed app the SYSTEM draws the push. It only uses a
+// high-importance channel (status bar + heads-up) when the message names one.
+function channelFor(type) {
+  if (type === "chat" || type === "mention") return "zs_chat";
+  if (type === "schedule") return "zs_schedule";
+  return "zs_notifications";
+}
+
 async function sendToUid(uid, title, message, type, extraData) {
   if ((process.env.FCM_V1_ENABLED || "true").toLowerCase() === "false") {
     console.log("FCM_V1_ENABLED=false - push skipped (in-app notification only).");
@@ -47,7 +56,10 @@ async function sendToUid(uid, title, message, type, extraData) {
       token: token,
       notification: { title: title, body: message },
       data: data,
-      android: { priority: "high" },
+      android: {
+        priority: "high",
+        notification: { channelId: channelFor(type), priority: "high" },
+      },
     });
     console.log(`Push to ${uid}: sent`);
   } catch (err) {
@@ -66,15 +78,78 @@ async function sendToUid(uid, title, message, type, extraData) {
   }
 }
 
+// Broadcast push: fan out to every registered device token.
+// Topic sends are cheaper, but a device that never subscribed to
+// "all_players" would silently miss the announcement, so we address tokens
+// directly (same approach as the Cloud Function version).
+async function sendToAll(title, message, type) {
+  if ((process.env.FCM_V1_ENABLED || "true").toLowerCase() === "false") {
+    console.log("FCM_V1_ENABLED=false - broadcast push skipped.");
+    return;
+  }
+  const d = getDb();
+  const players = await d.collection("players").get();
+  const devices = [];
+  for (const doc of players.docs) {
+    const token = doc.data().fcmToken;
+    if (token && typeof token === "string" && token.length > 0) {
+      devices.push({ uid: doc.id, token: token });
+    }
+  }
+  if (devices.length === 0) {
+    console.log("Broadcast: no device tokens registered yet");
+    return;
+  }
+  // v1 requires all data payload values to be strings.
+  const data = { type: String(type || "general") };
+  let sent = 0;
+  for (let i = 0; i < devices.length; i += 500) {
+    const batch = devices.slice(i, i + 500);
+    try {
+      const res = await admin.messaging().sendEachForMulticast({
+        tokens: batch.map((x) => x.token),
+        notification: { title: title, body: message },
+        data: data,
+        android: {
+          priority: "high",
+          notification: { channelId: channelFor(type), priority: "high" },
+        },
+      });
+      sent += res.successCount;
+      const dead = [];
+      res.responses.forEach((r, idx) => {
+        if (r.success) return;
+        const code = r.error && r.error.code ? String(r.error.code) : "";
+        if (
+          code === "messaging/registration-token-not-registered" ||
+          code === "messaging/invalid-registration-token"
+        ) {
+          dead.push(batch[idx].uid);
+        }
+      });
+      for (const uid of dead) {
+        await d.collection("players").doc(uid)
+          .update({ fcmToken: admin.firestore.FieldValue.delete() })
+          .catch(() => {});
+      }
+    } catch (err) {
+      console.log(`Broadcast batch failed: ${err.message || err}`);
+    }
+  }
+  console.log(`Broadcast push: ${sent} device(s) notified`);
+}
+
 // --------------------------------------------- push queue (relay for app)
 // The app writes chat/mention/admin notifications into the "notifications"
-// collection. Docs with a "uid" field are targeted; the relay sends each
-// unsent one as a status-bar push and flags it pushSent so it never repeats.
+// collection. Docs with a "uid" value are targeted pushes; docs with
+// "uid: null" (admin broadcast) go to every device. Each doc is flagged
+// pushSent so it is never sent twice.
 async function processPushQueue() {
   const d = getDb();
   const cutoff = Date.now() - 3 * DAY_MS; // ignore stale docs (e.g. first run)
-  // orderBy("uid") excludes docs without the field; explicit null values
-  // (broadcasts) are skipped and marked so they are never re-fetched.
+  // orderBy("uid") excludes docs that lack the field entirely - every app
+  // writer sets it (a uid for targeted pushes, an explicit null for admin
+  // broadcasts), so both kinds are relayed here.
   const snap = await d.collection("notifications")
     .orderBy("uid")
     .orderBy("timestamp", "desc")
@@ -85,7 +160,14 @@ async function processPushQueue() {
     const data = doc.data();
     if (data.pushSent) continue;
     if (!data.uid) {
-      doc.ref.update({ pushSent: true }).catch(() => {}); // broadcast: in-app only
+      // Admin broadcast (uid: null). The Cloud Function path pushes these on
+      // Blaze; on the free Spark plan this relay is the only sender, so it must
+      // push here too - otherwise "SEND TO ALL PLAYERS" reached nobody's status
+      // bar. push:false stays deliberately in-app only.
+      if (data.push !== false) {
+        await sendToAll(data.title || "ZERO STRESS", data.message || "", data.type || "general");
+      }
+      doc.ref.update({ pushSent: true }).catch(() => {});
       continue;
     }
     if ((data.timestamp || 0) < cutoff) {

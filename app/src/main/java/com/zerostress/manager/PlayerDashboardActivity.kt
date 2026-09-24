@@ -2,6 +2,7 @@ package com.zerostress.manager
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -62,6 +63,8 @@ import com.zerostress.manager.ui.theme.ZsSuccess
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
+
+private const val TAG = "PlayerDashboard"
 
 class PlayerDashboardActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -144,13 +147,13 @@ private fun PlayerDashboardScreen() {
             if (doc != null && doc.exists()) {
                 // Admins live in the manager console. If one ends up here
                 // (notification deep-link, back press, stale stack), bounce
-                // them home instead of showing the player dashboard.
+                // them to the admin dashboard instead of leaving them on a
+                // player-only screen with missing data.
                 if (doc.getString("role") == "admin") {
-                    context.startActivity(
-                        Intent(context, AdminDashboardActivity::class.java).apply {
-                            addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                        }
-                    )
+                    val intent = Intent(context, AdminDashboardActivity::class.java).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                    }
+                    context.startActivity(intent)
                     (context as? android.app.Activity)?.finish()
                     return@addSnapshotListener
                 }
@@ -176,12 +179,19 @@ private fun PlayerDashboardScreen() {
     }
 
     // Live subscription to the soonest upcoming match.
+    // Requires the composite index on match_schedules(status, matchTime) to be
+    // deployed; if it is missing, the snapshot listener will just stay empty and
+    // the countdown card will not show.
     DisposableEffect(Unit) {
         val listener = db.collection("match_schedules")
             .whereEqualTo("status", "Upcoming")
             .orderBy("matchTime")
             .limit(1)
-            .addSnapshotListener { snap, _ ->
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    Log.w(TAG, "upcoming-match listener error: ${err.message}")
+                    return@addSnapshotListener
+                }
                 val doc = snap?.documents?.firstOrNull()
                 nextMatchTitle = doc?.getString("title")
                 nextMatchTime = doc?.getLong("matchTime") ?: 0L
@@ -200,7 +210,7 @@ private fun PlayerDashboardScreen() {
     LaunchedEffect(Unit) {
         loadPosition()
         loadRecentForm()
-        ZSFCMService.saveTokenToFirestoreWithRetry(context)
+        ZSFCMService.saveTokenToFirestore(context)
         FCMConfig.checkFCMConfiguration(context as android.app.Activity)
     }
 
@@ -362,11 +372,35 @@ private fun PlayerDashboardScreen() {
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        ZSStat("Today", "$dailyScore", ZsCyan, Modifier.weight(1f))
-                        ZSStat("Today K", "$dailyKills", ZsSuccess, Modifier.weight(1f))
-                        ZSStat("K/D", if (totalDeaths > 0)
-                            String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
-                        else "$totalKills", ZsTextPrimary, Modifier.weight(1f))
+                        ZSStat(
+                            "Today",
+                            if (dailyScore > 0) "$dailyScore" else "—",
+                            ZsCyan,
+                            Modifier.weight(1f)
+                        )
+                        ZSStat(
+                            "Today K",
+                            if (dailyKills > 0) "$dailyKills" else "—",
+                            ZsSuccess,
+                            Modifier.weight(1f)
+                        )
+                        ZSStat(
+                            "K/D",
+                            if (totalDeaths > 0)
+                                String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
+                            else if (totalKills > 0) "$totalKills"
+                            else "—",
+                            ZsTextPrimary,
+                            Modifier.weight(1f)
+                        )
+                    }
+                    if (dailyScore == 0L && dailyKills == 0L && totalMatches > 0) {
+                        Text(
+                            "Today’s stats appear after an admin enters them via Daily Input.",
+                            color = ZsTextMuted,
+                            fontSize = 11.sp,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
                     }
                 }
                 Spacer(Modifier.height(10.dp))

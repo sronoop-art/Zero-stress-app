@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.messaging.FirebaseMessaging
+import com.zerostress.manager.fcm.ZSFCMService
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSField
@@ -40,6 +41,7 @@ import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCyan
 import com.zerostress.manager.ui.theme.ZsTextSecondary
+import kotlinx.coroutines.launch
 
 class SendNotificationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,6 +53,10 @@ class SendNotificationActivity : ComponentActivity() {
         }
     }
 }
+
+private val fcmScope = kotlinx.coroutines.CoroutineScope(
+    kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO
+)
 
 @Composable
 private fun SendNotificationScreen() {
@@ -90,18 +96,27 @@ private fun SendNotificationScreen() {
             "type" to "admin",
             "timestamp" to System.currentTimeMillis(),
             "sentBy" to "Admin",
-            // "uid" present = targeted push to one player; absent = broadcast
+            // "uid" present = targeted push to one player; null = broadcast to
+            // every device. The field must always be written (even as null) or
+            // the push relay cannot see the document at all.
             "uid" to target
         )
         db.collection("notifications").add(doc).addOnSuccessListener { docRef ->
             docRef.update("id", docRef.id)
             loading = false
+
+            // The status-bar push is delivered server-side (Firestore trigger on
+            // the Blaze plan, otherwise the GitHub Actions relay). Queueing is all
+            // this screen can do, so keep the sender's own device registered but
+            // do not claim the recipients have already been reached.
+            fcmScope.launch { ZSFCMService.saveTokenToFirestoreRetry(context) }
+
             Toast.makeText(
                 context,
                 if (target != null && target.isNotEmpty())
-                    "Notification sent to the selected player!"
+                    "Queued for the selected player - push arrives shortly"
                 else
-                    "Notification sent to ALL players!",
+                    "Queued for all players - push arrives shortly",
                 Toast.LENGTH_LONG
             ).show()
             title = ""

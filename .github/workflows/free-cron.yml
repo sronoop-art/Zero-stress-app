@@ -7,6 +7,17 @@ name: Free-plan cron (push relay + resets + reminders)
 # Schedule: every 30 minutes (UTC; GitHub may drift a few minutes).
 # Match reminders use a 15-minute pre-start window, so the worst-case
 # delay is ~45 minutes before kickoff.
+#
+# THIS INTERVAL IS THE PUSH LATENCY. This relay is the only sender on the free
+# Spark plan (the Cloud Functions deploy is skipped without Blaze), so chat,
+# mention and admin-broadcast notifications reach devices within one tick -
+# i.e. up to ~30 minutes late. Two ways to make pushes instant:
+#   1. Upgrade the project to Blaze so functions/index.js runs on every write
+#      (Firestore trigger, seconds), or
+#   2. shorten the cron below (GitHub's minimum is "*/5 * * * *"; scheduled
+#      minutes are metered on private repos and GitHub may delay runs under load).
+# Admin broadcasts (uid: null) are pushed by this relay too - see sendToAll in
+# functions/cron.js - so this interval also gates announcements.
 
 on:
   schedule:

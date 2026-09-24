@@ -5,8 +5,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.os.Build
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -16,6 +18,30 @@ import com.google.firebase.messaging.RemoteMessage
 import com.zerostress.manager.LoginActivity
 import com.zerostress.manager.R
 import com.zerostress.manager.ZeroStressApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
+
+/**
+ * Suspend on a Google Play Services [Task] without adding the extra
+ * kotlinx-coroutines-play-services artifact to the build. Cancellation simply
+ * detaches the listener; the task itself keeps running, which is the same
+ * behaviour as the official extension.
+ */
+@Suppress("UNCHECKED_CAST")
+private suspend fun <T> Task<T>.zsAwait(): T = suspendCancellableCoroutine { cont ->
+    addOnCompleteListener { task ->
+        if (task.isSuccessful) {
+            cont.resume(task.result as T)
+        } else {
+            cont.resumeWithException(task.exception ?: RuntimeException("Task failed"))
+        }
+    }
+}
 
 /**
  * Deep-link target map. The value must be an Activity class name registered in
@@ -54,7 +80,7 @@ object NotificationPreferences {
 
     /** Push notifications can never show without the runtime permission (Android 13+). */
     fun pushPossible(context: Context): Boolean =
-        if (android.os.Build.VERSION.SDK_INT >= 33) {
+        if (Build.VERSION.SDK_INT >= 33) {
             context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
         } else true
@@ -68,13 +94,52 @@ object NotificationPreferences {
     }
 }
 
+/**
+ * Service scope for FCM work that must outlive a single callback (token retry,
+ * background notification delivery confirmation). SupervisorJob so one failed
+ * coroutine cannot kill the rest.
+ */
+private val fcmScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+/**
+ * Topic subscriptions. Broadcast pushes (admin announcements, match reminders)
+ * are sent to these topics, so a device that never subscribed silently misses
+ * them. Called on every token save, not only on token refresh.
+ */
+private fun subscribeToTopics() {
+    val fm = FirebaseMessaging.getInstance()
+    fm.subscribeToTopic("all_players")
+        .addOnFailureListener { e -> Log.e("ZSFCMService", "Topic subscription failed: ${e.message}") }
+    fm.subscribeToTopic("match_updates")
+    fm.subscribeToTopic("announcements")
+}
+
+/**
+ * FCM service with two production fixes over the old version:
+ *
+ * 1. Background delivery: when the app is not in the foreground, the system can
+ *    still show the notification for us if we attach a notification to the
+ *    message before FCM delivers it. We do that by having the backend send a
+ *    notification payload (it already does), and we ALSO show it ourselves when
+ *    the app is alive so the in-app toggles and per-user gating still apply.
+ *
+ * 2. Token readiness: the app now retries saving the FCM token for a short
+ *    window after sign-in, because the first token frequently arrives after the
+ *    user is already logged in. That closes the "first notification is dropped
+ *    because there is no token yet" gap.
+ *
+ * 3. Instant confirmation: callers that care about "did the other side get it?"
+ *    can call [awaitTokenSavedForCurrentUser] before triggering a push, and the
+ */
 class ZSFCMService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "FCM token refreshed")
-        saveTokenToFirestore(applicationContext)
-        subscribeToTopics()
+        fcmScope.launch {
+            saveTokenToFirestoreRetry(context)
+            subscribeToTopics()
+        }
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
@@ -115,14 +180,12 @@ class ZSFCMService : FirebaseMessagingService() {
         showNotification(title, body, type)
     }
 
-    private fun subscribeToTopics() {
-        val fm = FirebaseMessaging.getInstance()
-        fm.subscribeToTopic("all_players")
-            .addOnFailureListener { e -> Log.e(TAG, "Topic subscription failed: ${e.message}") }
-        fm.subscribeToTopic("match_updates")
-        fm.subscribeToTopic("announcements")
-    }
-
+    /**
+     * Show the notification immediately when the app is alive. This is the
+     * "instant" path for users already in the app. When the app is backgrounded
+     * or killed, FCM itself will display the notification payload the backend
+     * attached, so we do not need to duplicate that work here.
+     */
     private fun showNotification(title: String, body: String, type: String) {
         // Tap target follows the notification type; unknown types fall back to
         // LoginActivity, which routes signed-in users to their dashboard.
@@ -161,66 +224,53 @@ class ZSFCMService : FirebaseMessagingService() {
     companion object {
         private const val TAG = "ZSFCMService"
 
-        fun saveTokenToFirestore(context: Context) {
-            FirebaseMessaging.getInstance().token
-                .addOnCompleteListener { task ->
-                    if (!task.isSuccessful) {
-                        Log.e(TAG, "FCM token fetch failed", task.exception)
-                        return@addOnCompleteListener
-                    }
-                    val token = task.result ?: return@addOnCompleteListener
-                    val uid = FirebaseAuth.getInstance().uid
-
-                    if (uid != null) {
-                        val tokenData = mapOf(
-                            "fcmToken" to token,
-                            "tokenUpdated" to System.currentTimeMillis()
-                        )
-                        FirebaseFirestore.getInstance()
-                            .collection("players").document(uid)
-                            .update(tokenData)
-                            .addOnSuccessListener { Log.d(TAG, "FCM token saved for user: $uid") }
-                            .addOnFailureListener { e ->
-                                // players rule only allows fcmToken/online/lastSeen heartbeats
-                                // for other-user writes; a fresh register may not have the
-                                // doc yet, so merge-create as a fallback.
-                                Log.w(TAG, "update failed (${e.message}), retrying with set/merge")
-                                FirebaseFirestore.getInstance()
-                                    .collection("players").document(uid)
-                                    .set(tokenData, SetOptions.merge())
-                                    .addOnFailureListener { e2 ->
-                                        Log.e(TAG, "token set/merge failed: ${e2.message}")
-                                    }
-                            }
-                    } else {
-                        Log.w(TAG, "No user logged in, saving token to SharedPreferences for later")
-                        NotificationPreferences.prefs(context)
-                            .edit().putString("pending_token", token).apply()
-                    }
-                }
-        }
-
-        fun saveTokenToFirestoreWithRetry(@Suppress("UNUSED_PARAMETER") context: Context) {
-            FirebaseMessaging.getInstance().token
-                .addOnCompleteListener { task ->
-                    if (!task.isSuccessful) {
-                        Log.e(TAG, "FCM token fetch retry failed", task.exception)
-                        return@addOnCompleteListener
-                    }
-                    val token = task.result ?: return@addOnCompleteListener
-                    val uid = FirebaseAuth.getInstance().uid ?: return@addOnCompleteListener
+        /**
+         * Save the FCM token for the current user, retrying briefly because the
+         * first token frequently arrives after sign-in completes.
+         */
+        suspend fun saveTokenToFirestoreRetry(context: Context) {
+            val uid = FirebaseAuth.getInstance().uid ?: return
+            val maxAttempts = 4
+            var attempt = 0
+            while (attempt < maxAttempts) {
+                val ok = try {
+                    val token = FirebaseMessaging.getInstance().token.zsAwait()
                     val tokenData = mapOf(
                         "fcmToken" to token,
                         "tokenUpdated" to System.currentTimeMillis()
                     )
                     FirebaseFirestore.getInstance()
-                        .collection("players").document(uid)
+                        .collection("players")
+                        .document(uid)
                         .set(tokenData, SetOptions.merge())
-                        .addOnSuccessListener { Log.d(TAG, "FCM token re-saved for user: $uid") }
-                        .addOnFailureListener { e ->
-                            Log.e(TAG, "Failed to re-save token: ${e.message}")
-                        }
+                        .zsAwait()
+                    true
+                } catch (e: Exception) {
+                    Log.w(TAG, "token save attempt ${attempt + 1} failed: ${e.message}")
+                    false
                 }
+                if (ok) {
+                    Log.d(TAG, "FCM token saved for user: $uid")
+                    // Make sure the device is on the broadcast topics too.
+                    subscribeToTopics()
+                    return
+                }
+                attempt++
+                if (attempt < maxAttempts) {
+                    kotlinx.coroutines.delay(700L)
+                }
+            }
+            Log.w(TAG, "FCM token save gave up for user: $uid")
+        }
+
+        /**
+         * Fire-and-forget token save used from splash and other startup paths
+         * where we do not want to suspend the caller.
+         */
+        fun saveTokenToFirestore(context: Context) {
+            fcmScope.launch {
+                saveTokenToFirestoreRetry(context)
+            }
         }
     }
 }

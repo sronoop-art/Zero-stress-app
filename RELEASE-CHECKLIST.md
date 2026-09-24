@@ -66,11 +66,34 @@ Until this is done, release builds will still run, but App Check tokens won't be
 
 ## 4. Push notifications — already on FCM HTTP v1
 
-The app sends pushes through the modern FCM HTTP v1 API via the Cloud Functions trigger and the GitHub Actions cron relay. No legacy server key is involved. For production:
+The app sends pushes through the modern FCM HTTP v1 API. No legacy server key is involved. For production:
 
 - Make sure the Firebase project's **FCM** is enabled for the Android app
 - Make sure the service account used by `functions/` / the cron job has `Firebase Authentication` + `Cloud Messaging` scope
 - Confirm the Android app requests `POST_NOTIFICATIONS` at runtime (Android 13+). The app prompts from Settings; the manifest declares the permission
+
+### 4a. How fast a push actually arrives (read this if notifications feel "late")
+
+There are two delivery paths, and the one you are on decides the latency:
+
+| Path | Who runs it | Latency |
+|------|-------------|---------|
+| Cloud Functions trigger `sendPushNotification` (Firestore `onDocumentCreated`) | Firebase, once the **Blaze** plan is active and the function is deployed | seconds |
+| `.github/workflows/free-cron.yml` relay (`node functions/cron.js`) | GitHub Actions on the **Spark (free)** plan | up to the cron interval — currently **30 minutes** |
+
+This project is on Spark, so the Cloud Functions deploy step in `firebase-deploy.yml` logs a warning and is skipped, and **30 minutes is the floor for push latency** until you either upgrade to Blaze (then pushes are near-instant) or shorten the cron schedule.
+
+If you want it faster without Blaze, change the `cron:` schedule in `.github/workflows/free-cron.yml` (GitHub's minimum is `*/5 * * * *`). Note that scheduled-workflow minutes are metered on private repos, and GitHub may delay scheduled runs under load; the relay is also the only sender for admin broadcasts, so a shorter interval shortens that wait too.
+
+### 4b. Background presentation (system-drawn notifications)
+
+When the app is backgrounded or killed, Android (not the app) draws the push, and it only lands on a high-importance channel — status bar + heads-up — if the message names one. That is now wired end to end:
+
+- `AndroidManifest.xml` declares `com.google.firebase.messaging.default_notification_channel_id` = `zs_notifications` and `default_notification_icon` = `@drawable/ic_notification`, so a payload without a channel still uses a high-importance channel instead of FCM's silent `Miscellaneous` fallback
+- `functions/index.js` (`buildMessage`) and `functions/cron.js` (`channelFor`) both set `android.notification.channelId`, so chat / schedule / general pushes reach `zs_chat` / `zs_schedule` / `zs_notifications`
+- Admin **broadcasts** (`uid: null` in the `notifications` doc) are pushed by the cron relay with `sendEachForMulticast` over every registered `fcmToken`, instead of being marked `pushSent` and dropped
+
+Tokens are (re)saved with a 4-attempt retry on sign-in, splash, dashboard open, chat send, and admin send, and `onNewToken` refreshes them — a device with no stored `fcmToken` receives nothing, so these paths are what keep older installs deliverable.
 
 ---
 
@@ -176,6 +199,9 @@ Crashlytics is wired in release (`firebase-crashlytics` dependency + plugin). Af
 - Stale `submit_match` string resource removed from `strings.xml`
 - No hardcoded secrets in source; Agora keys and the keystore stay in local properties / gitignore
 - No `http://` URLs anywhere in app code — all remote endpoints are HTTPS or Remote-Config-driven
+- FCM token is saved with retry (sign-in, splash, dashboard, chat send, admin send, token refresh) and topics are (re)subscribed on every save
+- Background pushes land on a high-importance channel via the manifest FCM meta-data + `channelId` in both senders
+- Admin broadcasts reach every device through the cron relay (previously in-app only on Spark)
 
 ---
 

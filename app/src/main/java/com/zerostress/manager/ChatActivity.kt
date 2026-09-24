@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.zerostress.manager.fcm.ZSFCMService
 import com.zerostress.manager.ui.ZSBackground
 import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.ZSTopBar
@@ -68,6 +69,12 @@ import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
+private val fcmScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 class ChatActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -207,10 +214,19 @@ private fun ChatScreen() {
                 // ---------- Targeted push notifications (no more spam) ----------
                 // Only the players actually involved get pushed: mentioned players
                 // and anyone whose recent message the sender is replying to.
-                // The Cloud Function (functions/index.js) only sends pushes for
-                // notifications docs that carry a "uid" field.
-                val notifs = db.collection("notifications")
+                // Docs with a "uid" push to that one device; admin docs written
+                // with uid:null broadcast to everyone - the senders
+                // (functions/index.js and the free cron relay) honor both.
                 val now = System.currentTimeMillis()
+
+                // Ensure a token exists for the current user before we expect other
+                // people's pushes to be instant. Without this, the first chat of a
+                // session is frequently lost because the recipient has no token yet.
+                fcmScope.launch {
+                    ZSFCMService.saveTokenToFirestoreRetry(context)
+                }
+
+                val notifs = db.collection("notifications")
 
                 // 1) Mentioned players
                 val mentionedUids = players.filter { it.getString("name") in mentions }.map { it.id }

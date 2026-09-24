@@ -42,6 +42,12 @@ import com.zerostress.manager.ui.ZSButton
 import com.zerostress.manager.ui.ZSCard
 import com.zerostress.manager.ui.ZSField
 import com.zerostress.manager.ui.theme.ZeroStressTheme
+import com.zerostress.manager.fcm.ZSFCMService
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
@@ -198,8 +204,15 @@ private fun LoginScreen() {
                                     loading = false
                                     val uid = result.user?.uid
                                     if (uid != null) {
-                                        // Push can't reach a fresh device without its token saved.
-                                        com.zerostress.manager.fcm.ZSFCMService.saveTokenToFirestore(context)
+                                        // Push can't reach a fresh device without its token
+                                        // saved, and on a cold start the FCM token often
+                                        // arrives after sign-in completes - so save once now
+                                        // and retry shortly after.
+                                        ZSFCMService.saveTokenToFirestore(context)
+                                        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+                                            delay(400L)
+                                            ZSFCMService.saveTokenToFirestoreRetry(context)
+                                        }
                                         fs.collection("players").document(uid).get()
                                             .addOnSuccessListener { doc ->
                                                 val target = if (doc.exists() && doc.getString("role") == "admin")
