@@ -131,16 +131,27 @@ Rank-title unlock scores (`title_bronze_score` … `title_grandmaster_score`) al
 
 The latest rules change (`match_logs` create is admin-only; player-doc writes are locked to the owning uid; chat/notification sender forgery is closed) live in `firestore.rules`. They take effect only after deploy. Either:
 
-- push to `ZS3.1` (your GitHub Actions workflow deployes rules automatically), or
-- run `firebase deploy --only firestore:rules` from a machine with the Firebase CLI authenticated
+- push to `ZS3.1` — the **Deploy Firebase Backend** workflow deploys rules *and* composite indexes automatically, or
+- run `firebase deploy --only firestore:rules,firestore:indexes` from a machine with the Firebase CLI authenticated
 
-Also deploy the indexes if you changed `firestore.indexes.json`:
+**Neither rules nor composite indexes require the Blaze plan.** Per
+https://firebase.google.com/docs/firestore/pricing the only Firestore features
+that require billing are TTL deletes, PITR, backups, restore and clone — index
+creation and deployment are not chargeable. The project stays on the free Spark
+plan, so the workflow skips the Blaze-only Cloud Functions deploy (pushes are
+delivered by the free-cron workflow instead).
 
-```bash
-firebase deploy --only firestore:indexes
-```
+The workflow now also fires on `firestore.indexes.json` and `firebase.json`
+changes, so editing the indexes is enough to ship them — no manual step.
 
-The dashboard's upcoming-match countdown query (`match_schedules` where status=Upcoming orderBy matchTime) needs the `status + matchTime` index — it is already declared in `firestore.indexes.json`.
+Two indexes matter for the player experience:
+
+- `match_logs` (`playerId` + `date`) — the player dashboard PERFORMANCE chart
+  and both Performance screens query this. **Without it those queries fail**
+  and the charts stay empty.
+- `match_schedules` (`status` + `matchTime`) — the upcoming-match countdown card.
+
+Both are already declared in `firestore.indexes.json`.
 
 ---
 
@@ -210,7 +221,7 @@ Crashlytics is wired in release (`firebase-crashlytics` dependency + plugin). Af
 - Create / back up `app/zerostress.jks` if you want signed releases
 - Enroll Play Integrity in Firebase App Check and optionally enforce it
 - Configure Remote Config keys before launch (`min_version_code`, `update_url`, etc.)
-- Deploy Firestore rules + indexes
+- Deploy Firestore rules + indexes (free — automatic on push to `ZS3.1`)
 - Deploy Cloud Functions / confirm the cron secret
 - Optionally set up Cloudinary for avatars
 - Provide launcher icon fallbacks if you support pre-v26 devices or want a heavier icon set
