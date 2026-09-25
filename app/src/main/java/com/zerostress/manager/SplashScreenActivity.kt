@@ -238,8 +238,16 @@ private fun SplashScreen() {
             )
         }
         Text(
-            "PERFORMANCE \u00b7 LEADERBOARD MANAGER",
+            "NEXUS SYSTEM BOOT",
             modifier = Modifier.padding(top = 6.dp).alpha(titleAlpha.value),
+            color = ZsPrimary.copy(alpha = 0.85f),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 4.sp
+        )
+        Text(
+            "PERFORMANCE \u00b7 LEADERBOARD MANAGER",
+            modifier = Modifier.padding(top = 4.dp).alpha(titleAlpha.value),
             color = ZsTextSecondary,
             fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
@@ -256,9 +264,11 @@ private fun SplashScreen() {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                if (ready) "Ready!" else loadingMessages[messageIndex],
+                if (ready) "SYSTEM READY" else loadingMessages[messageIndex].uppercase(),
                 color = if (ready) ZsAccent else ZsTextMuted,
-                fontSize = 13.sp
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
             )
             Spacer(Modifier.height(12.dp))
             LinearProgressIndicator(

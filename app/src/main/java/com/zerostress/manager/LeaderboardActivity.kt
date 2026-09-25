@@ -56,6 +56,7 @@ import com.zerostress.manager.ui.ZSFilterChips
 import com.zerostress.manager.ui.ZSTopBar
 import com.zerostress.manager.ui.ZSTrend
 import com.zerostress.manager.ui.zsNavItems
+import com.zerostress.manager.ui.futuristic.ZsDrawHudCorners
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsBorder
 import com.zerostress.manager.ui.theme.ZsBronze
@@ -563,6 +564,8 @@ private fun PodiumCard(
                         )
                     )
                 }
+                // NEXUS HUD corner accents: lit for #1, quiet for #2/#3.
+                ZsDrawHudCorners(accent = medalColor, lit = isTop)
             }
     ) {
         Column(

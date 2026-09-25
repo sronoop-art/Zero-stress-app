@@ -79,6 +79,14 @@ private fun LoginScreen() {
     var loading by remember { mutableStateOf(false) }
     var resetLoading by remember { mutableStateOf(false) }
 
+    // Connectivity check for the SYSTEM STATUS strip on the login screen.
+    fun isOnline(): Boolean {
+        val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as? android.net.ConnectivityManager ?: return false
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }
+
     // Firebase Auth is email/password internally; a typed phone number is
     // mapped to <phone>@zerostress.local (same mapping as registration).
     fun accountFor(input: String): String {
@@ -147,6 +155,14 @@ private fun LoginScreen() {
                     fontStyle = FontStyle.Italic
                 )
             }
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = "NEXUS ACCESS",
+                color = ZsPrimary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 4.sp
+            )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "Sign in to your account",
@@ -190,7 +206,7 @@ private fun LoginScreen() {
                     Spacer(Modifier.height(14.dp))
 
                     ZSButton(
-                        text = if (loading) "Signing in..." else "Sign in",
+                        text = if (loading) "Signing in..." else "Access",
                         onClick = {
                             if (phone.isBlank() || password.isBlank()) {
                                 Toast.makeText(context, "Fill all fields", Toast.LENGTH_SHORT).show()
@@ -257,6 +273,19 @@ private fun LoginScreen() {
                     Text("Create account", color = ZsAccent, fontWeight = FontWeight.Bold)
                 }
             }
+            Spacer(Modifier.height(20.dp))
+            // SYSTEM STATUS strip - real states only: the network label reflects
+            // whether this device currently has connectivity.
+            com.zerostress.manager.ui.futuristic.ZsStatusLabel(
+                text = if (isOnline()) "NETWORK ONLINE" else "NETWORK OFFLINE",
+                color = if (isOnline()) com.zerostress.manager.ui.theme.ZsSuccess else com.zerostress.manager.ui.theme.ZsDanger,
+                dotColor = if (isOnline()) com.zerostress.manager.ui.theme.ZsSuccess else com.zerostress.manager.ui.theme.ZsDanger
+            )
+            Spacer(Modifier.height(4.dp))
+            com.zerostress.manager.ui.futuristic.ZsStatusLabel(
+                text = "AUTHENTICATION READY",
+                color = ZsTextMuted
+            )
         }
     }
 }

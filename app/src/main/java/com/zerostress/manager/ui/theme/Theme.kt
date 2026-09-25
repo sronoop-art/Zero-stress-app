@@ -12,40 +12,41 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.zerostress.manager.R
 
-// ---- Brand palette: NEON GLASS v4 (ui-redesign-preview.html) ----
-// Deep space navy + glassmorphism surfaces + neon cyan / violet lighting.
-val ZsBgStart = Color(0xFF0E1122)
-val ZsBgMid = Color(0xFF0B0D1A)
-val ZsBgEnd = Color(0xFF070810)
-val ZsCard = Color(0x0EFFFFFF)         // glass fill (white @ ~5.5%)
-val ZsCardAlt = Color(0x14FFFFFF)      // brighter glass (white @ ~8%)
+// ---- Brand palette: NEXUS UI (futuristic esports skin over Neon Glass) ----
+// Deep space background + holographic glass surfaces + cyber cyan / violet
+// lighting. Slot names are unchanged; every screen inherits the new values.
+val ZsBgStart = Color(0xFF050814)
+val ZsBgMid = Color(0xFF04060F)
+val ZsBgEnd = Color(0xFF03050B)
+val ZsCard = Color(0x10FFFFFF)         // glass fill (white @ ~6%)
+val ZsCardAlt = Color(0x16FFFFFF)      // brighter glass (white @ ~9%)
 
-val ZsPrimary = Color(0xFF22D3EE)      // neon cyan
+val ZsPrimary = Color(0xFF20E7FF)      // cyber cyan
 val ZsPrimaryDark = Color(0xFF0E7490)  // deep cyan (pressed / gradients)
-val ZsPurple = Color(0xFFA855F7)       // neon violet (secondary glow)
+val ZsPurple = Color(0xFF8B5CFF)       // electric violet (secondary glow)
 
-val ZsAccent = Color(0xFF22D3EE)       // hero accent (cyan)
+val ZsAccent = Color(0xFF20E7FF)       // hero accent (cyan)
 val ZsAccentDark = Color(0xFF0E7490)
 
-val ZsTextPrimary = Color(0xFFE8EAF0)
-val ZsTextSecondary = Color(0xFF9AA3B2)
-val ZsTextMuted = Color(0xFF6B7280)
+val ZsTextPrimary = Color(0xFFF3F7FF)
+val ZsTextSecondary = Color(0xFF9BA7C7)
+val ZsTextMuted = Color(0xFF59647F)
 val ZsBorder = Color(0xFF333A46)
 val ZsBorderLight = Color(0xFF4A5160)
 
-val ZsDanger = Color(0xFFFB7185)
-val ZsSuccess = Color(0xFF34D399)
-val ZsGreen = Color(0xFF30D158)
-val ZsCyan = Color(0xFF22D3EE)         // kept as the shared "cyan" slot (neon cyan)
-val ZsGold = Color(0xFFFFD60A)         // rank gold
+val ZsDanger = Color(0xFFFF416C)
+val ZsSuccess = Color(0xFF31F7A5)
+val ZsGreen = Color(0xFF31F7A5)
+val ZsCyan = Color(0xFF20E7FF)         // kept as the shared "cyan" slot
+val ZsGold = Color(0xFFFFC857)         // rank gold
 val ZsSilver = Color(0xFFC0C7D1)
 val ZsBronze = Color(0xFFCD7F32)
 val ZsWarning = Color(0xFFFFB020)
 val ZsInfo = Color(0xFF6EC1FF)
 val ZsGrey = Color(0xFF8B949E)
 
-val ZsChatSentStart = Color(0xFF22D3EE)
-val ZsChatSentEnd = Color(0xFFA855F7)
+val ZsChatSentStart = Color(0xFF20E7FF)
+val ZsChatSentEnd = Color(0xFF8B5CFF)
 val ZsChatReceived = Color(0x14FFFFFF)
 
 private val ZsColorScheme = darkColorScheme(

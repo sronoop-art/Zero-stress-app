@@ -49,9 +49,12 @@ import com.zerostress.manager.ui.launchTab
 import com.zerostress.manager.ui.zsNavItems
 import com.zerostress.manager.ui.ZsAvatarFrame
 import com.zerostress.manager.ui.ZSProgress
-import com.zerostress.manager.ui.ZSRing
 import com.zerostress.manager.ui.ZSSparkline
-import com.zerostress.manager.ui.ZSStat
+import com.zerostress.manager.ui.futuristic.ZsHudStat
+import com.zerostress.manager.ui.futuristic.ZsScanEffect
+import com.zerostress.manager.ui.futuristic.ZsScoreCore
+import com.zerostress.manager.ui.futuristic.ZsStatusLabel
+import com.zerostress.manager.ui.futuristic.rememberZsCountUp
 import com.zerostress.manager.ui.theme.ZeroStressTheme
 import com.zerostress.manager.ui.theme.ZsAccent
 import com.zerostress.manager.ui.theme.ZsCyan
@@ -245,23 +248,28 @@ private fun PlayerDashboardScreen() {
 
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
-            // v4 header: quiet section title row (no gradient band in the design)
+            // NEXUS header: brand + player-core status line (real states only)
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "HOME",
-                    color = ZsTextPrimary,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = 2.sp
-                )
+                Column {
+                    Text(
+                        "ZERO STRESS",
+                        color = ZsTextPrimary,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = 2.sp
+                    )
+                    ZsStatusLabel("PLAYER CORE")
+                }
                 Spacer(Modifier.weight(1f))
                 // Coin balance - loaded from the player doc, always visible up top.
                 ZSBadge("$coins coins", ZsGold)
                 Spacer(Modifier.width(8.dp))
-                ZSBadge(rank, ZsGold)
+                // Rank badge uses the rank's NEXUS identity color (visual only -
+                // thresholds and rank names are untouched).
+                ZSBadge(rank, com.zerostress.manager.ui.futuristic.zsRankSkin(rank).core)
             }
             Column(
                 Modifier
@@ -270,76 +278,75 @@ private fun PlayerDashboardScreen() {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
             ) {
-                // Player hero: level number inside the XP ring, avatar on the right (v4)
-                ZSCard(highlight = ZsPrimary) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        ZSRing(
-                            fraction = xp.toFloat() / (level * 500).toFloat(),
-                            modifier = Modifier.size(54.dp),
-                            stroke = 4.dp
-                        ) {
-                            Text(
-                                "$level",
-                                color = ZsPrimary,
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.ExtraBold
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Column(Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    name,
-                                    color = ZsTextPrimary,
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    maxLines = 1
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                ZSBadge("LV $level", ZsPrimary)
-                            }
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                position?.let { "#$it on leaderboard" } ?: "Unranked",
-                                color = ZsCyan,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            ZSProgress(
+                // PLAYER IDENTITY: rank-title framed avatar, name, rank badge,
+                // level ring + energy XP bar. A slow HUD scan passes over the
+                // card (identity card is one of the spec's approved scan spots).
+                ZsScanEffect {
+                    ZSCard(highlight = ZsPrimary) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            ZSRingCompat(
                                 fraction = xp.toFloat() / (level * 500).toFloat(),
-                                label = "XP $xp / ${level * 500} to level ${level + 1}"
+                                level = level
                             )
-                        }
-                        Spacer(Modifier.width(10.dp))
-                        // Rank-title frame around the hero avatar. Follows the
-                        // title the player equipped in My Titles first, and
-                        // only falls back to the score ladder when nothing is
-                        // equipped - otherwise selecting a title never changed
-                        // the dashboard avatar.
-                        val heroTitle = com.zerostress.manager.models.ZsRankTitles
-                            .byName(equippedTitle.takeIf { it.isNotEmpty() })
-                            ?: com.zerostress.manager.models.ZsRankTitles.titleForScore(score)
-                        ZsAvatarFrame(
-                            heroTitle?.let {
-                                com.zerostress.manager.models.ZsRankTitles.frameSource(context, it)
-                            },
-                            heroTitle?.let { Color(it.color) } ?: ZsPrimary,
-                            40.dp
-                        ) {
-                            ZSAvatar(name, size = 40.dp, ringColor = Color.Transparent, avatarUrl = avatarUrl)
+                            Spacer(Modifier.width(12.dp))
+                            Column(Modifier.weight(1f)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        name,
+                                        color = ZsTextPrimary,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        maxLines = 1
+                                    )
+                                    Spacer(Modifier.width(6.dp))
+                                    ZSBadge("LV $level", ZsPrimary)
+                                }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    position?.let { "#$it on leaderboard" } ?: "Unranked",
+                                    color = ZsCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Spacer(Modifier.height(6.dp))
+                                ZSProgress(
+                                    fraction = xp.toFloat() / (level * 500).toFloat(),
+                                    label = "XP $xp / ${level * 500} to level ${level + 1}"
+                                )
+                            }
+                            Spacer(Modifier.width(10.dp))
+                            // Rank-title frame around the hero avatar. Follows the
+                            // title the player equipped in My Titles first, and
+                            // only falls back to the score ladder when nothing is
+                            // equipped - otherwise selecting a title never changed
+                            // the dashboard avatar.
+                            val heroTitle = com.zerostress.manager.models.ZsRankTitles
+                                .byName(equippedTitle.takeIf { it.isNotEmpty() })
+                                ?: com.zerostress.manager.models.ZsRankTitles.titleForScore(score)
+                            ZsAvatarFrame(
+                                heroTitle?.let {
+                                    com.zerostress.manager.models.ZsRankTitles.frameSource(context, it)
+                                },
+                                heroTitle?.let { Color(it.color) } ?: ZsPrimary,
+                                40.dp
+                            ) {
+                                ZSAvatar(name, size = 40.dp, ringColor = Color.Transparent, avatarUrl = avatarUrl)
+                            }
                         }
                     }
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // Signature v4 hero: score ring + 2x2 stat grid (Rank/Matches/Win rate/K-D)
+                // SCORE CORE: energy ring centerpiece with animated count-up.
+                // The displayed value animates to the real score and always
+                // ends on it - the underlying score math is untouched.
                 ZSCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        ZSRing(
-                            fraction = (score % 10000L).toFloat() / 10000f,
-                            modifier = Modifier.size(88.dp),
-                            stroke = 6.dp
+                        val shownScore = rememberZsCountUp(score)
+                        ZsScoreCore(
+                            fraction = (shownScore % 10000L).toFloat() / 10000f,
+                            modifier = Modifier.size(92.dp),
+                            stroke = 7.dp
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
@@ -350,32 +357,41 @@ private fun PlayerDashboardScreen() {
                                     letterSpacing = 1.sp
                                 )
                                 Text(
-                                    "$score",
+                                    "$shownScore",
                                     color = ZsTextPrimary,
                                     fontSize = 17.sp,
                                     fontWeight = FontWeight.ExtraBold
+                                )
+                                Text(
+                                    rank.uppercase(),
+                                    color = ZsGold,
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
                                 )
                             }
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) {
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                ZSStat("Rank", position?.let { "#$it" } ?: "—", ZsGold, Modifier.weight(1f))
-                                ZSStat("Matches", "$totalMatches", ZsCyan, Modifier.weight(1f))
+                                ZsHudStat("Rank", position?.let { "#$it" } ?: "—", Modifier.weight(1f), ZsGold)
+                                ZsHudStat("Matches", "$totalMatches", Modifier.weight(1f), ZsCyan)
                             }
                             Spacer(Modifier.height(7.dp))
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                                ZSStat(
+                                ZsHudStat(
                                     "Win rate",
                                     if (totalMatches > 0) "${totalWins * 100 / totalMatches}%" else "0%",
-                                    ZsSuccess, Modifier.weight(1f)
+                                    Modifier.weight(1f),
+                                    ZsSuccess
                                 )
-                                ZSStat(
+                                ZsHudStat(
                                     "K/D",
                                     if (totalDeaths > 0)
                                         String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
                                     else "$totalKills",
-                                    ZsTextPrimary, Modifier.weight(1f)
+                                    Modifier.weight(1f),
+                                    ZsTextPrimary
                                 )
                             }
                         }
@@ -383,7 +399,7 @@ private fun PlayerDashboardScreen() {
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // Performance graph (v4 home spec): last 12 match scores as bars,
+                // Performance graph: last 12 match scores as bars,
                 // plus a TODAY strip. Daily Input aggregates win when present,
                 // otherwise the same totals are derived from today's match_logs
                 // so the card shows a score even before an admin logs anything.
@@ -410,26 +426,26 @@ private fun PlayerDashboardScreen() {
                     }
                     Spacer(Modifier.height(8.dp))
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                        ZSStat(
+                        ZsHudStat(
                             "Today",
                             if (todayScore > 0L) "$todayScore" else "—",
-                            ZsCyan,
-                            Modifier.weight(1f)
+                            Modifier.weight(1f),
+                            ZsCyan
                         )
-                        ZSStat(
+                        ZsHudStat(
                             "Today K",
                             if (todayKills > 0L) "$todayKills" else "—",
-                            ZsSuccess,
-                            Modifier.weight(1f)
+                            Modifier.weight(1f),
+                            ZsSuccess
                         )
-                        ZSStat(
+                        ZsHudStat(
                             "K/D",
                             if (totalDeaths > 0)
                                 String.format(java.util.Locale.US, "%.2f", totalKills.toDouble() / totalDeaths)
                             else if (totalKills > 0) "$totalKills"
                             else "—",
-                            ZsTextPrimary,
-                            Modifier.weight(1f)
+                            Modifier.weight(1f),
+                            ZsTextPrimary
                         )
                     }
                     if (todayScore == 0L && todayKills == 0L && totalMatches > 0) {
@@ -457,7 +473,7 @@ private fun PlayerDashboardScreen() {
                 }
                 Spacer(Modifier.height(10.dp))
 
-                // Primary CTA (v4): full-width gradient leaderboard button
+                // Primary CTA: full-width gradient leaderboard button
                 ZSButton(
                     "View Leaderboard",
                     { context.launchTab(LeaderboardActivity::class.java) },
@@ -508,8 +524,28 @@ private fun PlayerDashboardScreen() {
                 Spacer(Modifier.height(16.dp))
             }
 
-            // Neon Glass bottom navigation shell (6 tabs - menu items live in More)
+            // NEXUS floating dock (6 tabs - menu items live in More)
             ZSBottomNav(zsNavItems(0, context))
         }
+    }
+}
+
+/**
+ * Level ring inside the identity header: the XP fraction as a sweeping arc
+ * with the level number centered. Same math as before (xp / level*500).
+ */
+@Composable
+private fun ZSRingCompat(fraction: Float, level: Long) {
+    com.zerostress.manager.ui.futuristic.ZsScoreCore(
+        fraction = fraction,
+        modifier = Modifier.size(54.dp),
+        stroke = 4.dp
+    ) {
+        Text(
+            "$level",
+            color = ZsPrimary,
+            fontSize = 15.sp,
+            fontWeight = FontWeight.ExtraBold
+        )
     }
 }

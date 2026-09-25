@@ -27,10 +27,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -79,40 +77,19 @@ import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 
 /**
- * Full-screen deep-space gradient with the Neon Glass v4 ambient light wash:
- * a violet glow top-right and a cyan glow top-left, like light spilling from
- * a stage. Used as the base of every screen.
+ * Full-screen NEXUS background: the deep-space gradient with the layered
+ * futuristic system (ambient glows, geometric grid, sparse drifting
+ * particles) from ui/futuristic/ZsBackground.kt. Kept as a thin wrapper so
+ * every existing screen inherits the new look without touching their code.
  */
 @Composable
 fun ZSBackground(
     modifier: Modifier = Modifier,
     content: @Composable BoxScope.() -> Unit
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(ZsBgStart, ZsBgMid, ZsBgEnd)))
-            .drawBehind {
-                // Ambient neon washes (screen-space, cheap radial layers).
-                val violet = ZsPurple.copy(alpha = 0.10f)
-                val cyan = ZsPrimary.copy(alpha = 0.08f)
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(violet, Color.Transparent),
-                        center = Offset(size.width * 0.92f, size.height * 0.02f),
-                        radius = size.width * 0.85f
-                    )
-                )
-                drawCircle(
-                    brush = Brush.radialGradient(
-                        colors = listOf(cyan, Color.Transparent),
-                        center = Offset(size.width * 0.02f, size.height * 0.10f),
-                        radius = size.width * 0.75f
-                    )
-                )
-            },
-        content = content
-    )
+    com.zerostress.manager.ui.futuristic.ZsNexusBackground(modifier = modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize()) { content() }
+    }
 }
 
 /**
@@ -169,10 +146,10 @@ fun ZSScreenColumn(
 }
 
 /**
- * Shared glassmorphism card (Neon Glass v4): translucent white fill on the
- * dark gradient, thin light stroke, 18dp rounded corners. Pass [highlight]
- * to tint the border and add a soft outer neon glow. Pass [onClick] to make
- * it tappable.
+ * Shared glassmorphism card, now on the NEXUS holographic glass system
+ * (deeper background, HUD corner accents on highlighted cards, press-depth
+ * micro animation). Signature-compatible with every existing call site:
+ * pass [highlight] to tint the border + glow, [onClick] to make it tappable.
  */
 @Composable
 fun ZSCard(
@@ -182,31 +159,22 @@ fun ZSCard(
     onClick: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    var m = modifier
-        .fillMaxWidth()
-        .clip(RoundedCornerShape(corner))
-        .background(ZsCard)
-        .border(
-            width = if (highlight != null) 1.5.dp else 1.dp,
-            color = highlight ?: Color.White.copy(alpha = 0.09f),
-            shape = RoundedCornerShape(corner)
-        )
-        .drawBehind {
-            if (highlight != null) {
-                // Soft outer neon glow behind highlighted cards.
-                drawRoundRect(
-                    color = highlight.copy(alpha = 0.28f),
-                    topLeft = Offset(-6.dp.toPx(), -6.dp.toPx()),
-                    size = Size(size.width + 12.dp.toPx(), size.height + 12.dp.toPx()),
-                    cornerRadius = CornerRadius(corner.toPx() + 6.dp.toPx())
-                )
-            }
-        }
-    if (onClick != null) m = m.clickable(onClick = onClick)
-    Column(modifier = m.padding(14.dp), content = content)
+    com.zerostress.manager.ui.futuristic.ZsGlassPanel(
+        modifier = modifier,
+        level = if (highlight != null)
+            com.zerostress.manager.ui.futuristic.ZsGlassLevel.Three
+        else com.zerostress.manager.ui.futuristic.ZsGlassLevel.Two,
+        corner = corner,
+        hudCorners = if (highlight != null)
+            com.zerostress.manager.ui.futuristic.ZsHudCorners.Subtle
+        else com.zerostress.manager.ui.futuristic.ZsHudCorners.None,
+        glow = highlight,
+        onClick = onClick,
+        content = content
+    )
 }
 
-/** Full-width accent button (Neon Glass gradient style). */
+/** Full-width accent button (NEXUS gradient style with press-depth glow). */
 @Composable
 fun ZSButton(
     text: String,
@@ -217,16 +185,27 @@ fun ZSButton(
     enabled: Boolean = true,
     height: Dp = 50.dp
 ) {
-    // Neon Glass signature: the default action button is a cyan-to-violet
-    // gradient. Callers passing a custom container color keep a solid fill
-    // (danger/secondary actions).
+    // NEXUS signature: the default action button is a cyan-to-violet gradient
+    // with a soft outer glow and press-depth micro animation. Callers passing
+    // a custom container color keep a solid fill (danger/secondary actions).
+    var pressed by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    val scale = com.zerostress.manager.ui.futuristic.zsPressScale(pressed, 0.97f)
     val useGradient = container == ZsPrimary
     val shape = RoundedCornerShape(14.dp)
     val bg: Modifier = when {
-        enabled && useGradient -> Modifier.background(
-            brush = Brush.horizontalGradient(listOf(ZsPrimary, ZsPurple)),
-            shape = shape
-        )
+        enabled && useGradient -> Modifier
+            .drawBehind {
+                drawRoundRect(
+                    color = ZsPrimary.copy(alpha = 0.25f),
+                    topLeft = Offset(-4.dp.toPx(), -4.dp.toPx()),
+                    size = Size(size.width + 8.dp.toPx(), size.height + 8.dp.toPx()),
+                    cornerRadius = CornerRadius(18.dp.toPx())
+                )
+            }
+            .background(
+                brush = Brush.horizontalGradient(listOf(ZsPrimary, ZsPurple)),
+                shape = shape
+            )
         !enabled -> Modifier.background(color = ZsBorder.copy(alpha = 0.35f), shape = shape)
         else -> Modifier.background(color = container, shape = shape)
     }
@@ -234,9 +213,20 @@ fun ZSButton(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .scale(scale)
             .then(bg)
             .clip(shape)
-            .clickable(enabled = enabled, onClick = onClick),
+            .pointerInput(enabled) {
+                detectTapGestures(
+                    onPress = {
+                        if (enabled) {
+                            pressed = true
+                            try { awaitRelease() } finally { pressed = false }
+                        }
+                    },
+                    onTap = { if (enabled) onClick() }
+                )
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -353,19 +343,21 @@ fun SectionTitle(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** Centered loading spinner inside a full-width box. */
+/**
+ * NEXUS loading HUD: segmented sweep ring + status line. Replaces the
+ * generic spinner; loading durations and behavior are unchanged.
+ */
 @Composable
 fun LoadingBox(modifier: Modifier = Modifier, size: Dp = 40.dp) {
-    Box(modifier = modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(
-            modifier = Modifier.size(size),
-            color = ZsCyan,
-            strokeWidth = 3.dp
-        )
+    Box(modifier = modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        com.zerostress.manager.ui.futuristic.ZsLoadingHud("SYNCING PLAYER DATA")
     }
 }
 
-/** Horizontal progress bar with a label above it. */
+/**
+ * Horizontal energy progression bar with a glowing leading edge (NEXUS).
+ * Signature-compatible with existing call sites: optional label above.
+ */
 @Composable
 fun ZSProgress(
     fraction: Float,
@@ -378,20 +370,42 @@ fun ZSProgress(
             Text(label, color = ZsTextSecondary, fontSize = 12.sp)
             Spacer(Modifier.height(6.dp))
         }
-        LinearProgressIndicator(
-            progress = { fraction.coerceIn(0f, 1f) },
-            modifier = Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(6.dp)),
+        com.zerostress.manager.ui.futuristic.ZsEnergyBar(
+            fraction = fraction,
             color = color,
-            trackColor = Color.White.copy(alpha = 0.07f)
+            height = 8.dp
         )
     }
 }
 
-/** Empty-state message shown when a list has no data. */
+/** NEXUS empty state: quiet technical panel, no childish illustrations. */
 @Composable
 fun EmptyState(text: String, modifier: Modifier = Modifier) {
     Box(modifier = modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
-        Text(text, color = ZsTextMuted, fontSize = 15.sp)
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                Modifier
+                    .size(width = 28.dp, height = 2.dp)
+                    .clip(RoundedCornerShape(1.dp))
+                    .background(ZsTextMuted.copy(alpha = 0.5f))
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text,
+                color = ZsTextMuted,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.4.sp
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                "ZERO STRESS NETWORK",
+                color = ZsTextMuted.copy(alpha = 0.6f),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 2.sp
+            )
+        }
     }
 }
 
@@ -589,24 +603,26 @@ fun zsNavItems(current: Int, context: android.content.Context): List<ZSNavItem> 
 )
 
 /**
- * Neon Glass bottom navigation shell: translucent glass bar pinned to the
- * bottom, thin light top stroke, active destination tinted cyan with a glow
- * dot above the icon. Place it as the LAST child of a Column whose content
- * is a Weight(1f) screen body (see PlayerDashboardActivity for the pattern).
+ * Neon Glass bottom navigation shell, upgraded to the NEXUS floating dock:
+ * raised glass surface, thin top HUD separator, active destination tinted
+ * cyan with a glowing indicator dot and micro scale. Destinations unchanged.
  */
 @Composable
 fun ZSBottomNav(items: List<ZSNavItem>, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(ZsBgMid.copy(alpha = 0.92f))
-            .border(width = 1.dp, color = Color.White.copy(alpha = 0.09f))
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(Color(0xE603050B))
+            .border(width = 1.dp, color = Color.White.copy(alpha = 0.10f), RoundedCornerShape(22.dp))
             .navigationBarsPadding()
             .height(58.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         items.forEach { item ->
             val tint = if (item.selected) ZsPrimary else ZsTextMuted
+            val navScale by animateFloatAsState(if (item.selected) 1.08f else 1f, label = "navScale")
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -628,7 +644,7 @@ fun ZSBottomNav(items: List<ZSNavItem>, modifier: Modifier = Modifier) {
                     painter = painterResource(item.iconRes),
                     contentDescription = item.label,
                     tint = tint,
-                    modifier = Modifier.size(20.dp)
+                    modifier = Modifier.size(20.dp).scale(navScale)
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
