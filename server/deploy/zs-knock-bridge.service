@@ -1,0 +1,39 @@
+# Always-on Firestore -> Knock bridge for ZERO STRESS.
+# Install on a VM that has Docker (works on the Google Cloud always-free
+# e2-micro or an Oracle Always Free instance):
+#
+#   sudo cp server/deploy/zs-knock-bridge.service /etc/systemd/system/
+#   sudo docker build -t zs-knock-bridge /path/to/repo/server
+#   sudo install -m 600 /dev/null /etc/zs-knock-bridge.env   # then fill it in
+#   sudo systemctl daemon-reload && sudo systemctl enable --now zs-knock-bridge
+#   sudo systemctl status zs-knock-bridge
+#   curl -s localhost:8080/health
+#
+# /etc/zs-knock-bridge.env holds KNOCK_API_KEY plus ONE credential form.
+# Never commit it:
+#
+#   FIREBASE_SERVICE_ACCOUNT=<service-account JSON, or base64 of it>
+#   GOOGLE_APPLICATION_CREDENTIALS=/srv/zs-sa.json   (file lives at /srv/zs-sa.json)
+#
+# /srv is mounted read-only below so the second form needs no base64 encoding -
+# the easy route when your only device is a phone.
+[Unit]
+Description=ZERO STRESS Firestore -> Knock instant push bridge
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Restart=always
+RestartSec=5
+EnvironmentFile=/etc/zs-knock-bridge.env
+ExecStartPre=-/usr/bin/docker rm -f zs-knock-bridge
+ExecStart=/usr/bin/docker run --rm --name zs-knock-bridge \
+  --env-file /etc/zs-knock-bridge.env \
+  -v /srv:/srv:ro \
+  -p 8080:8080 \
+  zs-knock-bridge
+ExecStop=/usr/bin/docker stop zs-knock-bridge
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

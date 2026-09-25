@@ -1,0 +1,20 @@
+{
+  "name": "zerostress-knock-bridge",
+  "description": "Always-on Firestore -> Knock push bridge for ZERO STRESS",
+  "version": "1.1.0",
+  "private": true,
+  "type": "commonjs",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "node --test",
+    "verify": "node verify.js",
+    "check": "node --check index.js && node --check lib.js && node --check verify.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  }
+}

@@ -93,17 +93,141 @@ gradlew :app:assembleDebug --refresh-dependencies
   `chat_messages`, `chat_typing`, `announcements`, `match_schedules`, `friendships`,
   `friend_requests`, `player_achievements`, `player_titles`, `seasons`,
   `voice_channels` (+ `participants` / `chat` subcollections), `notifications`.
-- **App Check:** the app currently uses the **Debug** provider (it logs the debug
-  token to Logcat on startup). Add that token in Firebase Console → App Check, and
-  switch to Play Integrity / DeviceCheck before releasing.
+- **App Check:** debug builds use the **Debug** provider (the token is logged to
+  Logcat on startup), release builds use **Play Integrity**. Until the app is
+  registered in Firebase Console → App Check, `hasAppCheck()` in `firestore.rules`
+  evaluates to false and **every client write fails** with `PERMISSION_DENIED:
+  Missing or insufficient permissions.` while reads keep working — sending a chat
+  message, typing indicators, mentions and reports are all rejected. The rules
+  therefore ship with `appcheckEnabled()` returning `false` (the documented kill
+  switch) so the app stays usable; flip it back to `true` only once the installed
+  build actually attests. Pushing `firestore.rules` to `ZS3.1` deploys the change
+  through `.github/workflows/firebase-deploy.yml` — free on the Spark plan.
 - **FCM:** `functions/` contains the Cloud Functions that forward Firestore
   notifications to devices (`fcmToken` is saved to each player doc).
+
+## Recovering a deleted Firestore collection
+
+Deleting a collection in the Firebase console is permanent — there is no undo,
+and the Spark plan has neither managed backups nor point-in-time restore. What
+survives a Firestore delete is **Firebase Authentication**: it is a separate
+product with its own database, so every account (uid, email, phone) is still
+listed after `players/` is gone.
+
+Rebuild the roster from that list. A phone is enough — Cloud Shell is a browser
+terminal with `gcloud` and Node preinstalled:
+
+```bash
+# https://shell.cloud.google.com
+git clone -b ZS3.1 https://github.com/sronoop-art/Zero-stress-app.git
+cd Zero-stress-app
+node scripts/rebuild-players.mjs                            # dry run, prints a plan
+node scripts/rebuild-players.mjs --admin you@example.com --apply
+```
+
+`scripts/rebuild-players.mjs` recreates one `players/{uid}` document per Auth
+account with exactly the fields `RegisterActivity` writes. It is a dry run
+unless `--apply` is passed, never overwrites an existing document, and gives
+your own account `role: admin` (every admin screen reads that field, so without
+it the app looks locked). FCM tokens return by themselves on the next app
+launch, and the free cron job auto-creates the `seasons` document. Chat history,
+notifications, match logs, daily stats, titles and achievements are **not**
+recoverable without an export.
+
+**Take an export before the next accident.** The managed export/import service
+requires a billing account to be linked (an export costs a few cents; it does
+not move the project off the Spark plan or change the app's own quotas):
+
+```bash
+gcloud storage buckets create gs://zerostress-backups --location=us-central1
+gcloud firestore export gs://zerostress-backups/$(date +%F)   # restore:
+gcloud firestore import gs://zerostress-backups/2026-09-25
+```
+
+## Instant push notifications (Knock bridge)
+
+Firestore notification documents (`notifications/{id}`) are still the single
+source of truth. On the free Spark plan the checked-in GitHub Actions relay can
+only poll every 30 minutes — that interval **is** the push latency — so `server/`
+is an optional always-on Node.js service that watches Firestore and triggers the
+Knock workflow (`zs-push`) the moment a document is written, turning delivery
+into a couple of seconds.
+
+It reuses the existing `players/{uid}.fcmToken` field and passes it to Knock as
+inline FCM channel data, so **the Android app needs no changes**, no Knock SDK is
+added, and the Knock API key never leaves the server environment. If Knock ever
+fails the service falls back to the same direct FCM send the GitHub relay uses;
+the relay itself keeps running as the 30-minute safety net (both senders share
+the `pushSent` flag, so nothing is delivered twice).
+
+Deployment, verification and troubleshooting: **[`server/README.md`](server/README.md)**.
+The short version is `docker build -t zs-knock-bridge ./server` and run that
+container on any host that keeps a process alive 24/7 (a Google Cloud always-free
+`e2-micro` VM is the cheapest fit; sleep-after-inactivity free tiers will not work).
+
+### Server environment variables
+
+| Variable | Required | Value |
+| --- | --- | --- |
+| `KNOCK_API_KEY` | yes | Knock secret API key for the environment that owns `zs-push` |
+| `FIREBASE_SERVICE_ACCOUNT` | yes | Firebase service-account JSON, base64 of it, or a path to the file (same credentials the GitHub relay uses) |
+| `KNOCK_WORKFLOW_KEY` | no | Defaults to `zs-push` |
+| `KNOCK_FCM_CHANNEL_ID` | no | Defaults to the FCM channel UUID created in Knock |
+| `DIRECT_FCM_FALLBACK` | no | `false` disables the direct-FCM safety net |
+| `PORT` | no | Health-check port, defaults to `8080` |
+
+```bash
+cd server && npm install && npm test && npm start   # GET /health on :8080
+```
+
+`server/lib.test.js` covers the payload/recipient helpers offline (no Firebase or
+Knock credentials needed), which is how the FCM data contract below stays
+honest.
+
+### Knock dashboard requirements
+
+Both the channel and the workflow must live in the **same environment** as the
+`KNOCK_API_KEY` you deploy.
+
+1. The FCM channel is configured with Firebase project
+   `zerostress-3a536` and its complete service-account JSON.
+2. The Push step in the `zs-push` workflow renders the notification data, e.g.
+   title `{{ data.title }}`, body `{{ data.message }}`, and forwards `type`,
+   `uid`, `channelId` and `notificationId` in the FCM data payload —
+   `ZSFCMService.onMessageReceived` reads the keys `title`, `body`, `type` and
+   `uid`, and drops any push whose `uid` differs from the signed-in user.
+   Broadcasts therefore carry **no** `uid` key (never the literal `"all"`).
+3. To keep Android notification groups correct, set the channel-level payload
+   override to include the channel ID passed by the bridge:
+
+```json
+{
+  "android": {
+    "priority": "high",
+    "notification": {
+      "channel_id": "{{ data.channelId }}",
+      "notification_priority": "PRIORITY_HIGH"
+    }
+  }
+}
+```
+
+If the override is not set, background notifications fall back to the default
+`zs_notifications` channel. Tap routing uses the `type` value already present in
+the notification document.
 
 ## Local development
 
 ```bash
 # Android SDK + JDK 17 required on the machine, then:
 ./gradlew :app:assembleDebug
+```
+
+The Knock bridge can be checked without any credentials (syntax + unit tests
+for the Knock/FCM payload contract):
+
+```bash
+cd server && npm install && npm test
 ```
 
 The Gradle wrapper downloads Gradle 9.6.1 on first run.
