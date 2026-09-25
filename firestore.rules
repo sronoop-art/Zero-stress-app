@@ -6,8 +6,21 @@ service cloud.firestore {
     // and redeploy to relax instantly if a device ever gets locked out.
     // (Rules language has no variables - a function is the supported way
     // to hold this flag.)
+    //
+    // CURRENTLY OFF - do not flip back until BOTH are true:
+    //   1. the Android app is registered in Firebase console > App Check with
+    //      the Play Integrity provider, and
+    //   2. the build that is actually installed attests successfully.
+    // With the switch on and no attestation, request.app is null, so
+    // hasAppCheck() is false and EVERY client write is rejected: sending a
+    // chat message, typing indicators, mentions and reports all fail with
+    // "PERMISSION_DENIED: Missing or insufficient permissions." even though
+    // reads keep working - which is exactly the lockout this flag exists for.
+    // While it is off, writes only require a signed-in account plus the
+    // senderId self-check, so treat it as an in-house/testing posture and put
+    // the roster back behind an approved-player check when hardening again.
     function appcheckEnabled() {
-      return true;
+      return false;
     }
 
     // ---------------------------------------------------------------------
