@@ -8,13 +8,16 @@ name: Free-plan cron (push relay + resets + reminders)
 # Match reminders use a 15-minute pre-start window, so the worst-case
 # delay is ~45 minutes before kickoff.
 #
-# THIS INTERVAL IS THE PUSH LATENCY. This relay is the only sender on the free
-# Spark plan (the Cloud Functions deploy is skipped without Blaze), so chat,
-# mention and admin-broadcast notifications reach devices within one tick -
-# i.e. up to ~30 minutes late. Two ways to make pushes instant:
-#   1. Upgrade the project to Blaze so functions/index.js runs on every write
+# THIS INTERVAL IS THE FALLBACK PUSH LATENCY. This relay is the only sender on
+# the free Spark plan (the Cloud Functions deploy is skipped without Blaze), so
+# chat, mention and admin-broadcast notifications reach devices within one tick
+# - i.e. up to ~30 minutes late. Three ways to make pushes instant:
+#   1. Run the always-on Knock bridge in server/ (Firestore listener -> Knock
+#      workflow "zs-push", seconds; see server/README.md). Both senders share
+#      the pushSent flag, so this relay never double-sends what the bridge sent.
+#   2. Upgrade the project to Blaze so functions/index.js runs on every write
 #      (Firestore trigger, seconds), or
-#   2. shorten the cron below (GitHub's minimum is "*/5 * * * *"; scheduled
+#   3. shorten the cron below (GitHub's minimum is "*/5 * * * *"; scheduled
 #      minutes are metered on private repos and GitHub may delay runs under load).
 # Admin broadcasts (uid: null) are pushed by this relay too - see sendToAll in
 # functions/cron.js - so this interval also gates announcements.
@@ -60,6 +63,19 @@ jobs:
             echo "::error::FIREBASE_SERVICE_ACCOUNT is not valid JSON."
             exit 1
           }
+
+      - name: Ensure player docs exist (enables push tokens)
+        # Idempotent: creates ONLY the players/{uid} docs that are missing, so
+        # accounts that registered before the app wrote one can store their FCM
+        # token again. Without a doc the token save is rejected and the relay
+        # below has nothing to send to. Never edits an existing doc.
+        # Non-fatal: if the service account cannot list Auth users the relay
+        # still runs.
+        continue-on-error: true
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          NODE_PATH: functions/node_modules
+        run: node scripts/backfill-players.cjs
 
       - name: Run cron jobs
         env:
