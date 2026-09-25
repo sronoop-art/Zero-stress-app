@@ -18,11 +18,18 @@
 //                           status=approved). The doc is created if missing and
 //                           PROMOTED if it already exists. Default: the oldest
 //                           account, which is normally the owner.
+//                           The value is matched the way the app signs in
+//                           (LoginActivity.accountFor), so the PHONE NUMBER you
+//                           use to log in works too: "1603242625" and
+//                           "1603242625@zerostress.local" are the same account.
 
 const admin = require("firebase-admin");
 
 const DRY_RUN = (process.env.DRY_RUN || "false").toLowerCase() === "true";
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || "").toLowerCase();
+// Resolved in main() once the account list is known; module-level so
+// isAdminAccount() can read it.
+let adminEmail = ADMIN_EMAIL;
 
 function init() {
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
@@ -40,10 +47,31 @@ async function listAllUsers(auth, pageSize = 1000) {
   const users = [];
   let page;
   do {
-    page = await auth.listUsers(pageSize, page.token);
+    // NOTE: the paging cursor is `pageToken` - `page.token` is undefined and
+    // threw "Cannot read properties of undefined (reading 'token')" on the
+    // second iteration.
+    page = await auth.listUsers(pageSize, page ? page.pageToken : undefined);
     users.push(...page.users);
   } while (page.pageToken);
   return users;
+}
+
+/**
+ * Match the admin input the way the app resolves an account: the login screen
+ * appends "@zerostress.local" to anything that is not already an email, so a
+ * player types their PHONE number. Accept the number, the full email, or the
+ * local part of a real email.
+ */
+function isAdminAccount(user) {
+  if (!adminEmail) return false;
+  const wanted = adminEmail.toLowerCase();
+  const email = (user.email || "").toLowerCase();
+  const local = email.split("@")[0];
+  return (
+    email === wanted ||
+    local === wanted ||
+    `${local}@zerostress.local` === wanted
+  );
 }
 
 async function main() {
@@ -53,9 +81,22 @@ async function main() {
 
   const users = await listAllUsers(auth);
   users.sort((a, b) => (a.metadata.creationTime || "").localeCompare(b.metadata.creationTime || ""));
-  const adminEmail = ADMIN_EMAIL || (users[0] && users[0].email) || "";
   console.log(`Accounts: ${users.length}`);
-  console.log(`Admin account: ${adminEmail || "(none)"}`);
+  if (ADMIN_EMAIL) {
+    const match = users.find(isAdminAccount);
+    if (match) {
+      adminEmail = (match.email || match.uid).toLowerCase();
+      console.log(`Admin input "${ADMIN_EMAIL}" matches ${match.email || match.uid}`);
+    } else {
+      console.log(`Admin input "${ADMIN_EMAIL}" matches NO account - check the value.`);
+      console.log(`Accounts available: ${users.map((u) => u.email || u.uid).join(", ") || "(none)"}`);
+    }
+  }
+  if (!adminEmail) {
+    // No input: fall back to the oldest account, which is normally the owner.
+    adminEmail = (users[0] && (users[0].email || users[0].uid) || "").toLowerCase();
+    if (adminEmail) console.log(`No admin_email given - using the oldest account: ${adminEmail}`);
+  }
   console.log(`Mode: ${DRY_RUN ? "DRY RUN (nothing written)" : "APPLY"}`);
 
   let created = 0;
@@ -65,7 +106,7 @@ async function main() {
   for (const user of users) {
     const ref = db.collection("players").doc(user.uid);
     const snap = await ref.get();
-    const isAdmin = !!user.email && user.email.toLowerCase() === adminEmail;
+    const isAdmin = isAdminAccount(user);
 
     if (snap.exists) {
       skipped++;

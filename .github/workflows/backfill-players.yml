@@ -26,7 +26,7 @@ on:
           - "false"
           - "true"
       admin_email:
-        description: "Email to make admin (created or promoted). Blank = oldest account."
+        description: "PHONE NUMBER or email to make admin. Blank = oldest account."
         required: false
         default: ""
         type: string
