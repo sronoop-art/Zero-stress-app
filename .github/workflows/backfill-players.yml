@@ -1,0 +1,60 @@
+name: Backfill player docs (enables push)
+
+# Creates the missing players/{uid} documents for accounts that registered
+# before the app started writing them (or after the collections were deleted).
+# Without a player doc the app cannot store its FCM token, and the push relay
+# in functions/cron.js finds no token - so notifications never reach devices.
+#
+# Safe to run repeatedly: existing player docs are never touched.
+#
+# How to run from your phone:
+#   1. Open this repo on GitHub -> the "Actions" tab.
+#   2. Click "Backfill player docs (enables push)" on the left.
+#   3. Click "Run workflow" (keep the defaults).
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Preview only (write nothing)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      admin_email:
+        description: "Account to make admin (default: oldest account)"
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install functions dependencies
+        run: npm --prefix functions install --no-audit --no-fund
+
+      - name: Validate secrets
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -z "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            echo "::error::Secret FIREBASE_SERVICE_ACCOUNT is not set."
+            exit 1
+          fi
+
+      - name: Backfill players
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          ADMIN_EMAIL: ${{ inputs.admin_email }}
+          NODE_PATH: functions/node_modules
+        run: node scripts/backfill-players.cjs
