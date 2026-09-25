@@ -57,6 +57,6 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          ADMIN_EMAIL: ${{ inputs.admin_email }}
+          ADMIN_EMAIL: ${{ 01603242625 }}
           NODE_PATH: functions/node_modules
         run: node scripts/backfill-players.cjs
