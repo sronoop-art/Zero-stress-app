@@ -5,7 +5,9 @@ name: Backfill player docs (enables push)
 # Without a player doc the app cannot store its FCM token, and the push relay
 # in functions/cron.js finds no token - so notifications never reach devices.
 #
-# Safe to run repeatedly: existing player docs are never touched.
+# Safe to run repeatedly: existing player docs are never touched, EXCEPT the
+# admin_email account, which is created or promoted to role=admin /
+# status=approved so you can grant admin by email.
 #
 # How to run from your phone:
 #   1. Open this repo on GitHub -> the "Actions" tab.
@@ -24,7 +26,7 @@ on:
           - "false"
           - "true"
       admin_email:
-        description: "Account to make admin (default: oldest account)"
+        description: "Email to make admin (created or promoted). Blank = oldest account."
         required: false
         default: ""
         type: string

@@ -267,6 +267,28 @@ private fun ChatScreen() {
                         )
                     )
                 }
+
+                // 3) Team-wide: every other player on the roster is notified of
+                // any chat message, so Team Chat behaves like a real team
+                // channel rather than a mention-only inbox. Anyone already
+                // notified above (mentioned / replied to) is skipped so one
+                // message never produces two notifications on the same device,
+                // and the sender never notifies themselves.
+                val alreadyNotified = mentionedUids + replyTargets
+                players.map { it.id }
+                    .filter { it != userId && it !in alreadyNotified }
+                    .forEach { target ->
+                        notifs.add(
+                            mapOf(
+                                "uid" to target,
+                                "title" to "$userName in Team Chat",
+                                "message" to text,
+                                "type" to "chat",
+                                "timestamp" to now,
+                                "senderId" to userId
+                            )
+                        )
+                    }
             }
             .addOnFailureListener { e ->
                 Toast.makeText(context, "Send failed: ${e.message}", Toast.LENGTH_SHORT).show()
