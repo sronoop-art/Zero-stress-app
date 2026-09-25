@@ -17,6 +17,16 @@ functions/node_modules/
 functions/*.log
 .firebase/
 
+# Knock bridge (server/) - node_modules + local secrets
+server/node_modules/
+server/*.log
+
+# Never commit environment files: they hold KNOCK_API_KEY and the Firebase
+# service account. The workspace loads .env / .env.local automatically.
+.env
+.env.*
+!.env.example
+
 # Stray duplicate source folders at repo root (real sources live in app/src/main)
 /java/
 /res/
@@ -24,6 +34,7 @@ functions/*.log
 # google-services.json contains project identifiers; keep it local
 app/google-services.json
 
-# Original source snapshot — code now lives unpacked in the repo
+# Old nested source snapshots. ZS3.1.zip is intentionally TRACKED despite
+# appearing here: it is the phone build bundle (only app/ + gradle files) that
+# the user downloads and opens in AndroidIDE, so it must stay current.
 Zerostress.zip/
-ZS3.1.zip
