@@ -60,18 +60,20 @@ async function listAllUsers(auth, pageSize = 1000) {
  * Match the admin input the way the app resolves an account: the login screen
  * appends "@zerostress.local" to anything that is not already an email, so a
  * player types their PHONE number. Accept the number, the full email, or the
- * local part of a real email.
+ * local part of a real email. Phone numbers are also compared digit-only, so
+ * a stray leading zero (01603242625 vs 1603242625) still matches.
  */
 function isAdminAccount(user) {
   if (!adminEmail) return false;
   const wanted = adminEmail.toLowerCase();
   const email = (user.email || "").toLowerCase();
   const local = email.split("@")[0];
-  return (
-    email === wanted ||
-    local === wanted ||
-    `${local}@zerostress.local` === wanted
-  );
+  if (email === wanted || local === wanted || `${local}@zerostress.local` === wanted) {
+    return true;
+  }
+  const digits = (s) => s.replace(/\D/g, "").replace(/^0+/, "");
+  const wantedDigits = digits(wanted);
+  return wantedDigits.length > 0 && digits(local) === wantedDigits;
 }
 
 async function main() {
@@ -88,8 +90,10 @@ async function main() {
       adminEmail = (match.email || match.uid).toLowerCase();
       console.log(`Admin input "${ADMIN_EMAIL}" matches ${match.email || match.uid}`);
     } else {
-      console.log(`Admin input "${ADMIN_EMAIL}" matches NO account - check the value.`);
+      console.log(`WARNING: admin input "${ADMIN_EMAIL}" matches NO account.`);
       console.log(`Accounts available: ${users.map((u) => u.email || u.uid).join(", ") || "(none)"}`);
+      console.log("Falling back to the oldest account so the backfill still works.");
+      adminEmail = "";
     }
   }
   if (!adminEmail) {
