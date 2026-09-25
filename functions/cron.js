@@ -41,12 +41,21 @@ function channelFor(type) {
 async function sendToUid(uid, title, message, type, extraData) {
   if ((process.env.FCM_V1_ENABLED || "true").toLowerCase() === "false") {
     console.log("FCM_V1_ENABLED=false - push skipped (in-app notification only).");
-    return;
+    return "skipped";
   }
   const d = getDb(); // also initializes the app for admin.messaging()
   const player = await d.collection("players").doc(uid).get();
   const token = player.exists ? player.data().fcmToken : null;
-  if (!token) return; // no device token / disabled
+  if (!token) {
+    // The usual cause: the device has no players/{uid} doc yet, so the app
+    // could not store its FCM token (run scripts/backfill-players.cjs), or the
+    // app has not been opened since the doc was created.
+    console.log(
+      `no device token for ${uid} ` +
+        `(${player.exists ? "player doc has no fcmToken - open the app once" : "no player doc - backfill players"})`
+    );
+    return "no-token";
+  }
   // v1 requires all data payload values to be strings.
   const raw = Object.assign({ type: type || "general", uid: uid }, extraData || {});
   const data = {};
@@ -62,6 +71,7 @@ async function sendToUid(uid, title, message, type, extraData) {
       },
     });
     console.log(`Push to ${uid}: sent`);
+    return "sent";
   } catch (err) {
     const code = err && err.code ? String(err.code) : "";
     if (
@@ -75,6 +85,7 @@ async function sendToUid(uid, title, message, type, extraData) {
     } else {
       console.log(`Push to ${uid} failed: ${err.message || code}`);
     }
+    return "failed";
   }
 }
 
@@ -185,6 +196,7 @@ async function processPushQueue() {
     sent++;
   }
   if (sent) console.log(`Push relay sent ${sent} notification(s)`);
+  else if (snap.docs.length) console.log("Push relay had nothing new to send.");
 }
 
 // ---------------------------------------------------------- match reminders
