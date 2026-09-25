@@ -92,6 +92,32 @@ object NotificationPreferences {
     fun setPermissionRequested(context: Context, requested: Boolean) {
         prefs(context).edit().putBoolean("notif_permission_requested", requested).apply()
     }
+
+    /**
+     * Ask for POST_NOTIFICATIONS once, from a screen the user actually lands on
+     * (the dashboard). Without it Android 13+ silently drops every push, so a
+     * missing prompt means "no notifications" even when the token is perfect.
+     * Safe to call on every dashboard entry: it only prompts when the
+     * permission is still missing and was never requested before.
+     */
+    fun ensurePermission(context: Context) {
+        if (Build.VERSION.SDK_INT < 33) return
+        if (pushPossible(context)) return
+        if (permissionRequested(context)) return
+        val activity = unwrapActivity(context) ?: return
+        setPermissionRequested(context, true)
+        activity.requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 4101)
+    }
+
+    /** Compose hands out a ContextWrapper, not the Activity - unwrap safely. */
+    private fun unwrapActivity(context: Context): android.app.Activity? {
+        var current: Context = context
+        while (current is android.content.ContextWrapper) {
+            if (current is android.app.Activity) return current
+            current = current.baseContext
+        }
+        return null
+    }
 }
 
 /**

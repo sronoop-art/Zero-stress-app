@@ -129,6 +129,11 @@ private fun AdminDashboardScreen() {
     LaunchedEffect(Unit) {
         loadAdminInfo()
         loadPlayers()
+        // Admins land here instead of the player dashboard, so the admin
+        // device needs its own token save + notification permission prompt -
+        // without them an admin never receives a push.
+        com.zerostress.manager.fcm.ZSFCMService.saveTokenToFirestore(context)
+        com.zerostress.manager.fcm.NotificationPreferences.ensurePermission(context)
     }
 
     fun updateStatus(uid: String, status: String) {

@@ -236,6 +236,10 @@ private fun PlayerDashboardScreen() {
         loadPosition()
         loadRecentForm()
         ZSFCMService.saveTokenToFirestore(context)
+        // Ask once for the notification permission here: the dashboard is where
+        // every user lands (fresh sign-in AND resumed session), and without it
+        // Android 13+ drops every push silently.
+        com.zerostress.manager.fcm.NotificationPreferences.ensurePermission(context)
         FCMConfig.checkFCMConfiguration(context as android.app.Activity)
     }
 
