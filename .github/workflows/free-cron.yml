@@ -4,16 +4,18 @@ name: Free-plan cron (push relay + resets + reminders)
 #   FIREBASE_SERVICE_ACCOUNT - already configured (drives Firestore AND push
 #                              delivery via FCM HTTP v1 - no server key needed)
 #
-# Schedule: every 5 minutes (UTC; GitHub may still drift or skip a tick).
-# The repo is public, so Actions minutes are free - a 5-minute tick costs
-# ~20s of runner time and is the difference between "instant" and "an hour
-# late" for chat/mention pushes. Match reminders use a 15-minute pre-start
-# window, so the worst-case delay is ~20 minutes before kickoff.
+# Schedule: every ~2.5 minutes via two offset cron entries (UTC). GitHub's
+# scheduler floor is 5 minutes per entry, but two staggered entries give an
+# effective 2.5-minute cadence. The repo is public, so Actions minutes are
+# free - each tick costs ~20s of runner time. Match reminders use a
+# 15-minute pre-start window, so the worst-case delay is ~18 minutes before
+# kickoff.
 #
 # THIS INTERVAL IS THE FALLBACK PUSH LATENCY. This relay is the only sender on
 # the free Spark plan (the Cloud Functions deploy is skipped without Blaze), so
-# chat, mention and admin-broadcast notifications reach devices within one tick
-# - i.e. up to ~5 minutes late. Two ways to make pushes fully instant:
+# chat, mention and admin-broadcast notifications reach devices within one or
+# two ticks - i.e. up to ~2.5-3 minutes late. Two ways to make pushes fully
+# instant:
 #   1. Run the always-on Knock bridge in server/ (Firestore listener -> Knock
 #      workflow "zs-push", seconds; see server/README.md). Both senders share
 #      the pushSent flag, so this relay never double-sends what the bridge sent.
@@ -27,6 +29,7 @@ name: Free-plan cron (push relay + resets + reminders)
 on:
   schedule:
     - cron: "*/5 * * * *"
+    - cron: "2-59/5 * * * *"
   workflow_dispatch:
     inputs:
       job:
