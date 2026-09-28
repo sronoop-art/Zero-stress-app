@@ -50,9 +50,15 @@ object ZsScore {
         return entryScore(kills, damage, isWin)
     }
 
-    /** Map a lifetime score to its rank name (same ladder as models/Player.kt). */
+    /**
+     * Map a lifetime score to its rank name. The 8-tier ladder
+     * (Bronze..Grandmaster) matches models/ZsRankTitles thresholds exactly,
+     * so a player's rank string and unlocked title always agree.
+     */
     fun rankFor(score: Long): String = when {
-        score >= 5000 -> "Mythic"
+        score >= 10000 -> "Grandmaster"
+        score >= 7000 -> "Master"
+        score >= 5000 -> "Heroic"
         score >= 4000 -> "Diamond"
         score >= 3000 -> "Platinum"
         score >= 2000 -> "Gold"

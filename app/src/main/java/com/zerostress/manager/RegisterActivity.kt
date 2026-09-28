@@ -166,6 +166,18 @@ private fun RegisterScreen() {
                                         return@addOnSuccessListener
                                     }
                                     com.zerostress.manager.audio.ZsSoundManager.playRegisterSuccess(context)
+                                    // #4: verify real-email accounts (phone-only accounts map to
+                                    // @zerostress.local and cannot receive mail, so they are exempt).
+                                    val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                                    if (user != null && !user.email.isNullOrBlank() &&
+                                        !user.email.endsWith("@zerostress.local")) {
+                                        user.sendEmailVerification()
+                                        Toast.makeText(
+                                            context,
+                                            "Account created! Verification link sent to your email - verify to enable password reset.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    }
                                     // Profile doc for dashboards/leaderboards (written in the
                                     // background so the UI returns to login immediately).
                                     val playerData = mapOf(

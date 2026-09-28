@@ -54,12 +54,15 @@ class ScoreLogicTest {
     fun `rank ladder boundaries`() {
         assertEquals("Iron", ZsScore.rankFor(599))
         assertEquals("Bronze", ZsScore.rankFor(600))
+        assertEquals("Heroic", ZsScore.rankFor(5000))
+        assertEquals("Master", ZsScore.rankFor(7000))
+        assertEquals("Grandmaster", ZsScore.rankFor(10000))
         assertEquals("Bronze", ZsScore.rankFor(1199))
         assertEquals("Silver", ZsScore.rankFor(1200))
         assertEquals("Gold", ZsScore.rankFor(2000))
         assertEquals("Platinum", ZsScore.rankFor(3000))
         assertEquals("Diamond", ZsScore.rankFor(4000))
-        assertEquals("Mythic", ZsScore.rankFor(5000))
+        assertEquals("Heroic", ZsScore.rankFor(5000))
     }
 
     @Test
@@ -80,6 +83,6 @@ class ScoreLogicTest {
         assertEquals("Gold", ZsScore.rankFor(2000))
         assertEquals("Platinum", ZsScore.rankFor(3000))
         assertEquals("Diamond", ZsScore.rankFor(4000))
-        assertEquals("Mythic", ZsScore.rankFor(5000))
+        assertEquals("Heroic", ZsScore.rankFor(5000))
     }
 }

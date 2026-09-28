@@ -98,6 +98,10 @@ private fun ProfileScreen() {
 
     var editName by remember { mutableStateOf("") }
     var editPhone by remember { mutableStateOf("") }
+    // #5: game role + region are now player-editable (leaderboard Local scope
+    // reads "region", profile displays "gameRole" - both were admin-set only).
+    var editGameRole by remember { mutableStateOf("") }
+    var editRegion by remember { mutableStateOf("") }
     var isEditing by remember { mutableStateOf(false) }
     var avatarBitmap by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var avatarUrl by remember { mutableStateOf<String?>(null) }
@@ -158,6 +162,8 @@ private fun ProfileScreen() {
                 if (doc.exists()) {
                     name = doc.getString("name") ?: ""
                     phone = doc.getString("phone") ?: ""
+                    editGameRole = doc.getString("gameRole") ?: ""
+                    editRegion = doc.getString("region") ?: ""
                     score = doc.getLong("score") ?: 0
                     equippedTitle = doc.getString("title") ?: ""
                     level = (doc.getLong("level") ?: 1).toInt()
@@ -189,7 +195,14 @@ private fun ProfileScreen() {
         if (uid == null) return
 
         db.collection("players").document(uid)
-            .update(mapOf("name" to newName, "phone" to newPhone))
+            .update(
+                mapOf(
+                    "name" to newName,
+                    "phone" to newPhone,
+                    "gameRole" to editGameRole.trim(),
+                    "region" to editRegion.trim()
+                )
+            )
             .addOnSuccessListener {
                 Toast.makeText(context, "Profile updated!", Toast.LENGTH_SHORT).show()
                 isEditing = false
@@ -282,6 +295,10 @@ private fun ProfileScreen() {
                         ZSField(value = editName, onValueChange = { editName = it }, label = "Name")
                         Spacer(Modifier.height(12.dp))
                         ZSField(value = editPhone, onValueChange = { editPhone = it }, label = "Phone", keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone)
+                        Spacer(Modifier.height(12.dp))
+                        ZSField(value = editGameRole, onValueChange = { editGameRole = it }, label = "Game role (Rusher, Sniper, IGL…)")
+                        Spacer(Modifier.height(12.dp))
+                        ZSField(value = editRegion, onValueChange = { editRegion = it }, label = "Region (for Local leaderboard)")
                         Spacer(Modifier.height(14.dp))
                         ZSButton(text = "Save Profile", onClick = { saveProfile() }, container = ZsAccent)
                         TextButton(onClick = { isEditing = false }, modifier = Modifier.fillMaxWidth()) {

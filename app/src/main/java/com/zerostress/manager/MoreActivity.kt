@@ -75,6 +75,8 @@ private fun MoreScreen() {
         MoreItem(R.drawable.ic_menu_fire, "Daily Challenges", DailyChallengesActivity::class.java),
         MoreItem(R.drawable.ic_menu_ticket, "Battle Pass", BattlePassActivity::class.java),
         MoreItem(R.drawable.ic_menu_sparkles, "My Titles", PlayerTitlesActivity::class.java),
+        MoreItem(R.drawable.ic_menu_medal, "Match History", MatchHistoryActivity::class.java),
+        MoreItem(R.drawable.ic_menu_sparkles, "Coin Shop", ShopActivity::class.java),
         MoreItem(R.drawable.ic_menu_bell, "Notifications", NotificationsActivity::class.java),
         MoreItem(R.drawable.ic_menu_settings, "Settings", SettingsActivity::class.java)
     )

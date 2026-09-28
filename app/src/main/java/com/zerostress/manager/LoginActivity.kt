@@ -78,6 +78,9 @@ private fun LoginScreen() {
     var password by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(false) }
     var resetLoading by remember { mutableStateOf(false) }
+    // One verification reminder per screen visit, never blocking sign-in.
+    var wasReminderShown by remember { mutableStateOf(false) }
+    var showVerifyDialog by remember { mutableStateOf(false) }
 
     // Connectivity check for the SYSTEM STATUS strip on the login screen.
     fun isOnline(): Boolean {
@@ -218,6 +221,16 @@ private fun LoginScreen() {
                                     com.zerostress.manager.audio.ZsSoundManager.playLoginSuccess(context)
                                     Toast.makeText(context, "Signed in", Toast.LENGTH_SHORT).show()
                                     loading = false
+                                    // #4: gentle verification nudge for real-email accounts only.
+                                    // Phone accounts (@zerostress.local) cannot receive mail and
+                                    // sign in exactly as before - no behavior change for them.
+                                    val email = result.user?.email
+                                    if (!email.isNullOrBlank() && !email.endsWith("@zerostress.local")
+                                        && result.user?.isEmailVerified == false
+                                        && !wasReminderShown) {
+                                        wasReminderShown = true
+                                        showVerifyDialog = true
+                                    }
                                     val uid = result.user?.uid
                                     if (uid != null) {
                                         // Push can't reach a fresh device without its token
@@ -287,5 +300,30 @@ private fun LoginScreen() {
                 color = ZsTextMuted
             )
         }
+    }
+
+    // #4: non-blocking verification reminder for real-email accounts.
+    if (showVerifyDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showVerifyDialog = false },
+            title = { Text("Verify your email", fontWeight = FontWeight.Bold) },
+            text = {
+                Text(
+                    "A verification link was sent to your email. Verify to secure your account and enable password resets.",
+                    fontSize = 14.sp
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                        ?.sendEmailVerification()
+                    Toast.makeText(context, "Verification link sent", Toast.LENGTH_SHORT).show()
+                    showVerifyDialog = false
+                }) { Text("Resend link", color = ZsAccent, fontWeight = FontWeight.Bold) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showVerifyDialog = false }) { Text("Later") }
+            }
+        )
     }
 }

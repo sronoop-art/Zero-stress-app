@@ -56,7 +56,8 @@ private val deepLinks: Map<String, Class<*>> = mapOf(
     "title" to com.zerostress.manager.PlayerTitlesActivity::class.java,
     "challenge" to com.zerostress.manager.DailyChallengesActivity::class.java,
     "admin" to com.zerostress.manager.AdminDashboardActivity::class.java,
-    "friends" to com.zerostress.manager.FriendsActivity::class.java
+    "friends" to com.zerostress.manager.FriendsActivity::class.java,
+    "dm" to com.zerostress.manager.DirectMessageActivity::class.java
 )
 
 /**
@@ -228,7 +229,7 @@ class ZSFCMService : FirebaseMessagingService() {
         )
 
         val channelId = when (type) {
-            "chat", "mention" -> ZeroStressApp.CHAT_CHANNEL_ID
+            "chat", "mention", "dm" -> ZeroStressApp.CHAT_CHANNEL_ID
             "schedule" -> ZeroStressApp.SCHEDULE_CHANNEL_ID
             else -> ZeroStressApp.CHANNEL_ID
         }

@@ -298,6 +298,13 @@ private fun FriendsScreen() {
                                     Text(row.name, color = ZsTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                                     Spacer(Modifier.height(3.dp))
                                     Text(row.detail, color = ZsTextSecondary, fontSize = 12.sp)
+                                    Spacer(Modifier.height(6.dp))
+                                    // #3: one-tap direct message with this friend.
+                                    TextButton(onClick = {
+                                        DirectMessageActivity.launch(context, row.id, row.name)
+                                    }) {
+                                        Text("Message", color = ZsCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    }
                                 }
                                 Text(
                                     when (row.online) {
