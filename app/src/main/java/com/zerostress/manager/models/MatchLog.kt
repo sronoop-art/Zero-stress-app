@@ -33,5 +33,5 @@ class MatchLog {
         this.date = System.currentTimeMillis()
     }
 
-    fun getScore(): Long = (kills * 10 + damage / 100 + if (win) 200 else 0).toLong()
+    fun getScore(): Long = kills * 10 + damage / 100 + if (win) 200 else 0
 }

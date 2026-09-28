@@ -160,6 +160,7 @@ private fun subscribeToTopics() {
  */
 class ZSFCMService : FirebaseMessagingService() {
 
+    @Suppress("DEPRECATION", "OVERRIDE_DEPRECATION") // onNewToken: no replacement shipped yet (fm 25.x)
     override fun onNewToken(token: String) {
         super.onNewToken(token)
         Log.d(TAG, "FCM token refreshed")
@@ -257,6 +258,7 @@ class ZSFCMService : FirebaseMessagingService() {
          * Save the FCM token for the current user, retrying briefly because the
          * first token frequently arrives after sign-in completes.
          */
+        @Suppress("DEPRECATION") // .token has no documented replacement yet (fm 25.x)
         suspend fun saveTokenToFirestoreRetry(context: Context) {
             val uid = FirebaseAuth.getInstance().uid ?: return
             val maxAttempts = 4

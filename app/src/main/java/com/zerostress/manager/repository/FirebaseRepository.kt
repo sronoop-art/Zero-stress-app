@@ -38,6 +38,7 @@ object FirebaseRepository {
 
     fun getCurrentUserId(): String? = auth.currentUser?.uid
 
+    @Suppress("DEPRECATION") // .token has no documented replacement yet (fm 25.x)
     fun updateFcmToken() {
         val userId = getCurrentUserId() ?: return
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->

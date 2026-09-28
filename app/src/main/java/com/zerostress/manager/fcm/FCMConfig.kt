@@ -11,6 +11,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 object FCMConfig {
     private const val TAG = "FCMConfig"
 
+    @Suppress("DEPRECATION") // .token has no documented replacement yet (fm 25.x)
     fun checkFCMConfiguration(activity: Activity) {
         Log.d(TAG, "=== FCM Configuration Check ===")
 
