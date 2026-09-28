@@ -93,7 +93,8 @@ private data class ShopItem(
     val description: String,
     val price: Long,
     val active: Boolean,
-    val color: Color
+    val color: Color,
+    val iconUrl: String? = null
 )
 
 /** Shown while the admin has not populated shop_items yet; not purchasable. */
@@ -162,7 +163,8 @@ private fun ShopScreen() {
                             description = d.getString("description") ?: "",
                             price = d.getLong("price") ?: 0L,
                             active = d.getBoolean("active") ?: true,
-                            color = Color(0xFF20E7FF)
+                            color = Color(0xFF20E7FF),
+                            iconUrl = d.getString("iconUrl")?.takeIf { it.isNotBlank() }
                         )
                     }?.sortedBy { it.price } ?: emptyList()
                     catalogLoaded = true
@@ -253,6 +255,61 @@ private fun ShopScreen() {
                 busy = false
                 Toast.makeText(context, "Seed failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
             }
+    }
+
+    // ------------------------------------------------------------------
+    // Admin icon upload: PNG picker + Cloudinary, stored as item.iconUrl
+    // ------------------------------------------------------------------
+    var pendingIconPick by remember { mutableStateOf<ShopItem?>(null) }  // existing item being re-iconed
+    var iconUploading by remember { mutableStateOf(false) }
+
+    val iconPicker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val target = pendingIconPick
+        pendingIconPick = null
+        if (target?.docId == null) {
+            Toast.makeText(context, "Save the item first, then add its icon", Toast.LENGTH_SHORT).show()
+            return@rememberLauncherForActivityResult
+        }
+        try {
+            val bmp = android.graphics.BitmapFactory.decodeStream(
+                context.contentResolver.openInputStream(uri)
+            )
+            if (bmp == null) {
+                Toast.makeText(context, "Could not read that image", Toast.LENGTH_SHORT).show()
+                return@rememberLauncherForActivityResult
+            }
+            iconUploading = true
+            Thread {
+                val url = com.zerostress.manager.ota.ZsCloudinary.uploadItemIcon(bmp)
+                android.os.Handler(context.mainLooper).post {
+                    iconUploading = false
+                    if (url != null) {
+                        db.collection("shop_items").document(target.docId)
+                            .update("iconUrl", url)
+                            .addOnSuccessListener {
+                                Toast.makeText(context, "Icon updated!", Toast.LENGTH_SHORT).show()
+                            }
+                            .addOnFailureListener { e ->
+                                Toast.makeText(context, "Save failed: ${e.localizedMessage}", Toast.LENGTH_LONG).show()
+                            }
+                    } else {
+                        val why = com.zerostress.manager.ota.ZsCloudinary.lastError ?: "unknown error"
+                        Toast.makeText(context, "Icon upload failed: $why", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }.start()
+        } catch (e: Exception) {
+            iconUploading = false
+            Toast.makeText(context, "Could not read that image", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun launchIconPicker(item: ShopItem) {
+        pendingIconPick = item
+        iconPicker.launch("image/png")
     }
 
     // ------------------------------------------------------------------
@@ -397,27 +454,30 @@ private fun ShopScreen() {
                             }
                         }
                     }
+                    if (isAdmin && !manageMode) {
+                        item {
+                            Text(
+                                "Tip: open Manage items to add PNG icons to your shop items",
+                                color = ZsTextMuted,
+                                fontSize = 11.sp,
+                                modifier = Modifier.padding(horizontal = 4.dp)
+                            )
+                        }
+                    }
 
                     items(visibleItems, key = { it.docId ?: it.name }) { item ->
                         val owned = item.name in ownedTitles
                         val equipped = equippedTitle == item.name
                         ZSCard {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    Modifier
-                                        .size(44.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(0xFF11131F))
-                                        .border(2.dp, item.color, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        item.name.first().toString(),
-                                        color = item.color,
-                                        fontSize = 17.sp,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                }
+                                // PNG icon when the admin uploaded one (transparency
+                                // preserved, square fit); medallion fallback otherwise.
+                                com.zerostress.manager.ui.ZsRemoteShopIcon(
+                                    url = item.iconUrl,
+                                    fallbackLetter = item.name,
+                                    size = 44.dp,
+                                    fallbackColor = item.color
+                                )
                                 Spacer(Modifier.width(12.dp))
                                 Column(Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -447,6 +507,12 @@ private fun ShopScreen() {
                                                 Text("Edit", color = ZsCyan, fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                             }
                                             Row {
+                                                TextButton(
+                                                    onClick = { launchIconPicker(item) },
+                                                    enabled = !busy && !iconUploading && item.docId != null
+                                                ) {
+                                                    Text("Icon", color = ZsGold, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                                }
                                                 TextButton(onClick = { if (item.docId != null) toggleActive(item) }, enabled = !busy) {
                                                     Text(
                                                         if (item.active) "Hide" else "Show",
@@ -486,6 +552,24 @@ private fun ShopScreen() {
             }
         }
     }
+
+            // Icon upload in progress.
+            if (iconUploading) {
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "UPLOADING ICON…",
+                        color = ZsGold,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
 
     // Purchase confirmation: no accidental spends.
     buying?.let { item ->

@@ -111,17 +111,76 @@ object ZsCloudinary {
         }
     }
 
+    /**
+     * Uploads a bitmap as PNG (transparency preserved) for shop-item icons
+     * and returns the CDN URL, or null on failure. Same unsigned preset as
+     * avatars; capped at 256px. Runs on the calling thread.
+     */
+    fun uploadItemIcon(bitmap: Bitmap): String? {
+        lastError = null
+        if (!isEnabled()) {
+            lastError = "cloud not configured"
+            Log.w(TAG, "Cloudinary not configured (set cloudinary_cloud_name / cloudinary_upload_preset)")
+            return null
+        }
+        return try {
+            val scaled = scaleDown(bitmap, 256)
+            val baos = ByteArrayOutputStream()
+            scaled.compress(Bitmap.CompressFormat.PNG, 100, baos)
+            val bytes = baos.toByteArray()
+
+            val body = buildMultipartBody(bytes, "icon.png", "image/png")
+            val url = "https://api.cloudinary.com/v1_1/${cloudName()}/image/upload"
+            val conn = URL(url).openConnection() as HttpURLConnection
+            conn.requestMethod = "POST"
+            conn.doOutput = true
+            conn.connectTimeout = 15000
+            conn.readTimeout = 30000
+            conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=$BOUNDARY")
+            conn.setFixedLengthStreamingMode(body.size)
+            conn.outputStream.use { out ->
+                out.write(body)
+                out.flush()
+            }
+            val code = conn.responseCode
+            val bodyText = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                ?.bufferedReader()?.use { it.readText() } ?: ""
+            if (code !in 200..299) {
+                lastError = "HTTP $code"
+                Log.w(TAG, "Cloudinary icon upload failed: HTTP $code $bodyText")
+                return null
+            }
+            val marker = "\"secure_url\":\""
+            val start = bodyText.indexOf(marker)
+            if (start < 0) {
+                lastError = "unexpected response"
+                return null
+            }
+            val urlStart = start + marker.length
+            val end = bodyText.indexOf('"', urlStart)
+            if (end < 0) {
+                lastError = "unexpected response"
+                return null
+            }
+            bodyText.substring(urlStart, end).replace("\\/", "/")
+        } catch (e: Exception) {
+            lastError = e.message?.take(80) ?: "network error"
+            Log.w(TAG, "Cloudinary icon upload error: ${e.message}")
+            null
+        }
+    }
+
     /** Builds the complete multipart/form-data payload for an unsigned upload. */
-    private fun buildMultipartBody(jpeg: ByteArray): ByteArray {
-        val out = ByteArrayOutputStream(jpeg.size + 1024)
+    private fun buildMultipartBody(image: ByteArray, filename: String, mime: String): ByteArray {
+        val out = ByteArrayOutputStream(image.size + 1024)
         fun s(t: String) = out.write(t.toByteArray(Charsets.UTF_8))
         s("--$BOUNDARY\r\n")
         s("Content-Disposition: form-data; name=\"upload_preset\"\r\n\r\n")
         s(uploadPreset() + "\r\n")
         s("--$BOUNDARY\r\n")
-        s("Content-Disposition: form-data; name=\"file\"; filename=\"avatar.jpg\"\r\n")
-        s("Content-Type: image/jpeg\r\n\r\n")
-        out.write(jpeg)
+        s("Content-Disposition: form-data; name=\"file\"; filename=\"$filename\"\r\n")
+        s("Content-Type: $mime\r\n\r\n")
+        out.write(image)
         s("\r\n--$BOUNDARY--\r\n")
         return out.toByteArray()
     }

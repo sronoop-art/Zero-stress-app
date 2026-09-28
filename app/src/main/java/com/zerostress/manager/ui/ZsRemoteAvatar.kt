@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,8 +21,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.zerostress.manager.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -106,9 +109,65 @@ private fun download(url: String): Bitmap? = try {
     conn.connectTimeout = 10000
     conn.readTimeout = 15000
     conn.instanceFollowRedirects = true
+    // PNGs are regular files; BitmapFactory handles transparency natively.
     if (conn.responseCode in 200..299) {
         conn.inputStream.use { BitmapFactory.decodeStream(it) }
     } else null
 } catch (_: Exception) {
     null
+}
+
+/**
+ * Square shop-icon renderer: transparent PNGs displayed as-is (no circle
+ * crop), falling back to the medallion letter when no URL is set or the
+ * download fails. Shares the avatar bitmap cache.
+ */
+@Composable
+fun ZsRemoteShopIcon(
+    url: String?,
+    fallbackLetter: String,
+    size: Dp,
+    fallbackColor: Color,
+    modifier: Modifier = Modifier
+) {
+    val key = url?.takeIf { it.isNotBlank() }?.let { cacheKeyFor(it) }
+    var bitmap by remember(key) { mutableStateOf(key?.let { ZsAvatarCache.get(it) }) }
+
+    produceState(initialValue = bitmap, key) {
+        if (key == null || ZsAvatarCache.get(key) != null) return@produceState
+        val bmp = withContext(Dispatchers.IO) { download(url) }
+        if (bmp != null) {
+            ZsAvatarCache.put(key, bmp)
+            value = bmp
+        }
+    }
+
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        val bmp = bitmap
+        if (bmp != null) {
+            Image(
+                bitmap = bmp.asImageBitmap(),
+                contentDescription = "Shop item icon",
+                modifier = Modifier.size(size),
+                contentScale = ContentScale.Fit   // preserve transparency + aspect
+            )
+        } else {
+            // Medallion fallback: dark disc + colored ring + initial.
+            Box(
+                Modifier
+                    .size(size)
+                    .clip(CircleShape)
+                    .background(Color(0xFF11131F))
+                    .border(2.dp, fallbackColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    fallbackLetter.take(1).uppercase(),
+                    color = fallbackColor,
+                    fontSize = (size.value * 0.38f).sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+    }
 }
