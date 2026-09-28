@@ -270,6 +270,18 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------------
+    // shop_items — admin-managed coin shop catalog.
+    // Every signed-in player can read the catalog; only admins may add,
+    // edit, hide or delete items. Purchases themselves are transactions over
+    // players/{uid}.coins (self-update, balance-checked in the client) and
+    // player_titles (grant) - both already permitted above.
+    // ---------------------------------------------------------------------
+    match /shop_items/{itemId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------------
     // player_achievements / player_titles — gamification
     // ---------------------------------------------------------------------
     match /player_achievements/{docId} {
