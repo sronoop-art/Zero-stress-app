@@ -62,7 +62,7 @@ object ZsCloudinary {
             // Build the exact multipart body first, then declare its TRUE size.
             // (The old code over-declared the length by ~250 bytes, so the server
             // waited forever for a tail that never arrived and the upload timed out.)
-            val body = buildMultipartBody(bytes)
+            val body = buildMultipartBody(bytes, "avatar.jpg", "image/jpeg")
 
             val url = "https://api.cloudinary.com/v1_1/${cloudName()}/image/upload"
             val conn = URL(url).openConnection() as HttpURLConnection

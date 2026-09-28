@@ -169,8 +169,9 @@ private fun RegisterScreen() {
                                     // #4: verify real-email accounts (phone-only accounts map to
                                     // @zerostress.local and cannot receive mail, so they are exempt).
                                     val user = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
-                                    if (user != null && !user.email.isNullOrBlank() &&
-                                        !user.email.endsWith("@zerostress.local")) {
+                                    val mail = user?.email
+                                    if (user != null && !mail.isNullOrBlank() &&
+                                        !mail.endsWith("@zerostress.local")) {
                                         user.sendEmailVerification()
                                         Toast.makeText(
                                             context,

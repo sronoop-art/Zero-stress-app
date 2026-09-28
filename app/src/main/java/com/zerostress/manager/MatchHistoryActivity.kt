@@ -67,6 +67,7 @@ class MatchHistoryActivity : ComponentActivity() {
 
 @Composable
 private fun MatchHistoryScreen() {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
     val db = remember { FirebaseFirestore.getInstance() }
     val uid = auth.uid
@@ -94,7 +95,7 @@ private fun MatchHistoryScreen() {
         Column(Modifier.fillMaxSize()) {
             ZSTopBar(
                 title = "Match History",
-                onBack = { (androidx.compose.ui.platform.LocalContext.current as? android.app.Activity)?.finish() }
+                onBack = { (context as? android.app.Activity)?.finish() }
             )
             if (loading) {
                 LoadingBox(Modifier.weight(1f))
