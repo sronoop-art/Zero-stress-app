@@ -102,6 +102,20 @@ jobs:
               exit 1
             }
 
+      # Web/PWA companion (web/) to Firebase Hosting - free on Spark. Static
+      # files only (no build step), so a plain deploy of the folder is enough.
+      # Live at https://zerostress-3a536.web.app once this runs.
+      - name: Deploy web PWA to Firebase Hosting (free - no Blaze)
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa.json
+        run: |
+          npx --yes firebase-tools@13 deploy \
+            --only hosting \
+            --project zerostress-3a536 || {
+              echo "::warning::Hosting deploy failed (check firebase.json hosting.public)."
+              exit 1
+            }
+
       # Everything below is Blaze-only and must never block the free deploy
       # above, so each step is allowed to fail on its own.
       - name: Install functions dependencies

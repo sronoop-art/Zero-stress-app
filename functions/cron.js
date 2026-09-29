@@ -11,8 +11,158 @@
 // notifications and resets still run).
 
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+// ------------------------------------------------------------- Web Push ----
+// Web/PWA users (web/index.html) store their push subscription as a JSON
+// string on players/{uid}.webPush. Messages are delivered with the standard
+// Web Push protocol (VAPID), which is FREE - it goes browser -> push service
+// (Apple/Google/Mozilla endpoints) directly, no FCM project plumbing needed.
+// Set these two repository secrets to enable:
+//   ZS_WEB_PUSH_PUBLIC_KEY  - base64url public key from the VAPID key pair
+//   ZS_WEB_PUSH_PRIVATE_KEY - base64url private key from the same pair
+// (Generate once: Firebase Console > Project settings > Cloud Messaging >
+//  Web Push certificates > Generate key pair.)
+function webPushConfigured() {
+  return !!(process.env.ZS_WEB_PUSH_PUBLIC_KEY && process.env.ZS_WEB_PUSH_PRIVATE_KEY);
+}
+
+async function webPushSend(subJson, title, message, type, threadId) {
+  try {
+    const sub = JSON.parse(subJson);
+    const endpoint = sub.endpoint;
+    const peer = sub.keys && sub.keys.p256dh;
+    if (!endpoint || !peer) return "bad-sub";
+    const payloadJson = {
+      endpointOrigin: new URL(endpoint).origin,
+      body: JSON.stringify({ title, body: message, type, threadId })
+    };
+    const built = webPushRequest(peer, payloadJson);
+    const res = await fetch(endpoint, { method: "POST", headers: built.headers, body: built.body });
+    if (res.status === 404 || res.status === 410) return "dead-sub";
+    if (!res.ok) {
+      console.log("web push failed: HTTP " + res.status);
+      return "failed";
+    }
+    return "sent";
+  } catch (e) {
+    console.log("web push error: " + (e.message || e));
+    return "failed";
+  }
+}
+
+// Builds the full encrypted aes128gcm POST for one subscription.
+// peerU64 = the subscription's p256dh key (the USER's ECDH P-256 public key).
+function webPushRequest(peerU64, payloadJson) {
+  const pub = process.env.ZS_WEB_PUSH_PUBLIC_KEY;
+  const priv = process.env.ZS_WEB_PUSH_PRIVATE_KEY;
+  const b64u = (buf) => Buffer.from(buf).toString("base64url");
+
+  const ecdh = crypto.createECDH("prime256v1");
+  ecdh.generateKeys();
+  const pubSrv = ecdh.getPublicKey();
+  const peer = Buffer.from(peerU64, "base64url");
+  const shared = ecdh.computeSecret(peer);
+
+  const jwtHeader = b64u(JSON.stringify({ typ: "JWT", alg: "ES256" }));
+  const jwtClaims = b64u(JSON.stringify({
+    aud: payloadJson.endpointOrigin,
+    exp: Math.floor(Date.now() / 1000) + 12 * 3600,
+    sub: "mailto:admin@zerostress.app"
+  }));
+  const signer = crypto.createSign("SHA256");
+  signer.update(Buffer.from(jwtHeader + "." + jwtClaims));
+  const der = signer.sign(vapidPrivateKeyPem(priv));
+  let r = der.subarray(4, 4 + der[3]);
+  let s = der.subarray(6 + der[3]);
+  while (r.length < 32) r = Buffer.concat([Buffer.from([0]), r]);
+  while (s.length < 32) s = Buffer.concat([Buffer.from([0]), s]);
+  const sig = Buffer.concat([r.subarray(0, 32), s.subarray(0, 32)]);
+  const jwt = jwtHeader + "." + jwtClaims + "." + b64u(sig);
+
+  const salt = crypto.randomBytes(16);
+  const cekInfo = Buffer.concat([
+    Buffer.from("Content-Encoding: aes128gcm\x00"), Buffer.from("P-256"),
+    Buffer.from([0]), Buffer.from([0, 65]),
+    Buffer.from("P-256"), Buffer.from([0, 65])
+  ]);
+  const nonceInfo = Buffer.concat([
+    Buffer.from("Content-Encoding: nonce\x00"), Buffer.from("P-256"),
+    Buffer.from([0]), Buffer.from([0, 65]),
+    Buffer.from("P-256"), Buffer.from([0, 65])
+  ]);
+  const ikm = crypto.hkdfSync("sha256", shared, salt, cekInfo, 16);
+  const cek = crypto.createSecretKey(Buffer.from(ikm));
+  const iv = Buffer.from(crypto.hkdfSync("sha256", shared, salt, nonceInfo, 12));
+
+  const payload = Buffer.from(payloadJson.body, "utf8");
+  const cipher = crypto.createCipheriv("aes-128-gcm", cek, iv);
+  const ct = Buffer.concat([cipher.update(payload), cipher.final(), cipher.getAuthTag()]);
+  const header = Buffer.concat([
+    salt,
+    Buffer.from([0x00, 0x00, 0x10, 0x00]),
+    Buffer.from([65]),
+    pubSrv
+  ]);
+  return {
+    headers: {
+      "Content-Encoding": "aes128gcm",
+      "Content-Type": "application/octet-stream",
+      TTL: "86400",
+      Authorization: "vapid t=" + jwt + ", k=" + pub
+    },
+    body: Buffer.concat([header, ct])
+  };
+}
+
+async function webPushToUid(uid, title, message, type, threadId) {
+  if (!webPushConfigured()) return "disabled";
+  const d = getDb();
+  const player = await d.collection("players").doc(uid).get();
+  const subJson = player.exists ? player.data().webPush : null;
+  if (!subJson || typeof subJson !== "string") return "no-sub";
+  const result = await webPushSend(subJson, title, message, type, threadId);
+  if (result === "dead-sub") {
+    d.collection("players").doc(uid).update({ webPush: admin.firestore.FieldValue.delete() }).catch(() => {});
+  }
+  return result;
+}
+
+async function webPushToAll(title, message, type) {
+  if (!webPushConfigured()) return "disabled";
+  const d = getDb();
+  const players = await d.collection("players").get();
+  let sent = 0;
+  for (const doc of players.docs) {
+    const subJson = doc.data().webPush;
+    if (subJson && typeof subJson === "string") {
+      const r = await webPushSend(subJson, title, message, type, null);
+      if (r === "sent") sent++;
+      if (r === "dead-sub") {
+        d.collection("players").doc(doc.id).update({ webPush: admin.firestore.FieldValue.delete() }).catch(() => {});
+      }
+    }
+  }
+  if (sent) console.log("Web push broadcast: " + sent + " subscriber(s)");
+  return "done";
+}
+
+// Wraps a raw 32-byte base64url private key in a proper SEC1
+// "EC PRIVATE KEY" PEM (ASN.1 DER), which is what VAPID key pairs give you.
+function vapidPrivateKeyPem(privB64u) {
+  const priv = Buffer.from(privB64u.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+  if (priv.length !== 32) throw new Error("VAPID private key must be 32 bytes");
+  // SEQUENCE(49) { INTEGER 1, OCTET STRING(32) privateKey, [0] OID prime256v1 }
+  const der = Buffer.concat([
+    Buffer.from([0x30, 0x31, 0x02, 0x01, 0x01, 0x04, 0x20]),
+    priv,
+    Buffer.from([0xA0, 0x0A, 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07])
+  ]);
+  const b64 = der.toString("base64").replace(/(.{64})/g, "$1\n");
+  return "-----BEGIN EC PRIVATE KEY-----\n" + b64 + "\n-----END EC PRIVATE KEY-----";
+}
 
 // ---------------------------------------------------------------- Firestore
 let db = null;
@@ -39,6 +189,8 @@ function channelFor(type) {
 }
 
 async function sendToUid(uid, title, message, type, extraData) {
+  // Web/PWA users get the same notification through Web Push (free, no FCM).
+  await webPushToUid(uid, title, message, type, extraData ? extraData.threadId || null : null).catch(() => {});
   if ((process.env.FCM_V1_ENABLED || "true").toLowerCase() === "false") {
     console.log("FCM_V1_ENABLED=false - push skipped (in-app notification only).");
     return "skipped";
@@ -94,6 +246,7 @@ async function sendToUid(uid, title, message, type, extraData) {
 // "all_players" would silently miss the announcement, so we address tokens
 // directly (same approach as the Cloud Function version).
 async function sendToAll(title, message, type) {
+  await webPushToAll(title, message, type).catch(() => {});
   if ((process.env.FCM_V1_ENABLED || "true").toLowerCase() === "false") {
     console.log("FCM_V1_ENABLED=false - broadcast push skipped.");
     return;

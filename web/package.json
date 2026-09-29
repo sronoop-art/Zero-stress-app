@@ -1,0 +1,13 @@
+{
+  "name": "zerostress-web",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ZERO STRESS PWA companion - same Firebase backend as the Android app",
+  "scripts": {
+    "start": "node server.js",
+    "icons": "node scripts/gen-icons.js"
+  },
+  "devDependencies": {
+    "sharp": "^0.33.0"
+  }
+}

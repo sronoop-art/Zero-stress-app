@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>ZERO STRESS</title>
+<meta name="description" content="ZERO STRESS esports manager - ranks, match history, chat and more.">
+<!-- iOS PWA: standalone when added to Home Screen + status-bar styling -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ZERO STRESS">
+<meta name="theme-color" content="#050814">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="bgfx" aria-hidden="true"></div>
+
+<!-- ============================== AUTH ============================== -->
+<section id="auth-view" class="view">
+  <div class="auth-wrap">
+    <div class="auth-logo">ZS</div>
+    <h1 class="auth-title">ZERO STRESS</h1>
+    <p class="auth-sub">NEXUS COMPANION &middot; SAME ACCOUNT AS THE APP</p>
+
+    <div class="glass auth-card">
+      <label class="field">
+        <span>PLAYER ID</span>
+        <input id="auth-id" type="text" inputmode="email" autocapitalize="none"
+               placeholder="phone or email" autocomplete="username">
+      </label>
+      <label class="field">
+        <span>PASSWORD</span>
+        <input id="auth-pass" type="password" placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+               autocomplete="current-password">
+      </label>
+      <button id="auth-go" class="btn-primary" type="button">SIGN IN</button>
+      <button id="auth-toggle" class="btn-ghost" type="button">New player? Create account</button>
+      <p id="auth-msg" class="auth-msg"></p>
+      <p class="auth-note">Use the same ID and password as the ZERO STRESS Android app.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================== APP ============================== -->
+<section id="app-view" class="view hidden">
+  <header class="topbar">
+    <div class="topbar-title" id="screen-title">DASHBOARD</div>
+    <button id="push-btn" class="push-btn" type="button" title="Enable push notifications"
+            aria-label="Enable push notifications">&#128276;</button>
+  </header>
+
+  <main id="screens">
+    <!-- DASHBOARD -->
+    <div class="screen" id="scr-dashboard">
+      <div class="glass hero">
+        <div class="hero-left">
+          <div class="hero-name" id="dash-name">&mdash;</div>
+          <div class="hero-role" id="dash-role">&mdash;</div>
+        </div>
+        <div class="rank-hex" id="dash-rankhex"><span id="dash-rank-init">-</span></div>
+        <div class="hero-rank">
+          <div class="hero-rank-name" id="dash-rank">&mdash;</div>
+          <div class="hero-rank-pts" id="dash-pts">&mdash;</div>
+        </div>
+      </div>
+      <div class="stat-grid">
+        <div class="glass stat"><b id="st-kills">0</b><span>KILLS</span></div>
+        <div class="glass stat"><b id="st-deaths">0</b><span>DEATHS</span></div>
+        <div class="glass stat"><b id="st-assists">0</b><span>ASSISTS</span></div>
+        <div class="glass stat"><b id="st-wins">0</b><span>WINS</span></div>
+      </div>
+      <div class="glass bar-card">
+        <div class="bar-head"><span>NEXT RANK</span><b id="bar-next">&mdash;</b></div>
+        <div class="bar-track"><div class="bar-fill" id="bar-fill"></div></div>
+        <div class="bar-foot"><span id="bar-cur">0</span><span id="bar-goal">0</span></div>
+      </div>
+      <div class="glass coins-line"><span>COIN BALANCE</span><b id="dash-coins">0</b></div>
+      <p class="voice-note">Voice channels are Android-only for now - join them in the app.</p>
+    </div>
+
+    <!-- LEADERBOARD -->
+    <div class="screen hidden" id="scr-leaderboard">
+      <div class="seg" id="lb-seg">
+        <button data-scope="lifetime" class="seg-btn active" type="button">LIFETIME</button>
+        <button data-scope="daily" class="seg-btn" type="button">DAILY</button>
+        <button data-scope="weekly" class="seg-btn" type="button">WEEKLY</button>
+        <button data-scope="monthly" class="seg-btn" type="button">MONTHLY</button>
+      </div>
+      <div id="lb-list" class="list"></div>
+    </div>
+
+    <!-- MATCH HISTORY -->
+    <div class="screen hidden" id="scr-history">
+      <div id="mh-list" class="list"></div>
+    </div>
+
+    <!-- CHAT -->
+    <div class="screen hidden" id="scr-chat">
+      <div id="chat-scroll" class="chat-scroll"></div>
+      <form id="chat-form" class="chat-form">
+        <input id="chat-input" type="text" placeholder="Message the team&hellip;" maxlength="500"
+               autocomplete="off">
+        <button class="btn-primary chat-send" type="submit">SEND</button>
+      </form>
+    </div>
+
+    <!-- DMS -->
+    <div class="screen hidden" id="scr-dms">
+      <div id="dm-list" class="list"></div>
+      <form id="dm-new" class="dm-new">
+        <input id="dm-find" type="text" placeholder="Player name or ID&hellip;" autocomplete="off">
+        <button class="btn-primary dm-find-btn" type="submit">FIND</button>
+      </form>
+      <div id="dm-results" class="list"></div>
+      <div id="dm-thread" class="hidden">
+        <div class="dm-thread-head">
+          <button id="dm-back" class="btn-ghost" type="button">&larr; BACK</button>
+          <b id="dm-peer-name">&mdash;</b>
+        </div>
+        <div id="dm-scroll" class="chat-scroll"></div>
+        <form id="dm-form" class="chat-form">
+          <input id="dm-input" type="text" placeholder="Message&hellip;" maxlength="500" autocomplete="off">
+          <button class="btn-primary chat-send" type="submit">SEND</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="screen hidden" id="scr-schedule">
+      <div id="sch-list" class="list"></div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div class="screen hidden" id="scr-notifications">
+      <button id="notif-clear" class="btn-ghost notif-clear" type="button">CLEAR ALL</button>
+      <div id="notif-list" class="list"></div>
+    </div>
+
+    <!-- SHOP -->
+    <div class="screen hidden" id="scr-shop">
+      <div class="glass coins-line shop-coins"><span>COINS</span><b id="shop-coins">0</b></div>
+      <div id="shop-grid" class="shop-grid"></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="screen hidden" id="scr-profile">
+      <div class="glass profile-card">
+        <div class="rank-hex big" id="pf-rankhex"><span id="pf-rank-init">-</span></div>
+        <div class="hero-name" id="pf-name">&mdash;</div>
+        <div class="hero-role" id="pf-role">&mdash;</div>
+      </div>
+      <label class="field">
+        <span>GAME ROLE</span>
+        <input id="pf-game-role" type="text" maxlength="40" placeholder="e.g. IGL / Entry / Support">
+      </label>
+      <label class="field">
+        <span>REGION</span>
+        <input id="pf-region" type="text" maxlength="40" placeholder="e.g. Asia / EU / NA">
+      </label>
+      <button id="pf-save" class="btn-primary" type="button">SAVE PROFILE</button>
+      <p id="pf-msg" class="auth-msg"></p>
+      <button id="logout" class="btn-ghost logout" type="button">SIGN OUT</button>
+    </div>
+  </main>
+
+  <nav class="bottom-nav" id="bottom-nav">
+    <button data-scr="dashboard" class="nav-btn active" type="button"><i>&#9632;</i>DASH</button>
+    <button data-scr="leaderboard" class="nav-btn" type="button"><i>&#9824;</i>RANKS</button>
+    <button data-scr="chat" class="nav-btn" type="button"><i>&#9993;</i>CHAT</button>
+    <button data-scr="dms" class="nav-btn" type="button"><i>&#10070;</i>DMS</button>
+    <button data-scr="notifications" class="nav-btn" type="button" id="nav-notif"><i>&#9788;</i>ALERTS<span class="notif-badge" id="notif-badge" style="display:none"></span></button>
+    <button data-scr="shop" class="nav-btn" type="button"><i>&#9670;</i>SHOP</button>
+    <button data-scr="profile" class="nav-btn" type="button"><i>&#9679;</i>ME</button>
+  </nav>
+</section>
+
+<!-- Firebase v10 modular CDN build - no bundler needed -->
+<script type="module" src="app.js"></script>
+</body>
+</html>
