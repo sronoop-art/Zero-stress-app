@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ZERO STRESS — Theme Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ================= Studio chrome (NOT the preview) ================= */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0; background: #0b0d13; color: #e8ecf5;
+  font-family: "Rajdhani", system-ui, sans-serif;
+}
+header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 16px; background: rgba(11, 13, 19, 0.95);
+  border-bottom: 1px solid #232838;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+}
+header h1 { margin: 0; font-size: 18px; letter-spacing: 3px; color: #20e7ff; margin-right: auto; }
+.sbtn {
+  padding: 9px 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #2c3242; background: #171b26; color: #c9d1e4;
+  font-family: inherit; font-size: 12px; letter-spacing: 1px; font-weight: 600;
+}
+.sbtn.accent { background: linear-gradient(135deg, #20e7ff, #8b5cff); color: #04101a; border: none; }
+.sbtn:active { filter: brightness(1.2); }
+.studio {
+  display: grid; grid-template-columns: 370px 1fr; gap: 16px;
+  max-width: 1240px; margin: 0 auto; padding: 16px;
+}
+@media (max-width: 940px) { .studio { grid-template-columns: 1fr; } }
+.panel { background: #12151d; border: 1px solid #262b38; border-radius: 14px; padding: 14px; align-self: start; }
+.panel h2 { margin: 0 0 4px; font-size: 14px; letter-spacing: 2px; color: #aeb8cf; }
+.panel p.hint { margin: 0 0 10px; font-size: 11px; color: #6d7789; line-height: 1.5; }
+.group-title { font-size: 11px; letter-spacing: 2px; color: #8b94a8; margin: 14px 0 8px; border-bottom: 1px solid #232838; padding-bottom: 4px; }
+.color-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.color-row label { flex: 1; font-size: 13px; color: #c9d1e4; }
+.color-row input[type="color"] {
+  width: 44px; height: 34px; padding: 2px; border: 1px solid #2c3242;
+  border-radius: 8px; background: #0d1017; cursor: pointer;
+}
+.hex {
+  width: 92px; background: #0d1017; border: 1px solid #2c3242; color: #e8ecf5;
+  border-radius: 8px; padding: 7px 8px; font-family: monospace; font-size: 12px;
+}
+.slider-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.slider-row label { flex: 1; font-size: 13px; color: #c9d1e4; }
+.slider-row output { width: 46px; text-align: right; font-size: 12px; color: #8b94a8; }
+input[type="range"] { flex: 1.2; accent-color: #20e7ff; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 9px 13px; border-radius: 10px; cursor: pointer;
+  border: 1px solid #2c3242; background: #171b26; color: #c9d1e4;
+  font-family: inherit; font-size: 12px; letter-spacing: 1px; font-weight: 600;
+}
+.chip.active { border-color: #20e7ff; color: #20e7ff; background: rgba(32, 231, 255, 0.08); }
+.preview-wrap { position: sticky; top: 74px; }
+@media (max-width: 940px) { .preview-wrap { position: static; } }
+
+/* ================= Phone preview (uses THEME vars) ================= */
+.phone {
+  width: min(400px, 100%); margin: 0 auto;
+  border: 1px solid #2c3242; border-radius: 36px; padding: 12px; background: #05070d;
+}
+.phone-inner {
+  --bg0: #050814; --bg1: #04060f; --bg2: #03050b;
+  --card-a: 0.06; --border-a: 0.09;
+  --accent: #20e7ff; --violet: #8b5cff;
+  --text: #f3f7ff; --text2: #9ba7c7; --text3: #59647f;
+  --danger: #ff416c; --success: #31f7a5; --gold: #ffc857;
+  --radius: 14px; --ink: #04101a;
+  border-radius: 26px; overflow: hidden;
+  background: linear-gradient(165deg, var(--bg0), var(--bg1) 55%, var(--bg2));
+  border: 1px solid rgba(255, 255, 255, var(--border-a));
+  font-family: "Rajdhani", system-ui, sans-serif;
+  min-height: 720px;
+}
+.pv-topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px; background: rgba(0, 0, 0, 0.25); border-bottom: 1px solid rgba(255,255,255,var(--border-a));
+  color: var(--accent); font-weight: 700; letter-spacing: 3px; font-size: 17px;
+}
+.pv-body { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.pv-label { font-size: 10px; letter-spacing: 3px; color: var(--text3); margin-top: 6px; }
+.pv-card {
+  background: rgba(255, 255, 255, var(--card-a));
+  border: 1px solid rgba(255, 255, 255, var(--border-a));
+  border-radius: var(--radius);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+}
+/* login */
+.pv-login { text-align: center; padding: 26px 18px; }
+.pv-logo {
+  width: 64px; height: 64px; margin: 0 auto 14px; display: grid; place-items: center;
+  border-radius: 18px; font-size: 24px; font-weight: 700; color: var(--accent);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--accent) 16%, transparent), color-mix(in srgb, var(--violet) 16%, transparent));
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.pv-title { font-size: 26px; letter-spacing: 6px; color: var(--text); font-weight: 700; }
+.pv-sub { font-size: 10px; letter-spacing: 2px; color: var(--text3); margin: 4px 0 20px; }
+.pv-field {
+  text-align: left; margin-bottom: 12px;
+}
+.pv-field span { display: block; font-size: 10px; letter-spacing: 2px; color: var(--text2); margin-bottom: 6px; }
+.pv-field div {
+  padding: 11px 13px; border-radius: 10px; font-size: 14px; color: var(--text3);
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255,255,255,var(--border-a));
+}
+.pv-btn {
+  padding: 13px; border-radius: 12px; text-align: center;
+  background: linear-gradient(135deg, var(--accent), var(--violet));
+  color: var(--ink); font-weight: 700; letter-spacing: 2px; font-size: 15px;
+}
+.pv-ghost { margin-top: 10px; font-size: 12px; color: var(--text2); }
+/* dashboard */
+.pv-hero { display: flex; align-items: center; gap: 14px; padding: 16px; position: relative; overflow: hidden; }
+.pv-hero-name { font-size: 21px; font-weight: 700; color: var(--text); }
+.pv-hero-role { font-size: 11px; letter-spacing: 2px; color: var(--text2); margin-top: 2px; }
+.pv-hex {
+  width: 50px; height: 56px; flex: 0 0 auto; display: grid; place-items: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--success) 40%, transparent), color-mix(in srgb, var(--success) 14%, transparent));
+  color: var(--success); font-size: 19px; font-weight: 700;
+}
+.pv-rank { margin-left: auto; text-align: right; }
+.pv-rank b { display: block; color: var(--accent); letter-spacing: 2px; font-size: 14px; }
+.pv-rank span { font-size: 11px; color: var(--text2); }
+.pv-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.pv-stat { padding: 10px 4px; text-align: center; }
+.pv-stat b { display: block; font-size: 17px; color: var(--accent); }
+.pv-stat span { font-size: 9px; letter-spacing: 1.5px; color: var(--text3); }
+.pv-bar { padding: 12px 14px; }
+.pv-bar-head { display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 2px; color: var(--text2); }
+.pv-bar-head b { color: var(--violet); }
+.pv-track { height: 9px; border-radius: 6px; background: rgba(255,255,255,0.07); margin: 8px 0 5px; overflow: hidden; }
+.pv-fill { height: 100%; width: 62%; border-radius: 6px; background: linear-gradient(90deg, var(--accent), var(--violet)); }
+.pv-coins { display: flex; justify-content: space-between; padding: 12px 14px; font-size: 12px; letter-spacing: 2px; color: var(--text2); }
+.pv-coins b { color: var(--gold); font-size: 16px; }
+/* chat */
+.pv-chat { display: flex; flex-direction: column; gap: 8px; padding: 14px; }
+.pv-bub { max-width: 80%; padding: 8px 12px; font-size: 14px; line-height: 1.35; }
+.pv-bub.theirs {
+  align-self: flex-start; color: var(--text);
+  background: rgba(255, 255, 255, calc(var(--card-a) * 2));
+  border: 1px solid rgba(255,255,255,var(--border-a));
+  border-radius: 14px; border-bottom-left-radius: 4px;
+}
+.pv-bub.mine {
+  align-self: flex-end; color: var(--ink); font-weight: 600;
+  background: linear-gradient(135deg, var(--accent), var(--violet));
+  border-radius: 14px; border-bottom-right-radius: 4px;
+}
+.pv-bub small { display: block; font-size: 9px; opacity: 0.6; margin-top: 2px; }
+.pv-chatinput { display: flex; gap: 8px; padding: 0 14px 14px; }
+.pv-chatinput .pv-field-div {
+  flex: 1; padding: 11px 13px; border-radius: 12px; font-size: 13px; color: var(--text3);
+  background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255,255,255,var(--border-a));
+}
+.pv-chatinput .pv-send { padding: 11px 18px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--violet)); color: var(--ink); font-weight: 700; font-size: 13px; letter-spacing: 1px; }
+footer { text-align: center; color: #6d7789; font-size: 11px; padding: 20px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>NEXUS THEME STUDIO</h1>
+  <button class="sbtn" id="btn-random" type="button">RANDOMIZE</button>
+  <button class="sbtn" id="btn-reset" type="button">RESET</button>
+  <button class="sbtn" id="btn-copy-theme" type="button">COPY THEME.KT</button>
+  <button class="sbtn" id="btn-copy-zstheme" type="button">COPY ZSTHEME.KT</button>
+  <button class="sbtn accent" id="btn-download" type="button">DOWNLOAD THEME.KT</button>
+</header>
+
+<div class="studio">
+  <!-- ===================== CONTROLS ===================== -->
+  <div class="panel">
+    <h2>PRESETS</h2>
+    <p class="hint">One tap loads a full theme. Randomize invents a new esports look every time.</p>
+    <div class="chips" id="presets"></div>
+
+    <div class="group-title">BACKGROUND</div>
+    <div id="grp-bg"></div>
+
+    <div class="group-title">ACCENTS</div>
+    <div id="grp-accents"></div>
+
+    <div class="group-title">TEXT</div>
+    <div id="grp-text"></div>
+
+    <div class="group-title">STATUS</div>
+    <div id="grp-status"></div>
+
+    <div class="group-title">SURFACES</div>
+    <div class="slider-row">
+      <label>Card glass opacity</label>
+      <input type="range" id="in-card-a" min="0" max="30" value="6">
+      <output id="out-card-a">6%</output>
+    </div>
+    <div class="slider-row">
+      <label>Border opacity</label>
+      <input type="range" id="in-border-a" min="0" max="30" value="9">
+      <output id="out-border-a">9%</output>
+    </div>
+    <div class="slider-row">
+      <label>Corner radius <small style="color:#6d7789">(preview only)</small></label>
+      <input type="range" id="in-radius" min="0" max="28" value="14">
+      <output id="out-radius">14px</output>
+    </div>
+
+    <p class="hint" style="margin-top:14px">
+      When you are happy: tap <b>COPY THEME.KT</b> and send the file content back to
+      Codebuff — it will be applied app-wide and a new ZS3.1.zip will be built.
+      ZsTheme.kt mirrors the same palette for screens importing
+      <code>ZeroStressTheme.*</code>.
+    </p>
+  </div>
+
+  <!-- ===================== LIVE PREVIEW ===================== -->
+  <div class="preview-wrap">
+    <div class="phone">
+      <div class="phone-inner" id="preview">
+        <div class="pv-topbar"><span>DASHBOARD</span><span style="letter-spacing:0">&#128276;</span></div>
+        <div class="pv-body">
+          <div class="pv-label">LOGIN</div>
+          <div class="pv-card pv-login">
+            <div class="pv-logo">ZS</div>
+            <div class="pv-title">ZERO STRESS</div>
+            <div class="pv-sub">NEXUS COMPANION</div>
+            <div class="pv-field"><span>PLAYER ID</span><div>phone or email</div></div>
+            <div class="pv-field"><span>PASSWORD</span><div>&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;</div></div>
+            <div class="pv-btn">SIGN IN</div>
+            <div class="pv-ghost">New player? Create account</div>
+          </div>
+
+          <div class="pv-label">HOME</div>
+          <div class="pv-card pv-hero">
+            <div class="pv-hex">G</div>
+            <div>
+              <div class="pv-hero-name">NovaStrike</div>
+              <div class="pv-hero-role">IGL &middot; ASIA</div>
+            </div>
+            <div class="pv-rank"><b>GRANDMASTER</b><span>10,450 PTS</span></div>
+          </div>
+          <div class="pv-stats">
+            <div class="pv-card pv-stat"><b>312</b><span>KILLS</span></div>
+            <div class="pv-card pv-stat"><b>147</b><span>DEATHS</span></div>
+            <div class="pv-card pv-stat"><b>98</b><span>ASSISTS</span></div>
+            <div class="pv-card pv-stat"><b>54</b><span>WINS</span></div>
+          </div>
+          <div class="pv-card pv-bar">
+            <div class="pv-bar-head"><span>NEXT RANK</span><b>GRANDMASTER</b></div>
+            <div class="pv-track"><div class="pv-fill"></div></div>
+          </div>
+          <div class="pv-card pv-coins"><span>COIN BALANCE</span><b>2,450</b></div>
+
+          <div class="pv-label">TEAM CHAT</div>
+          <div class="pv-card pv-chat">
+            <div class="pv-bub theirs">gg everyone, clean sweep <small>Ghost 21:04</small></div>
+            <div class="pv-bub mine">finals at 8, don't be late <small>you 21:05</small></div>
+            <div class="pv-bub theirs">ready &#128293; <small>Viper 21:06</small></div>
+          </div>
+          <div class="pv-chatinput">
+            <div class="pv-field-div">Message the team&hellip;</div>
+            <div class="pv-send">SEND</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<footer>NEXUS Theme Studio &middot; previews login / dashboard / chat with your live palette &middot; exports drop straight into ui/theme/</footer>
+
+<script>
+/* ============================ helpers ============================ */
+const $ = (id) => document.getElementById(id);
+const clamp = (n, a, b) => Math.min(b, Math.max(a, n));
+function hexToRgb(h) {
+  h = h.replace("#", "");
+  if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+  return { r: parseInt(h.slice(0, 2), 16), g: parseInt(h.slice(2, 4), 16), b: parseInt(h.slice(4, 6), 16) };
+}
+const rgbToHex = (r, g, b) =>
+  "#" + [r, g, b].map((v) => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0")).join("");
+function rgbToHsl(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+  let h = 0, s = 0; const l = (mx + mn) / 2;
+  if (mx !== mn) {
+    const d = mx - mn;
+    s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+    if (mx === r) h = ((g - b) / d + (g < b ? 6 : 0));
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h *= 60;
+  }
+  return { h, s: s * 100, l: l * 100 };
+}
+function hslToHex(h, s, l) {
+  s /= 100; l /= 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return rgbToHex(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+const darken = (hex, amt) => { const c = rgbToHsl(hex.r, hex.g, hex.b); return hslToHex(c.h, c.s, clamp(c.l - amt, 0, 100)); };
+const lighten = (hex, amt) => { const c = rgbToHsl(hex.r, hex.g, hex.b); return hslToHex(c.h, c.s, clamp(c.l + amt, 0, 100)); };
+const alphaByte = (a) => Math.round(clamp(a, 0, 1) * 255).toString(16).padStart(2, "0").toUpperCase();
+
+/* ============================ state ============================ */
+const DEFAULT = {
+  bgStart: "#050814", bgMid: "#04060F", bgEnd: "#03050B",
+  accent: "#20E7FF", violet: "#8B5CFF",
+  text: "#F3F7FF", text2: "#9BA7C7", text3: "#59647F",
+  danger: "#FF416C", success: "#31F7A5", gold: "#FFC857",
+  cardA: 0.06, borderA: 0.09, radius: 14
+};
+let state = JSON.parse(JSON.stringify(DEFAULT));
+try {
+  const saved = localStorage.getItem("zsStudioTheme");
+  if (saved) state = Object.assign(state, JSON.parse(saved));
+} catch (e) {}
+
+const PRESETS = {
+  NEXUS: DEFAULT,
+  "CYBER GRID": { bgStart: "#02030A", bgMid: "#030610", bgEnd: "#010208", accent: "#00F0FF", violet: "#FF00E5", text: "#D9F7FF", text2: "#7FA8B8", text3: "#3E5A66", danger: "#FF3355", success: "#00FF9D", gold: "#FFE14D", cardA: 0.05, borderA: 0.08, radius: 4 },
+  "CARBON GT": { bgStart: "#0C0E12", bgMid: "#0A0C10", bgEnd: "#07080B", accent: "#FF1E3C", violet: "#FF5C1E", text: "#E8EAF0", text2: "#9AA3B2", text3: "#4C5563", danger: "#FF1E3C", success: "#3DFF88", gold: "#FFC93C", cardA: 0.07, borderA: 0.12, radius: 6 },
+  "ARCTIC PRO": { bgStart: "#E9F0F6", bgMid: "#F4F8FB", bgEnd: "#DFE7EE", accent: "#0092B8", violet: "#5B5BD6", text: "#0F172A", text2: "#4A5568", text3: "#94A3B8", danger: "#D6304B", success: "#0E9F6E", gold: "#B7791F", cardA: 0.65, borderA: 0.18, radius: 16 },
+  "BLOOD ARENA": { bgStart: "#0A0304", bgMid: "#120507", bgEnd: "#070203", accent: "#FF2E43", violet: "#8B1E2E", text: "#FFEDEE", text2: "#C08A90", text3: "#6E4048", danger: "#FF2E43", success: "#43FF8B", gold: "#FFC857", cardA: 0.08, borderA: 0.14, radius: 10 },
+  VAPORWAVE: { bgStart: "#12081F", bgMid: "#1A0B2E", bgEnd: "#0C0517", accent: "#FF71CE", violet: "#01CDCF", text: "#F7ECFF", text2: "#B39AC7", text3: "#5F4A73", danger: "#FF416C", success: "#01FF9D", gold: "#FFD3A5", cardA: 0.09, borderA: 0.15, radius: 20 }
+};
+
+const COLOR_FIELDS = [
+  ["grp-bg", [["bgStart", "Background start (ZsBgStart)"], ["bgMid", "Background mid (ZsBgMid)"], ["bgEnd", "Background end (ZsBgEnd)"]]],
+  ["grp-accents", [["accent", "Primary accent (ZsPrimary/ZsAccent)"], ["violet", "Secondary glow (ZsPurple)"]]],
+  ["grp-text", [["text", "Text primary"], ["text2", "Text secondary"], ["text3", "Text muted"]]],
+  ["grp-status", [["danger", "Danger / defeat (ZsDanger)"], ["success", "Success / victory (ZsSuccess)"], ["gold", "Gold / coins (ZsGold)"]]]
+];
+
+function buildControls() {
+  for (const [grp, fields] of COLOR_FIELDS) {
+    const wrap = $(grp);
+    for (const [key, label] of fields) {
+      const row = document.createElement("div");
+      row.className = "color-row";
+      row.innerHTML = '<label>' + label + '</label>' +
+        '<input type="color" data-key="' + key + '">' +
+        '<input class="hex" data-key="' + key + '" maxlength="7" spellcheck="false">';
+      wrap.appendChild(row);
+    }
+  }
+  document.querySelectorAll('input[type="color"]').forEach((inp) => {
+    inp.addEventListener("input", () => { state[inp.dataset.key] = inp.value.toUpperCase(); apply(); });
+  });
+  document.querySelectorAll(".hex").forEach((inp) => {
+    inp.addEventListener("change", () => {
+      const v = inp.value.trim();
+      if (/^#[0-9a-fA-F]{6}$/.test(v)) { state[inp.dataset.key] = v.toUpperCase(); apply(); }
+      else syncInputs();
+    });
+  });
+  $("in-card-a").addEventListener("input", (e) => { state.cardA = e.target.value / 100; apply(); });
+  $("in-border-a").addEventListener("input", (e) => { state.borderA = e.target.value / 100; apply(); });
+  $("in-radius").addEventListener("input", (e) => { state.radius = +e.target.value; apply(); });
+
+  const pc = $("presets");
+  Object.keys(PRESETS).forEach((name) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.textContent = name;
+    b.onclick = () => { state = Object.assign({}, PRESETS[name]); apply(); };
+    pc.appendChild(b);
+  });
+  const rnd = document.createElement("button");
+  rnd.className = "chip"; rnd.type = "button"; rnd.textContent = "&#127922; RANDOM";
+  rnd.innerHTML = "&#127922; RANDOM";
+  rnd.onclick = randomize;
+  pc.appendChild(rnd);
+}
+
+function syncInputs() {
+  document.querySelectorAll('input[type="color"]').forEach((i) => { i.value = state[i.dataset.key].toLowerCase(); });
+  document.querySelectorAll(".hex").forEach((i) => { i.value = state[i.dataset.key]; });
+  $("in-card-a").value = Math.round(state.cardA * 100); $("out-card-a").textContent = Math.round(state.cardA * 100) + "%";
+  $("in-border-a").value = Math.round(state.borderA * 100); $("out-border-a").textContent = Math.round(state.borderA * 100) + "%";
+  $("in-radius").value = state.radius; $("out-radius").textContent = state.radius + "px";
+  document.querySelectorAll("#presets .chip").forEach((c) => {
+    const p = PRESETS[c.textContent.trim()];
+    c.classList.toggle("active", !!p && JSON.stringify(p) === JSON.stringify(state));
+  });
+}
+
+function apply() {
+  const r = $("preview").style;
+  r.setProperty("--bg0", state.bgStart); r.setProperty("--bg1", state.bgMid); r.setProperty("--bg2", state.bgEnd);
+  r.setProperty("--accent", state.accent); r.setProperty("--violet", state.violet);
+  r.setProperty("--text", state.text); r.setProperty("--text2", state.text2); r.setProperty("--text3", state.text3);
+  r.setProperty("--danger", state.danger); r.setProperty("--success", state.success); r.setProperty("--gold", state.gold);
+  r.setProperty("--card-a", state.cardA); r.setProperty("--border-a", state.borderA);
+  r.setProperty("--radius", state.radius + "px");
+  syncInputs();
+  try { localStorage.setItem("zsStudioTheme", JSON.stringify(state)); } catch (e) {}
+}
+
+function randomize() {
+  const hue = Math.random() * 360;
+  const bgHue = (hue + (Math.random() * 40 - 20) + 360) % 360;
+  const accHue = Math.random() < 0.5 ? hue : (hue + [90, 120, 180, 270][Math.floor(Math.random() * 4)]) % 360;
+  const vioHue = (accHue + 40 + Math.random() * 50) % 360;
+  state.bgStart = hslToHex(bgHue, 30 + Math.random() * 30, 5 + Math.random() * 4);
+  state.bgMid = hslToHex(bgHue, 30 + Math.random() * 30, 3.5 + Math.random() * 3);
+  state.bgEnd = hslToHex(bgHue, 30 + Math.random() * 30, 2 + Math.random() * 2);
+  state.accent = hslToHex(accHue, 78 + Math.random() * 20, 55 + Math.random() * 12);
+  state.violet = hslToHex(vioHue, 75 + Math.random() * 20, 58 + Math.random() * 10);
+  state.text = hslToHex(bgHue, 40 + Math.random() * 30, 93 + Math.random() * 5);
+  state.text2 = hslToHex(bgHue, 18 + Math.random() * 20, 62 + Math.random() * 8);
+  state.text3 = hslToHex(bgHue, 12 + Math.random() * 15, 38 + Math.random() * 10);
+  state.danger = hslToHex((350 + Math.random() * 20 - 10 + 360) % 360, 85, 60);
+  state.success = hslToHex((140 + Math.random() * 30 - 15 + 360) % 360, 85, 58);
+  state.gold = hslToHex(40 + Math.random() * 8, 90, 62);
+  state.cardA = 0.04 + Math.random() * 0.08;
+  state.borderA = 0.07 + Math.random() * 0.08;
+  apply();
+}
+
+/* ============================ export ============================ */
+const C = (hex) => "Color(0xFF" + hex.replace("#", "").toUpperCase() + ")";
+const CA = (a, hex) => "Color(0x" + alphaByte(a) + hex.replace("#", "").toUpperCase() + ")";
+
+function themeKt() {
+  const dark = darken(hexToRgb(state.accent), 25);
+  return `package com.zerostress.manager.ui.theme
+
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Typography
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.zerostress.manager.R
+
+// ---- Brand palette: generated with NEXUS Theme Studio (theme-studio.html) ----
+// Replaces the previous NEXUS values; slot names are unchanged so every
+// screen keeps compiling without edits.
+val ZsBgStart = ${C(state.bgStart)}
+val ZsBgMid = ${C(state.bgMid)}
+val ZsBgEnd = ${C(state.bgEnd)}
+val ZsCard = ${CA(state.cardA, "#FFFFFF")}         // glass fill
+val ZsCardAlt = ${CA(Math.min(1, state.cardA * 1.5), "#FFFFFF")}      // brighter glass
+
+val ZsPrimary = ${C(state.accent)}
+val ZsPrimaryDark = ${C(dark)}  // deep accent (pressed / gradients)
+val ZsPurple = ${C(state.violet)}       // secondary glow
+
+val ZsAccent = ${C(state.accent)}       // hero accent
+val ZsAccentDark = ${C(dark)}
+
+val ZsTextPrimary = ${C(state.text)}
+val ZsTextSecondary = ${C(state.text2)}
+val ZsTextMuted = ${C(state.text3)}
+val ZsBorder = ${CA(state.borderA, "#FFFFFF")}
+val ZsBorderLight = ${CA(Math.min(1, state.borderA + 0.06), "#FFFFFF")}
+
+val ZsDanger = ${C(state.danger)}
+val ZsSuccess = ${C(state.success)}
+val ZsGreen = ${C(state.success)}
+val ZsCyan = ${C(state.accent)}         // kept as the shared "cyan" slot
+val ZsGold = ${C(state.gold)}         // rank gold
+val ZsSilver = Color(0xFFC0C7D1)
+val ZsBronze = Color(0xFFCD7F32)
+val ZsWarning = ${C(lighten(hexToRgb(state.gold), 8))}
+val ZsInfo = ${C(lighten(hexToRgb(state.accent), 18))}
+val ZsGrey = ${C(state.text3)}
+
+val ZsChatSentStart = ${C(state.accent)}
+val ZsChatSentEnd = ${C(state.violet)}
+val ZsChatReceived = ${CA(Math.min(1, state.cardA * 2), "#FFFFFF")}
+
+private val ZsColorScheme = darkColorScheme(
+    primary = ZsPrimary,
+    onPrimary = Color(0xFF04101A),      // dark ink on neon fills
+    primaryContainer = ZsCard,
+    onPrimaryContainer = ZsTextPrimary,
+    secondary = ZsPurple,
+    onSecondary = Color(0xFF04101A),
+    secondaryContainer = ZsCardAlt,
+    onSecondaryContainer = ZsTextPrimary,
+    tertiary = ZsAccent,
+    onTertiary = Color(0xFF04101A),
+    background = ZsBgStart,
+    onBackground = ZsTextPrimary,
+    surface = ZsBgMid,
+    onSurface = ZsTextPrimary,
+    surfaceVariant = ZsCardAlt,
+    onSurfaceVariant = ZsTextSecondary,
+    error = ZsDanger,
+    onError = Color.White,
+    outline = ZsBorder
+)
+
+/**
+ * Esports display family (Rajdhani): squared, techy numerals and headings.
+ * Weights map onto the shipped files; the Bold file also serves ExtraBold /
+ * Black so headings stay crisp without extra font assets.
+ */
+private val ZsRajdhani = FontFamily(
+    Font(R.font.rajdhani_medium, FontWeight.Normal),
+    Font(R.font.rajdhani_medium, FontWeight.Medium),
+    Font(R.font.rajdhani_semibold, FontWeight.SemiBold),
+    Font(R.font.rajdhani_bold, FontWeight.Bold),
+    Font(R.font.rajdhani_bold, FontWeight.ExtraBold),
+    Font(R.font.rajdhani_bold, FontWeight.Black)
+)
+
+private val ZsTypography = Typography(
+    headlineLarge = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 32.sp,
+        letterSpacing = (-0.5).sp
+    ),
+    headlineMedium = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 24.sp
+    ),
+    titleLarge = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.ExtraBold,
+        fontSize = 20.sp,
+        letterSpacing = 0.4.sp
+    ),
+    titleMedium = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.Bold,
+        fontSize = 16.sp
+    ),
+    bodyLarge = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp
+    ),
+    bodyMedium = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.Normal,
+        fontSize = 14.sp
+    ),
+    labelLarge = TextStyle(
+        fontFamily = ZsRajdhani,
+        fontWeight = FontWeight.Bold,
+        fontSize = 15.sp,
+        letterSpacing = 0.8.sp
+    )
+)
+
+@Composable
+fun ZeroStressTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = ZsColorScheme,
+        typography = ZsTypography,
+        content = content
+    )
+}
+`;
+}
+
+function zsThemeKt() {
+  const dark = darken(hexToRgb(state.accent), 25);
+  return `package com.zerostress.manager.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+// NEXUS UI palette - generated with NEXUS Theme Studio (theme-studio.html).
+// Mirrors ui/theme/Theme.kt. The object keeps the same slot names most
+// screens already reference.
+object ZeroStressTheme {
+    val ZsAccent = ${C(state.accent)}      // primary accent
+    val ZsAccent2 = ${C(state.violet)}     // secondary glow
+    val ZsPurple = ${C(state.violet)}
+    val ZsCyan = ${C(state.accent)}        // shared "cyan" slot
+    val ZsGold = ${C(state.gold)}        // rank gold
+    val ZsGreen = ${C(state.success)}
+    val ZsDanger = ${C(state.danger)}
+    val ZsWarning = ${C(lighten(hexToRgb(state.gold), 8))}
+    val ZsTextPrimary = ${C(state.text)}
+    val ZsTextSecondary = ${C(state.text2)}
+    val ZsTextMuted = ${C(state.text3)}
+    val ZsCard = ${CA(state.cardA, "#FFFFFF")}        // glass fill
+    val ZsChatSentEnd = ${C(dark)}
+}
+`;
+}
+
+function flash(btn, okText) {
+  const old = btn.textContent;
+  btn.textContent = okText;
+  setTimeout(() => { btn.textContent = old; }, 1600);
+}
+async function copyText(text, btn) {
+  try {
+    await navigator.clipboard.writeText(text);
+    flash(btn, "COPIED ✓");
+  } catch (e) {
+    const ta = document.createElement("textarea");
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand("copy"); ta.remove();
+    flash(btn, "COPIED ✓");
+  }
+}
+$("btn-copy-theme").onclick = (e) => copyText(themeKt(), e.target);
+$("btn-copy-zstheme").onclick = (e) => copyText(zsThemeKt(), e.target);
+$("btn-download").onclick = () => {
+  const blob = new Blob([themeKt()], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Theme.kt";
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+$("btn-reset").onclick = () => { state = JSON.parse(JSON.stringify(DEFAULT)); apply(); };
+$("btn-random").onclick = randomize;
+
+buildControls();
+apply();
+</script>
+</body>
+</html>
