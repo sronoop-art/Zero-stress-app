@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Resources the code references only by NAME at runtime
+  (Resources.getIdentifier), which the release resource shrinker cannot
+  see and would otherwise delete. Keep every rank frame and any future
+  ic_title_* badge art that gets dropped into res/drawable.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/frame_*,@drawable/ic_title_*" />
