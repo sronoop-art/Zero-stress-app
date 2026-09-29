@@ -78,9 +78,12 @@ import com.zerostress.manager.ui.theme.ZsTextSecondary
 class ShopActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Admin entry point: launched with manage=true (admin dashboard tile)
+        // the shop opens straight into "Manage Shop" mode.
+        val startInManage = intent?.getBooleanExtra("manage", false) ?: false
         setContent {
             ZeroStressTheme {
-                ShopScreen()
+                ShopScreen(startInManage = startInManage)
             }
         }
     }
@@ -109,7 +112,7 @@ private val DEFAULT_CATALOG = listOf(
 )
 
 @Composable
-private fun ShopScreen() {
+private fun ShopScreen(startInManage: Boolean = false) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val auth = remember { FirebaseAuth.getInstance() }
     val db = remember { FirebaseFirestore.getInstance() }
@@ -126,7 +129,7 @@ private fun ShopScreen() {
     var catalogLoaded by remember { mutableStateOf(false) }
 
     // Admin editor state
-    var manageMode by remember { mutableStateOf(false) }
+    var manageMode by remember { mutableStateOf(startInManage) }
     var editing by remember { mutableStateOf<ShopItem?>(null) }   // existing item
     var creating by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf<ShopItem?>(null) }

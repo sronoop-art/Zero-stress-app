@@ -229,6 +229,15 @@ private fun AdminDashboardScreen() {
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         ZSMenuTile("", "My Profile", { context.launchTab(ProfileActivity::class.java) }, Modifier.weight(1f), ZsPrimary, iconRes = R.drawable.ic_menu_person)
+                        // Coin Shop control: a plain startActivity (NOT launchTab)
+                        // so the "manage" extra is always delivered - launchTab
+                        // recycles the existing instance via REORDER_TO_FRONT and
+                        // would just show the player-facing shop again.
+                        ZSMenuTile("", "Coin Shop", {
+                            context.startActivity(
+                                Intent(context, ShopActivity::class.java).putExtra("manage", true)
+                            )
+                        }, Modifier.weight(1f), ZsGold, iconRes = R.drawable.ic_menu_gift)
                         ZSMenuTile("", "Logout", {
                             auth.signOut()
                             // CLEAR_TASK wipes every activity behind the logout
@@ -239,7 +248,6 @@ private fun AdminDashboardScreen() {
                             })
                             (context as? android.app.Activity)?.finish()
                         }, Modifier.weight(1f), ZsDanger, iconRes = R.drawable.ic_menu_logout)
-                        Spacer(Modifier.weight(1f))
                     }
                 }
 
