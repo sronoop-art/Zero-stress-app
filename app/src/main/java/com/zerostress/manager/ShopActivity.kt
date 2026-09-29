@@ -465,6 +465,29 @@ private fun ShopScreen() {
                         }
                     }
 
+                    // Icon uploads need Cloudinary (Remote Config). If it is not
+                    // configured the Icon button silently does nothing useful,
+                    // so tell the admin exactly what is missing.
+                    if (isAdmin && manageMode && !com.zerostress.manager.ota.ZsCloudinary.isEnabled()) {
+                        item {
+                            ZSCard(highlight = ZsDanger) {
+                                Text(
+                                    "PNG ICON UPLOADS ARE OFF",
+                                    color = ZsDanger,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 1.sp
+                                )
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    "Cloudinary is not configured, so icons can't be uploaded (players see letter medallions instead). In Firebase Console > Remote Config set cloudinary_cloud_name and cloudinary_upload_preset, publish, then fully close and reopen the app.",
+                                    color = ZsTextSecondary,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+
                     items(visibleItems, key = { it.docId ?: it.name }) { item ->
                         val owned = item.name in ownedTitles
                         val equipped = equippedTitle == item.name
