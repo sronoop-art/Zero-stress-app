@@ -17,10 +17,6 @@ functions/node_modules/
 functions/*.log
 .firebase/
 
-# PWA companion (web/) - dependency cache only; sources are tracked
-web/node_modules/
-web/*.log
-
 # Knock bridge (server/) - node_modules + local secrets
 server/node_modules/
 server/*.log

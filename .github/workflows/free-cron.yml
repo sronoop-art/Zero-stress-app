@@ -86,12 +86,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           CRON_JOB: ${{ inputs.job || 'all' }}
-          # Web Push (PWA users, web/). Optional: when unset, web users simply
-          # get in-app notifications only and the FCM relay is unaffected.
-          # Generate the pair in Firebase Console > Project settings > Cloud
-          # Messaging > Web Push certificates > Generate key pair, then add
-          # BOTH repository secrets (public key is safe to expose - it is
-          # already public to every browser that subscribes).
-          ZS_WEB_PUSH_PUBLIC_KEY: ${{ secrets.ZS_WEB_PUSH_PUBLIC_KEY }}
-          ZS_WEB_PUSH_PRIVATE_KEY: ${{ secrets.ZS_WEB_PUSH_PRIVATE_KEY }}
         run: node functions/cron.js
