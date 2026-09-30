@@ -137,14 +137,14 @@ private fun LoginScreen() {
             // Login logo - replace res/drawable/zs_login_logo.png with your own PNG
             Image(
                 painter = painterResource(R.drawable.zs_login_logo),
-                contentDescription = "TEAM-X logo",
+                contentDescription = "ONLY TEAM-X logo",
                 modifier = Modifier.size(96.dp),
                 contentScale = ContentScale.Fit
             )
             Spacer(Modifier.height(14.dp))
             Row(verticalAlignment = Alignment.Bottom) {
                 Text(
-                    text = "TEAM ",
+                    text = "ONLY TEAM ",
                     color = ZsTextPrimary,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.ExtraBold,

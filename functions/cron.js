@@ -176,7 +176,7 @@ async function processPushQueue() {
       // push here too - otherwise "SEND TO ALL PLAYERS" reached nobody's status
       // bar. push:false stays deliberately in-app only.
       if (data.push !== false) {
-        await sendToAll(data.title || "TEAM-X", data.message || "", data.type || "general");
+        await sendToAll(data.title || "ONLY TEAM-X", data.message || "", data.type || "general");
       }
       doc.ref.update({ pushSent: true }).catch(() => {});
       continue;
@@ -187,7 +187,7 @@ async function processPushQueue() {
     }
     await sendToUid(
       data.uid,
-      data.title || "TEAM-X",
+      data.title || "ONLY TEAM-X",
       data.message || "",
       data.type || "general",
       data.scheduleId ? { scheduleId: data.scheduleId } : null

@@ -399,7 +399,7 @@ fun EmptyState(text: String, modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "TEAM-X NETWORK",
+                "ONLY TEAM-X NETWORK",
                 color = ZsTextMuted.copy(alpha = 0.6f),
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,

@@ -210,7 +210,7 @@ private fun SplashScreen() {
         // (fits the 96dp slot; the scale/alpha animation still applies).
         Image(
             painter = painterResource(R.drawable.app_logo),
-            contentDescription = "TEAM-X logo",
+            contentDescription = "ONLY TEAM-X logo",
             modifier = Modifier
                 .width(96.dp)
                 .height(96.dp)
@@ -221,7 +221,7 @@ private fun SplashScreen() {
         Spacer(Modifier.height(24.dp))
         Row(modifier = Modifier.alpha(titleAlpha.value), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "TEAM ",
+                "ONLY TEAM ",
                 color = ZsTextPrimary,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.ExtraBold,

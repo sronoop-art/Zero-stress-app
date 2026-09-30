@@ -122,7 +122,7 @@ private fun PrivacyContent() {
     ZSCard {
         Column {
             BodyText(
-                "TEAM-X (\"we\", \"our\") operates a team performance and " +
+                "ONLY TEAM-X (\"we\", \"our\") operates a team performance and " +
                     "leaderboard app for gaming squads. This policy explains what data " +
                     "we collect and how it is used."
             )
@@ -181,7 +181,7 @@ private fun PrivacyContent() {
 
             SectionHeading("CHILDREN")
             BodyText(
-                "TEAM-X is not directed at children under 13. We do not " +
+                "ONLY TEAM-X is not directed at children under 13. We do not " +
                     "knowingly collect data from children under 13."
             )
 
@@ -199,7 +199,7 @@ private fun TermsContent() {
     ZSCard {
         Column {
             BodyText(
-                "By creating an account or using TEAM-X you agree to these " +
+                "By creating an account or using ONLY TEAM-X you agree to these " +
                     "terms. If you do not agree, do not use the app."
             )
 

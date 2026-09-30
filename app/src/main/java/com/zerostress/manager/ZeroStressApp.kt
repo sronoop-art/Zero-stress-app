@@ -66,7 +66,7 @@ class ZeroStressApp : Application() {
     private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val mainChannel = NotificationChannel(
-                CHANNEL_ID, "TEAM-X Notifications",
+                CHANNEL_ID, "ONLY TEAM-X Notifications",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
                 description = "Match updates, announcements, and alerts"

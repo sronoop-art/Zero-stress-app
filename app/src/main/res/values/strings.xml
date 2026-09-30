@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TEAM-X</string>
+    <string name="app_name">ONLY TEAM-X</string>
     <string name="login_title">Login to Leaderboards</string>
     <string name="register_title">Create Account</string>
     <string name="admin_dashboard">Admin Dashboard</string>
