@@ -255,7 +255,7 @@ private fun PlayerDashboardScreen() {
             ) {
                 Column {
                     Text(
-                        "ZERO STRESS",
+                        "TEAM-X",
                         color = ZsTextPrimary,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.ExtraBold,

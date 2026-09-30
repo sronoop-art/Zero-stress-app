@@ -220,7 +220,7 @@ fun ZsLoadingHud(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "ZERO STRESS NETWORK",
+            "TEAM-X NETWORK",
             color = ZsNexus.TextMuted.copy(alpha = 0.6f),
             fontSize = 8.sp,
             letterSpacing = ZsType.TechTracking,

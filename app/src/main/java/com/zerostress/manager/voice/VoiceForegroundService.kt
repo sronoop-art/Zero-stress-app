@@ -80,7 +80,7 @@ class VoiceForegroundService : Service() {
         val text = "Connected to $channelName — tap to return to the call"
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle("ZERO STRESS voice")
+            .setContentTitle("TEAM-X voice")
             .setContentText(text)
             .setOngoing(true)
             .setSilent(true)

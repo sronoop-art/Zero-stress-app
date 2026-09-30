@@ -167,7 +167,7 @@ private fun AdminDashboardScreen() {
 
             ZSHeroHeader(
                 title = "MANAGER CONSOLE",
-                subtitle = "Zero Stress · $adminName"
+                subtitle = "TEAM-X · $adminName"
             )
             Spacer(Modifier.height(6.dp))
 

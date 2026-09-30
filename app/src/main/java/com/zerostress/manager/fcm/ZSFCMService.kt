@@ -173,7 +173,7 @@ class ZSFCMService : FirebaseMessagingService() {
     }
 
     override fun onMessageReceived(message: RemoteMessage) {
-        var title = message.notification?.title ?: "ZERO STRESS"
+        var title = message.notification?.title ?: "TEAM-X"
         var body = message.notification?.body ?: ""
         var type = "general"
         var targetUid: String? = null

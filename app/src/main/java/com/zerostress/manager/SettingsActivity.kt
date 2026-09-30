@@ -179,7 +179,7 @@ private fun SettingsScreen() {
                     SettingAction("Clear Cache") {
                         Toast.makeText(context, "Cache cleared!", Toast.LENGTH_SHORT).show()
                     }
-                    SettingAction("About Zero Stress") { showAbout = true }
+                    SettingAction("About TEAM-X") { showAbout = true }
                 }
 
                 SectionTitle("ACCOUNT")
@@ -340,7 +340,7 @@ private fun SettingsScreen() {
     if (showAbout) {
         AlertDialog(
             onDismissRequest = { showAbout = false },
-            title = { Text("ZERO STRESS") },
+            title = { Text("TEAM-X") },
             text = {
                 Text(
                     "Version 3.0\n\nPerformance & Leaderboard Manager\n\nBuilt with Kotlin + Jetpack Compose + Firebase",
