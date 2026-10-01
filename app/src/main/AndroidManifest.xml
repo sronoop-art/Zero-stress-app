@@ -83,7 +83,6 @@
         <activity android:name=".MatchHistoryActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".ShopActivity" android:theme="@style/Theme.ZeroStress" />
         <activity android:name=".DirectMessageActivity" android:theme="@style/Theme.ZeroStress" />
-        <activity android:name=".DashboardLayoutEditorActivity" android:theme="@style/Theme.ZeroStress" />
 
         <service
             android:name=".fcm.ZSFCMService"
