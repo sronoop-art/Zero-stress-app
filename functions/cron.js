@@ -167,6 +167,14 @@ async function processPushQueue() {
     .limit(50)
     .get();
   let sent = 0;
+  let collapsed = 0;
+  // Chat fan-out writes one doc per recipient per message, so a burst of
+  // messages becomes dozens of pushes for the SAME device in this one window.
+  // FCM v1 is rate-limited per project+token - past the limit Google returns
+  // 429 and those pushes are lost for good (the doc is already flagged
+  // pushSent). Only the NEWEST message per device+type is pushed; older
+  // same-kind duplicates are marked delivered without sending.
+  const seenKey = new Set();
   for (const doc of snap.docs) {
     const data = doc.data();
     if (data.pushSent) continue;
@@ -185,6 +193,12 @@ async function processPushQueue() {
       doc.ref.update({ pushSent: true }).catch(() => {}); // expire old, no push
       continue;
     }
+    const key = String(data.uid) + "|" + String(data.type || "general");
+    if (seenKey.has(key)) {
+      await doc.ref.update({ pushSent: true, pushDeduped: true });
+      collapsed++;
+      continue;
+    }
     await sendToUid(
       data.uid,
       data.title || "ONLY TEAM-X",
@@ -193,49 +207,12 @@ async function processPushQueue() {
       data.scheduleId ? { scheduleId: data.scheduleId } : null
     );
     await doc.ref.update({ pushSent: true });
+    seenKey.add(key);
     sent++;
   }
+  if (collapsed) console.log(`Push relay: collapsed ${collapsed} duplicate push(es).`);
   if (sent) console.log(`Push relay sent ${sent} notification(s)`);
   else if (snap.docs.length) console.log("Push relay had nothing new to send.");
-}
-
-/**
- * Team-chat messages fan out one notification doc per recipient (ChatActivity),
- * so a burst of messages creates dozens of pushes per device. Each FCM v1 send
- * is rate-limited per project+token - past the limit Google returns 429 and the
- * push is lost for good (the doc is already flagged pushSent). Deduplicating
- * per device+type before sending keeps every recipient to ONE status-bar
- * notification per notification kind per relay tick (newest message wins),
- * while other kinds (a match reminder, an achievement) still push.
- */
-async function dedupePushesPerDevice() {
-  const d = getDb();
-  const recent = await d.collection("notifications")
-    .orderBy("uid")
-    .orderBy("timestamp", "desc")
-    .limit(50)
-    .get();
-  const seenKey = new Set();
-  let collapsed = 0;
-  const batch = d.batch();
-  for (const doc of recent.docs) {
-    const data = doc.data();
-    if (data.pushSent) continue;
-    if (data.push === false) continue; // in-app only - untouched
-    if (!data.uid) continue;           // broadcasts handled by sendToAll
-    const key = String(data.uid) + "|" + String(data.type || "general");
-    if (seenKey.has(key)) {
-      // Older same-kind duplicate for this device: mark delivered.
-      batch.update(doc.ref, { pushSent: true, pushDeduped: true });
-      collapsed++;
-    } else {
-      seenKey.add(key);
-    }
-  }
-  if (collapsed > 0) {
-    await batch.commit();
-    console.log(`Push relay: collapsed ${collapsed} duplicate push(es).`);
-  }
 }
 
 // ---------------------------------------------------------- match reminders
@@ -378,7 +355,6 @@ async function main() {
   // The push queue is drained on every run except leaderboard resets.
   if (which !== "reset") {
     await processPushQueue();
-    await dedupePushesPerDevice();
   }
   if (which === "all" || which === "reminders") {
     await matchReminders(now);
