@@ -165,6 +165,9 @@ private fun SettingsScreen() {
 
                 SectionTitle("GENERAL")
                 ZSCard {
+                    SettingAction("Edit Dashboard Layout") {
+                        context.startActivity(Intent(context, DashboardLayoutEditorActivity::class.java))
+                    }
                     SettingAction("Blocked Users") { showBlocked = true }
                     SettingAction("Privacy Policy") {
                         context.startActivity(

@@ -6,6 +6,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -246,6 +248,23 @@ private fun PlayerDashboardScreen() {
         FCMConfig.checkFCMConfiguration(context as android.app.Activity)
     }
 
+    // Layout editor state: section order + hidden set, reloaded on resume so
+    // edits made in DashboardLayoutEditorActivity apply on return.
+    var layoutOrder by remember { mutableStateOf(ZsDashboardLayout.loadOrder(context)) }
+    var layoutHidden by remember { mutableStateOf(ZsDashboardLayout.loadHidden(context)) }
+    DisposableEffect(context) {
+        val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+            if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                layoutOrder = ZsDashboardLayout.loadOrder(context)
+                layoutHidden = ZsDashboardLayout.loadHidden(context)
+            }
+        }
+        (context as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.addObserver(observer)
+        onDispose {
+            (context as? androidx.lifecycle.LifecycleOwner)?.lifecycle?.removeObserver(observer)
+        }
+    }
+
     ZSBackground {
         Column(Modifier.fillMaxSize()) {
             // NEXUS header: brand + player-core status line (real states only)
@@ -264,6 +283,21 @@ private fun PlayerDashboardScreen() {
                     ZsStatusLabel("PLAYER CORE")
                 }
                 Spacer(Modifier.weight(1f))
+                // Opens the in-app dashboard layout editor (reorder/hide sections).
+                Text(
+                    "\u270E",
+                    color = ZsTextMuted,
+                    fontSize = 16.sp,
+                    modifier = Modifier
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .clickable {
+                            context.startActivity(
+                                Intent(context, DashboardLayoutEditorActivity::class.java)
+                            )
+                        }
+                        .padding(4.dp)
+                )
+                Spacer(Modifier.width(10.dp))
                 // Coin balance - loaded from the player doc, always visible up top.
                 ZSBadge("$coins coins", ZsGold)
                 Spacer(Modifier.width(8.dp))
@@ -278,6 +312,11 @@ private fun PlayerDashboardScreen() {
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
             ) {
+                // Sections are wrapped as composables and rendered in the
+                // user's chosen order (see ZsDashboardLayout / the in-app
+                // "Edit Dashboard Layout" editor in Settings).
+                val zsSections = mapOf<String, @Composable () -> Unit>(
+                "identity" to {
                 // PLAYER IDENTITY: rank-title framed avatar, name, rank badge,
                 // level ring + energy XP bar. A slow HUD scan passes over the
                 // card (identity card is one of the spec's approved scan spots).
@@ -336,7 +375,9 @@ private fun PlayerDashboardScreen() {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
+                }
 
+                "score" to {
                 // SCORE CORE: energy ring centerpiece with animated count-up.
                 // The displayed value animates to the real score and always
                 // ends on it - the underlying score math is untouched.
@@ -398,7 +439,9 @@ private fun PlayerDashboardScreen() {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
+                }
 
+                "performance" to {
                 // Performance graph: last 12 match scores as bars,
                 // plus a TODAY strip. Daily Input aggregates win when present,
                 // otherwise the same totals are derived from today's match_logs
@@ -458,7 +501,9 @@ private fun PlayerDashboardScreen() {
                     }
                 }
                 Spacer(Modifier.height(10.dp))
+                }
 
+                "recentForm" to {
                 // Recent form sparkline
                 ZSCard {
                     Text(
@@ -472,7 +517,9 @@ private fun PlayerDashboardScreen() {
                     ZSSparkline(recentScores)
                 }
                 Spacer(Modifier.height(10.dp))
+                }
 
+                "leaderboard" to {
                 // Primary CTA: full-width gradient leaderboard button
                 ZSButton(
                     "View Leaderboard",
@@ -481,6 +528,9 @@ private fun PlayerDashboardScreen() {
                     height = 46.dp
                 )
 
+                }
+
+                "nextMatch" to {
                 // Next-match countdown card
                 if (nextMatchTitle != null) {
                     Spacer(Modifier.height(12.dp))
@@ -522,6 +572,13 @@ private fun PlayerDashboardScreen() {
                     }
                 }
                 Spacer(Modifier.height(16.dp))
+                }
+                )
+
+                // Render the sections in the user's order, skipping hidden ones.
+                layoutOrder.filter { it !in layoutHidden }.forEach { id ->
+                    zsSections[id]?.invoke()
+                }
             }
 
             // NEXUS floating dock (6 tabs - menu items live in More)
