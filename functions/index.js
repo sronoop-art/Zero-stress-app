@@ -25,7 +25,7 @@ exports.sendPushNotification = onDocumentCreated(
       return;
     }
 
-    const title = notificationData.title || "ZERO STRESS";
+    const title = notificationData.title || "ONLY TEAM-X";
     const body = notificationData.message || notificationData.body || "";
     const type = notificationData.type || "general";
     const senderId = notificationData.senderId || null;

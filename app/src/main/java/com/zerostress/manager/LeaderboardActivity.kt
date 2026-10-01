@@ -228,6 +228,11 @@ private fun LeaderboardScreen() {
                         }
                         else -> {
                             resetData["score"] = 0; resetData["kills"] = 0; resetData["wins"] = 0
+                            // Deaths were missed before: an all-time reset zeroed
+                            // kills/assists/damage/matches but left the lifetime death
+                            // counter standing, so profiles kept showing old deaths
+                            // after a reset ("death score not turning to 0").
+                            resetData["deaths"] = 0
                             resetData["assists"] = 0; resetData["damage"] = 0; resetData["matches"] = 0
                             resetData["xp"] = 0; resetData["level"] = 1; resetData["rank"] = "Iron"
                             resetData["coins"] = 0
@@ -291,6 +296,16 @@ private fun LeaderboardScreen() {
     }
 
     LaunchedEffect(Unit) {
+        loadLeaderboard()
+    }
+
+    // Re-fetch when the period tab changes: each tab sorts by a different
+    // counter (dailyScore/weeklyScore/monthlyScore). The snapshot listener
+    // only re-sorts cached docs, so right after a reset or a burst of Daily
+    // Input entries the Daily tab could show a stale order ("scores not
+    // updating in real time") until the next unrelated write. A fresh get()
+    // per tab switch guarantees server-fresh numbers on every switch.
+    LaunchedEffect(currentTab) {
         loadLeaderboard()
     }
 
@@ -506,7 +521,7 @@ private fun LeaderboardScreen() {
             "daily" -> "Reset Daily Leaderboard" to "All DAILY stats (kills, wins, score) will be set to 0 for every player.\n\nWeekly and Monthly stats are NOT affected."
             "weekly" -> "Reset Weekly Leaderboard" to "All WEEKLY stats (kills, wins, score) will be set to 0 for every player.\n\nDaily and Monthly stats are NOT affected."
             "monthly" -> "Reset Monthly Leaderboard" to "All MONTHLY stats (kills, wins, score) will be set to 0 for every player.\n\nDaily and Weekly stats are NOT affected."
-            else -> "Reset EVERYTHING" to "DANGER ZONE\n\nThis resets ALL stats for every player:\n- Total score, kills, wins, damage\n- XP to Level 1\n- Coins to 0\n- Rank to Iron\n- Daily, Weekly & Monthly stats\n\nThis cannot be undone!"
+            else -> "Reset EVERYTHING" to "DANGER ZONE\n\nThis resets ALL stats for every player:\n- Total score, kills, deaths, wins, damage\n- XP to Level 1\n- Coins to 0\n- Rank to Iron\n- Daily, Weekly & Monthly stats\n\nThis cannot be undone!"
         }
         AlertDialog(
             onDismissRequest = { showResetConfirmDialog = null },

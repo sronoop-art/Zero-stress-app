@@ -56,6 +56,7 @@ import com.zerostress.manager.ui.theme.ZsTextMuted
 import com.zerostress.manager.ui.theme.ZsTextPrimary
 import com.zerostress.manager.ui.theme.ZsTextSecondary
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class SplashScreenActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -115,6 +116,11 @@ private fun SplashScreen() {
     var updateMessage by remember { mutableStateOf("") }
     var updateUrl by remember { mutableStateOf("") }
     var checkedForUpdate by remember { mutableStateOf(false) }
+    // True once the version check has SETTLED (fetched, or timed out). The
+    // splash must not navigate before this - the old timer navigated away
+    // mid-check, so the blocking update dialog appeared for a moment and the
+    // app continued to login anyway ("force update not working").
+    var updateCheckDone by remember { mutableStateOf(false) }
 
     // Kick off OTA asset-pack download in the background once config has fetched.
     LaunchedEffect(Unit) {
@@ -135,11 +141,22 @@ private fun SplashScreen() {
     LaunchedEffect(ready) {
         if (!ready || checkedForUpdate) return@LaunchedEffect
         checkedForUpdate = true
+        // Fail-open: if the fetch hangs (bad network), continue after 8s on
+        // cached/default values instead of trapping the player on splash.
+        launch {
+            kotlinx.coroutines.delay(8000)
+            updateCheckDone = true
+        }
         com.zerostress.manager.ota.ZsRemoteConfig.fetchAndActivate { ok ->
-            if (ok && com.zerostress.manager.ota.ZsRemoteConfig.updateRequired()) {
-                updateRequired = true
-                updateMessage = com.zerostress.manager.ota.ZsRemoteConfig.updateMessage()
-                updateUrl = com.zerostress.manager.ota.ZsRemoteConfig.updateUrl()
+            val required = ok && com.zerostress.manager.ota.ZsRemoteConfig.updateRequired()
+            // Callback may arrive on a binder thread - state writes belong on main.
+            (context as? android.app.Activity)?.runOnUiThread {
+                if (required) {
+                    updateRequired = true
+                    updateMessage = com.zerostress.manager.ota.ZsRemoteConfig.updateMessage()
+                    updateUrl = com.zerostress.manager.ota.ZsRemoteConfig.updateUrl()
+                }
+                updateCheckDone = true
             }
         }
     }
@@ -188,15 +205,22 @@ private fun SplashScreen() {
         titleAlpha.animateTo(1f, tween(400))
         delay(200)
         while (progress < 100) {
-            delay(100)
+            delay(40) // brisk boot - the old 100ms tick made the splash feel slow
             progress += 5
             if (progress % 20 == 0 && messageIndex < loadingMessages.size) {
                 messageIndex++
             }
         }
         ready = true
-        delay(500)
-        navigateToMain()
+        delay(150)
+        // Hold the splash until the version check has settled; when an update is
+        // required the blocking dialog below keeps the app here on purpose.
+        while (!updateCheckDone) {
+            kotlinx.coroutines.delay(100)
+        }
+        if (!updateRequired) {
+            navigateToMain()
+        }
     }
 
     Column(

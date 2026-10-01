@@ -3,7 +3,10 @@
   Resources the code references only by NAME at runtime
   (Resources.getIdentifier), which the release resource shrinker cannot
   see and would otherwise delete. Keep every rank frame and any future
-  ic_title_* badge art that gets dropped into res/drawable.
+  ic_title_* badge art that gets dropped into res/drawable, plus the raw
+  event audio (app_start / login_success / register_success) that
+  ZsSoundManager looks up by name - if the shrinker ate these the app
+  started completely silent ("audio not working").
 -->
 <resources xmlns:tools="http://schemas.android.com/tools"
-    tools:keep="@drawable/frame_*,@drawable/ic_title_*" />
+    tools:keep="@drawable/frame_*,@drawable/ic_title_*,@raw/app_start,@raw/login_success,@raw/register_success" />

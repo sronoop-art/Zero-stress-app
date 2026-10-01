@@ -4,11 +4,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import com.zerostress.manager.R
 
@@ -130,9 +133,18 @@ private val ZsTypography = Typography(
 
 @Composable
 fun ZeroStressTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = ZsColorScheme,
-        typography = ZsTypography,
-        content = content
-    )
+    // Cap the system font scale at 1.2x: with a large "Font size"/"Display
+    // size" set in Android settings, sp-based text scaled 1.3-2.0x and
+    // overflowed the fixed cards, chips and bottom dock - the "UI broken on
+    // other devices" reports. Layout spacing is dp-based and untouched; only
+    // the text scale is clamped so the glass HUD stays intact on any device.
+    val sys = LocalDensity.current
+    val clamped = Density(sys.density, sys.fontScale.coerceAtMost(1.2f))
+    CompositionLocalProvider(LocalDensity provides clamped) {
+        MaterialTheme(
+            colorScheme = ZsColorScheme,
+            typography = ZsTypography,
+            content = content
+        )
+    }
 }

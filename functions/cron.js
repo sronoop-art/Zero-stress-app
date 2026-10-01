@@ -199,6 +199,45 @@ async function processPushQueue() {
   else if (snap.docs.length) console.log("Push relay had nothing new to send.");
 }
 
+/**
+ * Team-chat messages fan out one notification doc per recipient (ChatActivity),
+ * so a burst of messages creates dozens of pushes per device. Each FCM v1 send
+ * is rate-limited per project+token - past the limit Google returns 429 and the
+ * push is lost for good (the doc is already flagged pushSent). Deduplicating
+ * per device+type before sending keeps every recipient to ONE status-bar
+ * notification per notification kind per relay tick (newest message wins),
+ * while other kinds (a match reminder, an achievement) still push.
+ */
+async function dedupePushesPerDevice() {
+  const d = getDb();
+  const recent = await d.collection("notifications")
+    .orderBy("uid")
+    .orderBy("timestamp", "desc")
+    .limit(50)
+    .get();
+  const seenKey = new Set();
+  let collapsed = 0;
+  const batch = d.batch();
+  for (const doc of recent.docs) {
+    const data = doc.data();
+    if (data.pushSent) continue;
+    if (data.push === false) continue; // in-app only - untouched
+    if (!data.uid) continue;           // broadcasts handled by sendToAll
+    const key = String(data.uid) + "|" + String(data.type || "general");
+    if (seenKey.has(key)) {
+      // Older same-kind duplicate for this device: mark delivered.
+      batch.update(doc.ref, { pushSent: true, pushDeduped: true });
+      collapsed++;
+    } else {
+      seenKey.add(key);
+    }
+  }
+  if (collapsed > 0) {
+    await batch.commit();
+    console.log(`Push relay: collapsed ${collapsed} duplicate push(es).`);
+  }
+}
+
 // ---------------------------------------------------------- match reminders
 async function matchReminders(now) {
   const d = getDb();
@@ -293,6 +332,12 @@ async function autoSeasonReset(now) {
 }
 
 // ------------------------------------------------------- leaderboard resets
+// Periodic resets only zero the per-period score/wins/kills counters the
+// leaderboard tabs read. Deaths are a LIFETIME stat (Daily Input increments
+// players/{uid}.deaths), so cron resets must never touch it - the in-app
+// "Everything (All Time)" reset is what clears lifetime counters, and it
+// now includes deaths too (it previously missed it, leaving stale death
+// counts on every roster after an all-time reset).
 async function resetFields(fieldScore, fieldWins, fieldKills) {
   const d = getDb();
   const snap = await d.collection("players").where("status", "==", "approved").get();
@@ -333,6 +378,7 @@ async function main() {
   // The push queue is drained on every run except leaderboard resets.
   if (which !== "reset") {
     await processPushQueue();
+    await dedupePushesPerDevice();
   }
   if (which === "all" || which === "reminders") {
     await matchReminders(now);

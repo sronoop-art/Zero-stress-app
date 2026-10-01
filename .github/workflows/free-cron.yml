@@ -43,6 +43,16 @@ on:
           - season
           - reset
 
+  # Instant relay + self-heal: also run right after a push that touches the
+  # push pipeline (or any workflow update), so a broken/changed relay is
+  # exercised within seconds instead of waiting for the next scheduled tick.
+  # Push events carry no inputs.job, so the run defaults to "all".
+  push:
+    branches: [main, ZS3.1]
+    paths:
+      - "functions/**"
+      - ".github/workflows/free-cron.yml"
+
 jobs:
   cron:
     runs-on: ubuntu-latest

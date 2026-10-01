@@ -118,9 +118,44 @@ private fun download(url: String): Bitmap? = try {
 }
 
 /**
+ * Renders an in-memory bitmap (e.g. a just-picked profile photo) through the
+ * SAME circular pipeline as [ZsRemoteAvatar]: identical circle crop, dark
+ * disc and ring treatment. The previous profile screen drew the picked
+ * bitmap as a raw square Image, which spilled past the circular ring and
+ * covered the rank-title frame - the reported "picture glitch" - and never
+ * matched what the dashboard showed.
+ */
+@Composable
+fun ZsLocalAvatar(
+    bitmap: Bitmap?,
+    size: Dp,
+    modifier: Modifier = Modifier,
+    ringColor: Color? = null
+) {
+    Box(modifier.size(size), contentAlignment = Alignment.Center) {
+        if (bitmap != null) {
+            val imageMod = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(Color(0xFF111827), CircleShape)
+            Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "Profile picture",
+                modifier = if (ringColor != null)
+                    imageMod.border(1.5.dp, ringColor, CircleShape)
+                else imageMod,
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            ZsPngIcon(R.drawable.ic_menu_person, size = size * 0.5f, tint = Color(0xFF6B7280))
+        }
+    }
+}
+
+/**
  * Square shop-icon renderer: transparent PNGs displayed as-is (no circle
  * crop), falling back to the medallion letter when no URL is set or the
- * download fails. Shares the avatar bitmap cache.
+ * download fails. Shares the avatar pipeline.
  */
 @Composable
 fun ZsRemoteShopIcon(

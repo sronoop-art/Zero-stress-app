@@ -258,16 +258,21 @@ private fun ProfileScreen() {
                                     .clickable { avatarPicker.launch("image/*") },
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (avatarBitmap != null) {
-                                    Image(
-                                        bitmap = avatarBitmap!!.asImageBitmap(),
-                                        contentDescription = "Avatar",
-                                        modifier = Modifier.size(88.dp),
-                                        contentScale = ContentScale.Crop
-                                    )
-                                } else if (avatarUrl != null) {
+                                // Cloud avatar first (every device sees it, and the
+                                // same renderer as the dashboard keeps it inside the
+                                // frame). A just-picked local photo renders through
+                                // ZsLocalAvatar - the same circle-crop pipeline -
+                                // because the old direct Image draw spilled past the
+                                // ring onto the frame (the "picture glitch"), and
+                                // never matched what the dashboard actually showed.
+                                if (avatarUrl != null) {
                                     com.zerostress.manager.ui.ZsRemoteAvatar(
                                         url = avatarUrl,
+                                        size = 88.dp
+                                    )
+                                } else if (avatarBitmap != null) {
+                                    com.zerostress.manager.ui.ZsLocalAvatar(
+                                        bitmap = avatarBitmap,
                                         size = 88.dp
                                     )
                                 } else {

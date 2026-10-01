@@ -142,6 +142,9 @@ private fun IntroVideoScreen(onFinished: () -> Unit) {
                         setVideoURI(Uri.parse(url))
                         setOnPreparedListener { mp ->
                             mp.isLooping = false
+                            // Guarantee audible playback: some devices start a
+                            // stream muted or at reduced volume until explicitly
+                            // told otherwise (the "intro audio not working" bug).
                             mp.setVolume(1f, 1f)
                             start()
                         }
@@ -156,6 +159,8 @@ private fun IntroVideoScreen(onFinished: () -> Unit) {
                         }
                     }.also { videoView = it }
                 },
+                // fillMaxSize keeps the media-player look; VideoView letterboxes
+                // natively so the video is never stretched or cropped.
                 modifier = Modifier.fillMaxSize()
             )
         } else {
