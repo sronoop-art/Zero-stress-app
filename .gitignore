@@ -15,6 +15,8 @@ local.properties
 # Node / Firebase Functions
 functions/node_modules/
 functions/*.log
+# Firebase service account JSON - holds a private key, never commit it.
+functions/service-account.json
 .firebase/
 
 # Knock bridge (server/) - node_modules + local secrets
